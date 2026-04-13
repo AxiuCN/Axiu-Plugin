@@ -5,7 +5,7 @@
 > 在Yunzai根目录执行命令安装
 Github
 ``` bash 
-git clone --depth=1 https://github.com/Axiu/Axiu-Plugin ./plugins/Axiu-Plugin/
+git clone --depth=1 https://github.com/AxiuCN/Axiu-Plugin ./plugins/Axiu-Plugin/
 ```
 
 - 安装依赖
