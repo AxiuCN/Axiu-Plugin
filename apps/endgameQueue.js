@@ -4,19 +4,19 @@ import path from 'node:path';
 import YAML from 'yaml';
 
 const pluginRoot = path.join(process.cwd(), 'plugins', 'Axiu-Plugin');
-const configPath = path.join(pluginRoot, 'config', 'config.yaml');
+const configPath = path.join(pluginRoot, 'config', 'endgameQueueConfig.yaml');
 
-export class queue extends plugin {
+export class endgameQueue extends plugin {
   constructor() {
     super({
-      name: "[Axiu-Plugin]排队链接获取",
+      name: "[Axiu-Plugin]三路深渊排队链接获取",
       dsc: "#排队",
       event: "message",                     // 监听所有消息
       priority: 10,                         // 优先级（数字越小越优先）
       rule:[
 		{
 			reg: '^#排队$',
-			fnc: 'queue',
+			fnc: 'endgameQueue',
 			permission: 'default',
 		},
       ]
@@ -36,7 +36,7 @@ export class queue extends plugin {
 				this.pluginConfig = {};
 			}
 		} catch (error) {
-			logger.error('[Axiu-Plugin] 加载 config.yaml 失败:', error);
+			logger.error('[Axiu-Plugin] 加载 endgameQueueConfig.yaml 失败:', error);
 			this.pluginConfig = {};
 		}
 		// 可选：设置默认值，避免后续访问 undefined
@@ -45,7 +45,7 @@ export class queue extends plugin {
 		}
 	}
 
-  async queue(e) {
+  async endgameQueue(e) {
 	  this._loadPluginConfig();
 	  
       // 回复内容（可根据需要修改）
