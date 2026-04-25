@@ -3,5 +3,9 @@
   "version": "1.0.0",
   "description": "阿修的TRSS崽附属插件",
   "author": "阿修Axiu",
-  "type": "module"
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AxiuCN/Axiu-Plugin.git"
+  }
 }
