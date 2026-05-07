@@ -20,4 +20,4 @@ restart:
   mcsDaemonId: ""
 
   # 定时重启 cron 表达式 (可选，支持数组)
-  restartCron:[]
+  restartCron: []
