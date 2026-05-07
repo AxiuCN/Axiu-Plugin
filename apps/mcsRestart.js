@@ -42,8 +42,8 @@ function getMcsUserData(masterQQ) {
 export class McsRestart extends plugin {
   constructor() {
     super({
-      name: '重启管理',
-      dsc: '#重启 (MCS/原生)',
+      name: '[Axiu-Plugin]重启管理',
+      dsc: '#重启 (MCS云崽实例)',
       event: 'message',
       priority: -Infinity,
       rule: [
