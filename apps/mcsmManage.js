@@ -4,7 +4,7 @@ import path from 'node:path'
 import plugin from '../../../lib/plugins/plugin.js'
 import cfg from '../../../lib/config/config.js'
 import { getRestartConfig } from '../components/config.js'
-import { RestartManager } from '../modules/restart/RestartManager.js'
+import { RestartManager } from '../modules/mcsmManage/RestartManager.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
