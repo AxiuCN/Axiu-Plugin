@@ -3,7 +3,6 @@
 export function getDefaults() {
   return {
     restart_enableMcsm: true,
-    restart_useMcsmManagerPluginConfig: true,
     restart_mcsmHost: '127.0.0.1',
     restart_mcsmPort: 23333,
     restart_mcsmApiKey: '',
@@ -20,13 +19,6 @@ export function getSchema() {
       field: 'restart.enableMcsm',
       label: '启用MCSM面板重启',
       bottomHelpMessage: '关闭则使用框架原生重启',
-      component: 'Switch',
-      defaultValue: true
-    },
-    {
-      field: 'restart.useMcsmManagerPluginConfig',
-      label: '读取MCSM插件用户数据',
-      bottomHelpMessage: '从 mcsmanager-plugin 自动读取面板地址和API Key。开启后下方地址/端口/API Key将被忽略',
       component: 'Switch',
       defaultValue: true
     },
@@ -55,15 +47,13 @@ export function getSchema() {
       field: 'restart.mcsmInstanceUuid',
       label: '实例UUID',
       component: 'Input',
-      required: true,
-      componentProps: { placeholder: 'MCSManager 实例 UUID（必填）' }
+      componentProps: { placeholder: 'MCSManager 实例 UUID' }
     },
     {
       field: 'restart.mcsmDaemonId',
       label: '守护进程ID',
       component: 'Input',
-      required: true,
-      componentProps: { placeholder: 'MCSManager 守护进程 ID（必填）' }
+      componentProps: { placeholder: 'MCSManager 守护进程 ID' }
     },
     {
       field: 'restart.restartCron',

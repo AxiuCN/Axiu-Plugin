@@ -1,11 +1,10 @@
-import fs from 'node:fs'
 import { segment } from 'oicq'
-import { LOG_PREFIX, REDIS_KEY_RESTART, MCSM_USERDATA_PATH } from '../../components/constants.js'
+import { LOG_PREFIX, REDIS_KEY_RESTART } from '../../components/constants.js'
 import { restartInstance } from '../../model/McsmApi.js'
 
 /**
  * 重启流程管理器
- * 负责：凭证解析 → Redis 上下文保存 → MCSM/原生重启 → 上线通知
+ * 负责：配置读取 → Redis 上下文保存 → MCSM/原生重启 → 上线通知
  */
 export class RestartManager {
   /**
@@ -13,56 +12,11 @@ export class RestartManager {
    */
   constructor(config) {
     this.enableMcsm = config.enableMcsm === true
-    this.useMcsmPluginCfg = config.useMcsmManagerPluginConfig === true
-    this.instanceUuid = config.mcsmInstanceUuid || ''
-    this.daemonId = config.mcsmDaemonId || ''
-
-    // 凭证来源选择
-    if (this.useMcsmPluginCfg) {
-      const masterQQ = this._getMasterQQ()
-      const userData = this._getMcsmUserData(masterQQ)
-      if (userData) {
-        this.mcsmHost = userData.host
-        this.mcsmPort = userData.port
-        this.mcsmApiKey = userData.apiKey
-        logger.info(`${LOG_PREFIX}[restart] 已从 mcsmanager-plugin 用户数据读取连接信息`)
-      } else {
-        logger.warn(`${LOG_PREFIX}[restart] 未找到 mcsmanager-plugin 用户数据，回退到配置文件`)
-        this._fillFromConfig(config)
-      }
-    } else {
-      this._fillFromConfig(config)
-    }
-  }
-
-  _fillFromConfig(config) {
     this.mcsmHost = config.mcsmHost || ''
     this.mcsmPort = config.mcsmPort || 0
     this.mcsmApiKey = config.mcsmApiKey || ''
-  }
-
-  _getMasterQQ() {
-    return Bot.masterQQ?.[0] || Object.keys(Bot.adapter?.qq || {})[0] || ''
-  }
-
-  _getMcsmUserData(masterQQ) {
-    try {
-      if (fs.existsSync(MCSM_USERDATA_PATH)) {
-        const userdata = JSON.parse(fs.readFileSync(MCSM_USERDATA_PATH, 'utf8'))
-        const userinfo = userdata[masterQQ]
-        if (userinfo?.apiKey && userinfo?.baseUrl) {
-          const url = new URL(userinfo.baseUrl)
-          return {
-            host: url.hostname,
-            port: parseInt(url.port) || (url.protocol === 'https:' ? 443 : 23333),
-            apiKey: userinfo.apiKey
-          }
-        }
-      }
-    } catch (err) {
-      logger.error(`${LOG_PREFIX}[restart] 读取 MCSM 用户数据失败:`, err)
-    }
-    return null
+    this.instanceUuid = config.mcsmInstanceUuid || ''
+    this.daemonId = config.mcsmDaemonId || ''
   }
 
   /** 检查 MCSM 连接信息是否完整 */

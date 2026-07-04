@@ -88,7 +88,6 @@ export function supportGuoba() {
 
         return {
           'restart.enableMcsm': restart.enableMcsm ?? true,
-          'restart.useMcsmManagerPluginConfig': restart.useMcsmManagerPluginConfig ?? true,
           'restart.mcsmHost': restart.mcsmHost ?? '127.0.0.1',
           'restart.mcsmPort': restart.mcsmPort ?? 23333,
           'restart.mcsmApiKey': restart.mcsmApiKey ?? '',
@@ -109,7 +108,6 @@ export function supportGuoba() {
 
           const values = {
             restart_enableMcsm: data['restart.enableMcsm'] ?? true,
-            restart_useMcsmManagerPluginConfig: data['restart.useMcsmManagerPluginConfig'] ?? true,
             restart_mcsmHost: data['restart.mcsmHost'] || '127.0.0.1',
             restart_mcsmPort: data['restart.mcsmPort'] ?? 23333,
             restart_mcsmApiKey: data['restart.mcsmApiKey'] || '',

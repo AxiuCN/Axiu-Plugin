@@ -5,16 +5,12 @@ restart:
   # 是否启用 MCSM 面板重启（关闭则使用框架原生重启）
   enableMcsm: true
 
-  # 是否从 mcsmanager-plugin 的用户数据自动读取 API Key 与面板地址
-  # 开启后，下方 mcsmHost / mcsmPort / mcsmApiKey 将被忽略
-  useMcsmManagerPluginConfig: true
-
-  # MCSManager 面板地址（仅在 useMcsmManagerPluginConfig: false 时需要填写）
+  # MCSManager 面板地址
   mcsmHost: "127.0.0.1"
   mcsmPort: 23333
   mcsmApiKey: ""
 
-  # 实例 UUID 与守护进程 ID（必填，需手动指定）
+  # 实例 UUID 与守护进程 ID
   mcsmInstanceUuid: ""
   mcsmDaemonId: ""
 
