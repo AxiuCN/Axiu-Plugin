@@ -67,23 +67,37 @@ export class McsmManage extends plugin {
 
   /**
    * accept() 在 loader 的 rule 匹配之前执行，优先级最高
-   * #重启 返回 'return' 阻止 rule 层继续分发到 other/restart.js
+   * 返回 'return' 阻止 rule 层继续分发到 other/ 同名插件
    */
   async accept(e) {
+    // #重启（仅 master）
     if (/^#重启$/.test(e.msg)) {
-      if (!e.isMaster) {
-        e.reply('暂无权限，只有主人才能操作')
-        return 'return'
-      }
+      if (!e.isMaster) { e.reply('暂无权限，只有主人才能操作'); return 'return' }
       await this.restartMgr.doRestart(e)
+      return 'return'
+    }
+    // #全部更新（仅 master）
+    if (/^#全部(安?静)?(强制)?更新$/.test(e.msg)) {
+      if (!e.isMaster) { e.reply('暂无权限，只有主人才能操作'); return 'return' }
+      await this.updateAll(e)
+      return 'return'
+    }
+    // #更新 / #强制更新 / #更新日志
+    if (/^#(安?静)?(强制)?更新/.test(e.msg)) {
+      if (e.msg.includes('日志')) {
+        await this.updateLog(e)
+      } else {
+        if (!e.isMaster) return false
+        await this.update(e)
+      }
       return 'return'
     }
   }
 
   // ==================== 重启 ====================
 
-  async restart() {
-    await this.restartMgr.doRestart(this.e)
+  async restart(e) {
+    await this.restartMgr.doRestart(e || this.e)
   }
 
   // ==================== 更新 ====================
@@ -97,10 +111,10 @@ export class McsmManage extends plugin {
     return Bot.exec(cmd, opts)
   }
 
-  async update() {
+  async update(e) {
     if (!this.e.isMaster) return false
     if (uping) {
-      await this.reply('正在更新，请稍候再试')
+      await this.e.reply('正在更新，请稍候再试')
       return false
     }
 
@@ -111,7 +125,7 @@ export class McsmManage extends plugin {
     await this.runUpdate(pluginName)
 
     if (this.isPkgUp) await this.updatePackage()
-    if (this.isUp) this.restart()
+    if (this.isUp) await this.restart(e)
     uping = false
   }
 
@@ -206,9 +220,9 @@ export class McsmManage extends plugin {
     } else await this.reply(`${error}\n${stdout}\n未知错误，可尝试发送 #强制更新${plugin}`)
   }
 
-  async updateAll() {
+  async updateAll(e) {
     if (uping) {
-      await this.reply('正在更新，请稍候再试')
+      await this.e.reply('正在更新，请稍候再试')
       return false
     }
 
@@ -222,7 +236,7 @@ export class McsmManage extends plugin {
     }
 
     if (this.isPkgUp) await this.updatePackage()
-    if (this.isUp) this.restart()
+    if (this.isUp) await this.restart(e)
     uping = false
   }
 
@@ -253,7 +267,8 @@ export class McsmManage extends plugin {
     return Bot.makeForwardArray(msg)
   }
 
-  async updateLog() {
+  async updateLog(e) {
+    if (e) this.e = e
     const p = await this.getPlugin()
     if (p === false) return false
     return this.reply(await this.getLog(p))
