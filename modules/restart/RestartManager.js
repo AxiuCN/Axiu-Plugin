@@ -1,30 +1,30 @@
 import fs from 'node:fs'
 import { segment } from 'oicq'
-import { LOG_PREFIX, REDIS_KEY_RESTART, MCS_USERDATA_PATH } from '../../components/constants.js'
-import { restartInstance } from '../../model/McsApi.js'
+import { LOG_PREFIX, REDIS_KEY_RESTART, MCSM_USERDATA_PATH } from '../../components/constants.js'
+import { restartInstance } from '../../model/McsmApi.js'
 
 /**
  * 重启流程管理器
- * 负责：凭证解析 → Redis 上下文保存 → MCS/原生重启 → 上线通知
+ * 负责：凭证解析 → Redis 上下文保存 → MCSM/原生重启 → 上线通知
  */
 export class RestartManager {
   /**
    * @param {object} config - restart 配置（来自 config.yaml 的 restart 字段）
    */
   constructor(config) {
-    this.enableMcs = config.enableMcs === true
-    this.useMcsPluginCfg = config.useMcsManagerPluginConfig === true
-    this.instanceUuid = config.mcsInstanceUuid || ''
-    this.daemonId = config.mcsDaemonId || ''
+    this.enableMcsm = config.enableMcsm === true
+    this.useMcsmPluginCfg = config.useMcsmManagerPluginConfig === true
+    this.instanceUuid = config.mcsmInstanceUuid || ''
+    this.daemonId = config.mcsmDaemonId || ''
 
     // 凭证来源选择
-    if (this.useMcsPluginCfg) {
+    if (this.useMcsmPluginCfg) {
       const masterQQ = this._getMasterQQ()
-      const userData = this._getMcsUserData(masterQQ)
+      const userData = this._getMcsmUserData(masterQQ)
       if (userData) {
-        this.mcsHost = userData.host
-        this.mcsPort = userData.port
-        this.mcsApiKey = userData.apiKey
+        this.mcsmHost = userData.host
+        this.mcsmPort = userData.port
+        this.mcsmApiKey = userData.apiKey
         logger.info(`${LOG_PREFIX}[restart] 已从 mcsmanager-plugin 用户数据读取连接信息`)
       } else {
         logger.warn(`${LOG_PREFIX}[restart] 未找到 mcsmanager-plugin 用户数据，回退到配置文件`)
@@ -36,19 +36,19 @@ export class RestartManager {
   }
 
   _fillFromConfig(config) {
-    this.mcsHost = config.mcsHost || ''
-    this.mcsPort = config.mcsPort || 0
-    this.mcsApiKey = config.mcsApiKey || ''
+    this.mcsmHost = config.mcsmHost || ''
+    this.mcsmPort = config.mcsmPort || 0
+    this.mcsmApiKey = config.mcsmApiKey || ''
   }
 
   _getMasterQQ() {
     return Bot.masterQQ?.[0] || Object.keys(Bot.adapter?.qq || {})[0] || ''
   }
 
-  _getMcsUserData(masterQQ) {
+  _getMcsmUserData(masterQQ) {
     try {
-      if (fs.existsSync(MCS_USERDATA_PATH)) {
-        const userdata = JSON.parse(fs.readFileSync(MCS_USERDATA_PATH, 'utf8'))
+      if (fs.existsSync(MCSM_USERDATA_PATH)) {
+        const userdata = JSON.parse(fs.readFileSync(MCSM_USERDATA_PATH, 'utf8'))
         const userinfo = userdata[masterQQ]
         if (userinfo?.apiKey && userinfo?.baseUrl) {
           const url = new URL(userinfo.baseUrl)
@@ -60,16 +60,16 @@ export class RestartManager {
         }
       }
     } catch (err) {
-      logger.error(`${LOG_PREFIX}[restart] 读取 MCS 用户数据失败:`, err)
+      logger.error(`${LOG_PREFIX}[restart] 读取 MCSM 用户数据失败:`, err)
     }
     return null
   }
 
-  /** 检查 MCS 连接信息是否完整 */
-  get _mcsReady() {
-    return this.enableMcs &&
-      this.mcsHost && this.mcsPort &&
-      this.mcsApiKey && this.instanceUuid && this.daemonId
+  /** 检查 MCSM 连接信息是否完整 */
+  get _mcsmReady() {
+    return this.enableMcsm &&
+      this.mcsmHost && this.mcsmPort &&
+      this.mcsmApiKey && this.instanceUuid && this.daemonId
   }
 
   /**
@@ -80,8 +80,8 @@ export class RestartManager {
     this.e = e
     await this._saveContext(e)
 
-    if (this._mcsReady) {
-      return this._mcsRestart()
+    if (this._mcsmReady) {
+      return this._mcsmRestart()
     } else {
       return this._nativeRestart()
     }
@@ -100,21 +100,21 @@ export class RestartManager {
     }))
   }
 
-  /** MCS 面板重启 */
-  async _mcsRestart() {
+  /** MCSM 面板重启 */
+  async _mcsmRestart() {
     const result = await restartInstance({
-      host: this.mcsHost,
-      port: this.mcsPort,
-      apiKey: this.mcsApiKey,
+      host: this.mcsmHost,
+      port: this.mcsmPort,
+      apiKey: this.mcsmApiKey,
       instanceUuid: this.instanceUuid,
       daemonId: this.daemonId
     })
 
     if (!result.success) {
-      await this.e.reply(`MCS 云崽实例重启失败（${result.error}），回退到原生重启...`)
+      await this.e.reply(`MCSM 云崽实例重启失败（${result.error}），回退到原生重启...`)
       await this._nativeRestart()
     }
-    // 成功时 MCS 会终止进程，不需要额外操作
+    // 成功时 MCSM 会终止进程，不需要额外操作
   }
 
   /** 框架原生重启 */

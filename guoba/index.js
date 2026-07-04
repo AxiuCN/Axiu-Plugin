@@ -87,13 +87,13 @@ export function supportGuoba() {
         const cronText = Array.isArray(cronArr) ? cronArr.join('\n') : String(cronArr)
 
         return {
-          'restart.enableMcs': restart.enableMcs ?? true,
-          'restart.useMcsManagerPluginConfig': restart.useMcsManagerPluginConfig ?? true,
-          'restart.mcsHost': restart.mcsHost ?? '127.0.0.1',
-          'restart.mcsPort': restart.mcsPort ?? 23333,
-          'restart.mcsApiKey': restart.mcsApiKey ?? '',
-          'restart.mcsInstanceUuid': restart.mcsInstanceUuid ?? '',
-          'restart.mcsDaemonId': restart.mcsDaemonId ?? '',
+          'restart.enableMcsm': restart.enableMcsm ?? true,
+          'restart.useMcsmManagerPluginConfig': restart.useMcsmManagerPluginConfig ?? true,
+          'restart.mcsmHost': restart.mcsmHost ?? '127.0.0.1',
+          'restart.mcsmPort': restart.mcsmPort ?? 23333,
+          'restart.mcsmApiKey': restart.mcsmApiKey ?? '',
+          'restart.mcsmInstanceUuid': restart.mcsmInstanceUuid ?? '',
+          'restart.mcsmDaemonId': restart.mcsmDaemonId ?? '',
           'restart.restartCron': cronText,
           groups: groupRaw.groups || []
         }
@@ -108,13 +108,13 @@ export function supportGuoba() {
           const restartCronArr = parseCron(data['restart.restartCron'])
 
           const values = {
-            restart_enableMcs: data['restart.enableMcs'] ?? true,
-            restart_useMcsManagerPluginConfig: data['restart.useMcsManagerPluginConfig'] ?? true,
-            restart_mcsHost: data['restart.mcsHost'] || '127.0.0.1',
-            restart_mcsPort: data['restart.mcsPort'] ?? 23333,
-            restart_mcsApiKey: data['restart.mcsApiKey'] || '',
-            restart_mcsInstanceUuid: data['restart.mcsInstanceUuid'] || '',
-            restart_mcsDaemonId: data['restart.mcsDaemonId'] || '',
+            restart_enableMcsm: data['restart.enableMcsm'] ?? true,
+            restart_useMcsmManagerPluginConfig: data['restart.useMcsmManagerPluginConfig'] ?? true,
+            restart_mcsmHost: data['restart.mcsmHost'] || '127.0.0.1',
+            restart_mcsmPort: data['restart.mcsmPort'] ?? 23333,
+            restart_mcsmApiKey: data['restart.mcsmApiKey'] || '',
+            restart_mcsmInstanceUuid: data['restart.mcsmInstanceUuid'] || '',
+            restart_mcsmDaemonId: data['restart.mcsmDaemonId'] || '',
             restart_restartCron: cronToTemplateValue(restartCronArr)
           }
 

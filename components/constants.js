@@ -5,18 +5,18 @@ export const LOG_PREFIX = '[Axiu-Plugin]'
 export const REDIS_KEY_RESTART = 'Yz:restart'
 
 /** MCSManager 用户数据路径（来自 mcsmanager-plugin） */
-export const MCS_USERDATA_PATH = 'data/mctool/mcsuserdata.json'
+export const MCSM_USERDATA_PATH = 'data/mctool/mcsuserdata.json'
 
 /** 默认重启配置 */
 export const DEFAULT_RESTART_CONFIG = {
   restart: {
-    enableMcs: true,
-    useMcsManagerPluginConfig: true,
-    mcsHost: '127.0.0.1',
-    mcsPort: 23333,
-    mcsApiKey: '',
-    mcsInstanceUuid: '',
-    mcsDaemonId: '',
+    enableMcsm: true,
+    useMcsmManagerPluginConfig: true,
+    mcsmHost: '127.0.0.1',
+    mcsmPort: 23333,
+    mcsmApiKey: '',
+    mcsmInstanceUuid: '',
+    mcsmDaemonId: '',
     restartCron: []
   }
 }

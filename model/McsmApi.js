@@ -1,6 +1,6 @@
 /**
  * MCSManager 面板 HTTP API 封装
- * 仅负责调用 MCS 重启接口，不关心凭证来源或回退逻辑
+ * 仅负责调用 MCSM 重启接口，不关心凭证来源或回退逻辑
  */
 
 /**
@@ -37,7 +37,7 @@ export async function restartInstance({ host, port, apiKey, instanceUuid, daemon
     if (status === 200) {
       return { success: true, status }
     }
-    return { success: false, status, error: `MCS 返回状态码 ${status}` }
+    return { success: false, status, error: `MCSM 返回状态码 ${status}` }
 
   } catch (err) {
     return { success: false, error: err.message }

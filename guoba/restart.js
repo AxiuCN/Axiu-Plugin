@@ -2,13 +2,13 @@
 
 export function getDefaults() {
   return {
-    restart_enableMcs: true,
-    restart_useMcsManagerPluginConfig: true,
-    restart_mcsHost: '127.0.0.1',
-    restart_mcsPort: 23333,
-    restart_mcsApiKey: '',
-    restart_mcsInstanceUuid: '',
-    restart_mcsDaemonId: '',
+    restart_enableMcsm: true,
+    restart_useMcsmManagerPluginConfig: true,
+    restart_mcsmHost: '127.0.0.1',
+    restart_mcsmPort: 23333,
+    restart_mcsmApiKey: '',
+    restart_mcsmInstanceUuid: '',
+    restart_mcsmDaemonId: '',
     restart_restartCron: ''
   }
 }
@@ -17,49 +17,49 @@ export function getSchema() {
   return [
     { label: '重启管理', component: 'SOFT_GROUP_BEGIN' },
     {
-      field: 'restart.enableMcs',
-      label: '启用MCS面板重启',
+      field: 'restart.enableMcsm',
+      label: '启用MCSM面板重启',
       bottomHelpMessage: '关闭则使用框架原生重启',
       component: 'Switch',
       defaultValue: true
     },
     {
-      field: 'restart.useMcsManagerPluginConfig',
-      label: '读取MCS插件用户数据',
+      field: 'restart.useMcsmManagerPluginConfig',
+      label: '读取MCSM插件用户数据',
       bottomHelpMessage: '从 mcsmanager-plugin 自动读取面板地址和API Key。开启后下方地址/端口/API Key将被忽略',
       component: 'Switch',
       defaultValue: true
     },
     {
-      field: 'restart.mcsHost',
-      label: 'MCS面板地址',
+      field: 'restart.mcsmHost',
+      label: 'MCSM面板地址',
       component: 'Input',
       defaultValue: '127.0.0.1',
       componentProps: { placeholder: '127.0.0.1' }
     },
     {
-      field: 'restart.mcsPort',
-      label: 'MCS面板端口',
+      field: 'restart.mcsmPort',
+      label: 'MCSM面板端口',
       component: 'InputNumber',
       defaultValue: 23333,
       componentProps: { min: 1, max: 65535, step: 1 }
     },
     {
-      field: 'restart.mcsApiKey',
+      field: 'restart.mcsmApiKey',
       label: 'API Key',
       component: 'Input',
       defaultValue: '',
       componentProps: { placeholder: 'MCSManager 面板 API Key' }
     },
     {
-      field: 'restart.mcsInstanceUuid',
+      field: 'restart.mcsmInstanceUuid',
       label: '实例UUID',
       component: 'Input',
       required: true,
       componentProps: { placeholder: 'MCSManager 实例 UUID（必填）' }
     },
     {
-      field: 'restart.mcsDaemonId',
+      field: 'restart.mcsmDaemonId',
       label: '守护进程ID',
       component: 'Input',
       required: true,

@@ -8,11 +8,11 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const pluginRoot = path.join(__dirname, '..')
 
-export class McsRestart extends plugin {
+export class McsmRestart extends plugin {
   constructor() {
     super({
       name: '[Axiu-Plugin]重启管理',
-      dsc: '#重启 (MCS云崽实例)',
+      dsc: '#重启 (MCSM云崽实例)',
       event: 'message',
       priority: -Infinity,
       rule: [
