@@ -70,7 +70,9 @@ export function supportGuoba() {
       link: 'https://github.com/AxiuCN/Axiu-Plugin',
       isV3: true,
       isV2: false,
-      description: '自动入群审核、MCSManager面板重启，自用插件'
+      description: '自动入群审核、MCSManager面板重启，自用插件',
+      icon: 'mdi:robot-outline',
+      iconColor: '#1677ff'
     },
     configInfo: {
       schemas: [
@@ -119,7 +121,7 @@ export function supportGuoba() {
           const content = generateConfig(RESTART_TEMPLATE_PATH, values)
           fs.writeFileSync(RESTART_CONFIG_PATH, content, 'utf8')
 
-          // 群配置：GSubForm 动态列表，YAML.stringify
+          // 群配置：GTags 原生数组，直接 YAML.stringify
           const groups = Array.isArray(data.groups) ? data.groups : []
           fs.writeFileSync(GROUP_CONFIG_PATH, YAML.stringify({ groups }), 'utf8')
 

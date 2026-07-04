@@ -15,11 +15,7 @@ export function getDefaults() {
 
 export function getSchema() {
   return [
-    {
-      component: 'Divider',
-      label: '重启管理 (mcsRestart)',
-      componentProps: { orientation: 'left', plain: true }
-    },
+    { label: '重启管理', component: 'SOFT_GROUP_BEGIN' },
     {
       field: 'restart.enableMcs',
       label: '启用MCS面板重启',

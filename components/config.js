@@ -116,14 +116,11 @@ function normalizeGroupConfig(raw) {
 }
 
 /**
- * 标准化答案列表：支持 YAML 数组（手动编辑）和换行字符串（锅巴 textarea）
- * @param {string|string[]|undefined} answers
+ * 标准化答案列表（GTags 原生数组，直接返回）
+ * @param {string[]|undefined} answers
  * @returns {string[]}
  */
 function normalizeAnswerList(answers) {
-  if (!answers) return []
-  if (Array.isArray(answers)) {
-    return answers.map(a => String(a).trim()).filter(Boolean)
-  }
-  return String(answers).split('\n').map(a => a.trim()).filter(Boolean)
+  if (!Array.isArray(answers)) return []
+  return answers.map(a => String(a).trim()).filter(Boolean)
 }

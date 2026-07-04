@@ -8,11 +8,7 @@ export function getDefaults() {
 
 export function getSchema() {
   return [
-    {
-      component: 'Divider',
-      label: '入群审核 (autoGroupApprove)',
-      componentProps: { orientation: 'left', plain: true }
-    },
+    { label: '入群审核', component: 'SOFT_GROUP_BEGIN' },
     {
       field: 'groups',
       label: '群审核规则',
@@ -30,23 +26,15 @@ export function getSchema() {
           },
           {
             field: 'whitelistAnswers',
-            label: '白名单答案（每行一个）',
-            component: 'Input',
-            componentProps: {
-              type: 'textarea',
-              placeholder: '答案一\n答案二',
-              rows: 3
-            }
+            label: '白名单答案',
+            component: 'GTags',
+            componentProps: { allowAdd: true, allowDel: true }
           },
           {
             field: 'blacklistAnswers',
-            label: '黑名单答案（每行一个）',
-            component: 'Input',
-            componentProps: {
-              type: 'textarea',
-              placeholder: '广告\n诈骗',
-              rows: 3
-            }
+            label: '黑名单答案',
+            component: 'GTags',
+            componentProps: { allowAdd: true, allowDel: true }
           }
         ]
       }
