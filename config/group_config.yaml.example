@@ -1,20 +1,8 @@
-# Axiu-Plugin 入群审核配置
-# 支持两种格式:
-
-# 格式一：列表（锅巴保存格式）
 groups:
-  - groupId: "请修改为实际群号"
+  - groupId: 请修改为实际群号
     whitelistAnswers:
-      - "答案一"
-      - "答案二"
+      - 答案一
+      - 答案二
     blacklistAnswers:
-      - "广告"
-      - "诈骗"
-
-# 格式二：映射（手动编辑时也可以用这种）
-# groups:
-#   "123456789":
-#     whitelistAnswers:
-#       - "答案一"
-#     blacklistAnswers:
-#       - "广告"
+      - 广告
+      - 诈骗

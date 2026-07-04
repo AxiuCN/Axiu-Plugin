@@ -1,5 +1,4 @@
 # Axiu-Plugin 重启管理配置
-# 文件路径: plugins/Axiu-Plugin/config/config.yaml
 
 restart:
   # 是否启用 MCS 面板重启（关闭则使用框架原生重启）
@@ -18,5 +17,5 @@ restart:
   mcsInstanceUuid: ${restart_mcsInstanceUuid}
   mcsDaemonId: ${restart_mcsDaemonId}
 
-  # 定时重启 cron 表达式（可选，每行一个）
+  # 定时重启 cron 表达式（可选，支持多个）
   restartCron: ${restart_restartCron}

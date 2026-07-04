@@ -1,7 +1,8 @@
-# Axiu-Plugin 入群审核配置
-# 文件路径: plugins/Axiu-Plugin/config/group_config.yaml
-
 groups:
-  - groupId: ${group_0_groupId}
-    whitelistAnswers: ${group_0_whitelistAnswers}
-    blacklistAnswers: ${group_0_blacklistAnswers}
+  - groupId: 请修改为实际群号
+    whitelistAnswers:
+      - 答案一
+      - 答案二
+    blacklistAnswers:
+      - 广告
+      - 诈骗
