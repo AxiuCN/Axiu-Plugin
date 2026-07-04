@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import { fileURLToPath } from 'url'
 import path from 'node:path'
 import plugin from '../../../lib/plugins/plugin.js'
+import cfg from '../../../lib/config/config.js'
 import { getRestartConfig } from '../components/config.js'
 import { RestartManager } from '../modules/restart/RestartManager.js'
 
@@ -14,8 +15,8 @@ let uping = false
 export class McsmManage extends plugin {
   constructor() {
     super({
-      name: '[Axiu-Plugin]MC管理',
-      dsc: '#重启 #更新 #强制更新 #更新日志',
+      name: '[Axiu-Plugin]MCSM云崽管理',
+      dsc: 'MCSM云崽实例重启更新',
       event: 'message',
       priority: -Infinity,
       rule: [
