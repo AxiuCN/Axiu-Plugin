@@ -81,7 +81,6 @@ export class ProxySpeak extends plugin {
     delete fakeEvent.atBot
     delete fakeEvent.img
     delete fakeEvent.file
-    delete fakeEvent.reply
     delete fakeEvent.logText
     delete fakeEvent.logFnc
     delete fakeEvent.only_reply_at
