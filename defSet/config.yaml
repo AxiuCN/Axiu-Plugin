@@ -1,0 +1,22 @@
+# Axiu-Plugin 重启管理配置
+# 文件路径: plugins/Axiu-Plugin/config/config.yaml
+
+restart:
+  # 是否启用 MCS 面板重启（关闭则使用框架原生重启）
+  enableMcs: ${restart_enableMcs}
+
+  # 是否从 mcsmanager-plugin 的用户数据自动读取 API Key 与面板地址
+  # 开启后，下方 mcsHost / mcsPort / mcsApiKey 将被忽略
+  useMcsManagerPluginConfig: ${restart_useMcsManagerPluginConfig}
+
+  # MCSManager 面板地址（仅在 useMcsManagerPluginConfig: false 时需要填写）
+  mcsHost: ${restart_mcsHost}
+  mcsPort: ${restart_mcsPort}
+  mcsApiKey: ${restart_mcsApiKey}
+
+  # 实例 UUID 与守护进程 ID（必填，需手动指定）
+  mcsInstanceUuid: ${restart_mcsInstanceUuid}
+  mcsDaemonId: ${restart_mcsDaemonId}
+
+  # 定时重启 cron 表达式（可选，每行一个）
+  restartCron: ${restart_restartCron}
