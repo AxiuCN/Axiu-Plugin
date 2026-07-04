@@ -16,6 +16,7 @@ export class McsmRestart extends plugin {
       event: 'message',
       priority: -Infinity,
       rule: [
+        // 仅用于指令列表显示，实际拦截由 accept() 处理
         { reg: '^#重启$', fnc: 'restart', permission: 'master' }
       ]
     })
@@ -44,6 +45,20 @@ export class McsmRestart extends plugin {
       message_id: null,
       self_id: Bot.uin
     }
+  }
+
+  /**
+   * accept() 在 loader 的 rule 匹配之前执行，优先级最高
+   * 匹配 #重启 后返回 'return' 阻止 rule 层继续分发
+   */
+  async accept(e) {
+    if (!/^#重启$/.test(e.msg)) return
+    if (!e.isMaster) {
+      e.reply('暂无权限，只有主人才能操作')
+      return 'return'
+    }
+    await this.restartMgr.doRestart(e)
+    return 'return'
   }
 
   async restart() {
