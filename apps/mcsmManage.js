@@ -113,6 +113,7 @@ export class McsmManage extends plugin {
   }
 
   async update(e) {
+    if (e) this.e = e
     if (!this.e.isMaster) return false
     if (uping) {
       await this.e.reply('正在更新，请稍候再试')
@@ -222,6 +223,7 @@ export class McsmManage extends plugin {
   }
 
   async updateAll(e) {
+    if (e) this.e = e
     if (uping) {
       await this.e.reply('正在更新，请稍候再试')
       return false
