@@ -13,6 +13,7 @@ const pluginRoot = path.join(__dirname, '..')
 let uping = false
 
 export class McsmManage extends plugin {
+  typeName = 'TRSS-Yunzai'
   constructor() {
     super({
       name: '[Axiu-Plugin]MCSM云崽管理',
