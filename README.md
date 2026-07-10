@@ -1,6 +1,8 @@
 # Axiu-Plugin
 
-阿修自用 Yunzai-Bot v3 插件，提供自动入群审核、MCSManager 面板重启两个独立功能。
+阿修自用 Yunzai-Bot v3 插件，提供自动入群审核、代发言等功能。
+
+> MCSM 面板管理已迁移至独立插件 [MCSM-Plugin](https://github.com/AxiuCN/MCSM-Plugin)。
 
 ## 安装
 
@@ -17,18 +19,16 @@ pnpm install --filter=Axiu-Plugin
 
 收到加群申请时，根据群配置的黑白名单答案自动审批，未匹配则 @通知管理员人工审核。
 
-### MCSManager 面板重启
+### 代发言
 
-`#重启` 指令（仅 master），通过 MCSManager HTTP API 或框架原生方式重启 bot。支持定时重启。
+`#代@某人 消息内容` 或 `#代QQ号 消息内容`（仅 master，仅群聊），以目标用户身份重新注入消息到插件匹配流程。
 
 ## 配置
 
 ### 方式一：锅巴后台（推荐）
 
-在锅巴后台 → 阿修插件，可视化配置重启参数和入群审核规则。
+在锅巴后台 → 阿修插件，可视化配置入群审核规则。
 
 ### 方式二：手动编辑
-
-复制 `config/config.yaml.example` → `config/config.yaml`，按注释填写重启配置。
 
 复制 `config/group_config.yaml.example` → `config/group_config.yaml`，按群号配置审核规则。
