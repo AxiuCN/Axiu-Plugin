@@ -19,6 +19,7 @@ export default class PassportApi {
     if (e) {
       this.e = e
       this.cookie = e.cookie
+      this.cookies = e.cookie
       this.userId = String(e.user_id)
       this.isOs = false
       if (this.e?.uid) {
