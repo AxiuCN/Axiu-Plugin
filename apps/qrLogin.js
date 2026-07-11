@@ -7,7 +7,7 @@ import QrLogin from '../model/qrLogin.js'
 import QrUser from '../model/qrUser.js'
 import stokenStore from '../model/stokenStore.js'
 import { getServer } from '../model/mys/passportUtils.js'
-import { renderImg } from '../components/render.js'
+import { render } from '../components/render.js'
 import { LOG_PREFIX } from '../components/constants.js'
 
 export class QrLoginApp extends plugin {
@@ -51,8 +51,13 @@ export class QrLoginApp extends plugin {
 
     const { url, ticket } = res.data
 
-    // 渲染 QR 码 HTML 页面
-    await renderImg('qrCode/index', { url }, { e, scale: 1 })
+    // 渲染 QR 码 HTML 页面并发送
+    const imgRet = await render('qrCode', 'index', { url })
+    if (!imgRet) {
+      e.reply('QR码渲染失败，请稍后再试')
+      return true
+    }
+    await e.reply(imgRet)
 
     // 轮询等待扫码
     const loginRes = await qr.GetQrCode(ticket)
