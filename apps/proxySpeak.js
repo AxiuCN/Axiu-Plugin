@@ -57,6 +57,11 @@ export class ProxySpeak extends plugin {
     // 3. 构造假事件：以原事件为基础，覆盖关键字段
     const fakeEvent = { ...e }
 
+    // 显式补充不可枚举的关键属性（bot、group 等）
+    fakeEvent.bot = e.bot
+    fakeEvent.reply = e.reply
+    fakeEvent.group = e.group
+
     // 目标用户身份
     fakeEvent.user_id = targetUin
     fakeEvent.sender = sender
