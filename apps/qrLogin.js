@@ -33,7 +33,7 @@ export class QrLoginApp extends plugin {
         {
           reg: '^#(更新|获取|导出)抽卡记录$',
           fnc: 'gachaLog',
-          permission: 'master',
+          permission: 'all',
           log: true
         }
       ]

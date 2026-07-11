@@ -26,8 +26,6 @@ export default class QrLogin {
       return false
     }
 
-    this.e.reply(this.sendMsgUser)
-
     const res = await this.user.getData('qrCodeLogin', {}, false)
     if (!res?.data?.url) {
       this.e.reply('获取二维码失败，请稍后再试')
@@ -43,8 +41,11 @@ export default class QrLogin {
     return res
   }
 
-  /** 轮询扫码状态（5s × 60次 = 5分钟），确认后返回 {cookie, stoken} */
-  async GetQrCode (ticket) {
+  /** 轮询扫码状态（5s × 60次 = 5分钟），确认后返回 {cookie, stoken}
+   * @param {string} ticket
+   * @param {string} qrMsgId QR 消息 ID，扫码后自动撤回
+   */
+  async GetQrCode (ticket, qrMsgId) {
     if (!ticket) return false
 
     const redisKey = `Axiu-Plugin:qrLogin:${this.e.user_id}`
@@ -67,6 +68,12 @@ export default class QrLogin {
       const status = res?.data?.status || res?.data?.stat
       if (status === 'Scanned' && redisData.GetQrCode === 1) {
         logger.mark(JSON.stringify(res))
+        // 撤回二维码图片
+        if (qrMsgId) {
+          try {
+            this.e.group?.recallMsg?.(qrMsgId) || this.e.friend?.recallMsg?.(qrMsgId)
+          } catch {}
+        }
         await this.e.reply('二维码已扫描，请确认登录', true)
         redisData.GetQrCode++
       }
