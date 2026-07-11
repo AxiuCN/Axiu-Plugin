@@ -19,7 +19,7 @@ class Cfg {
   }
 
   get api(){ return this.getConfig('config')?.api || {} }
-  
+
   /** 默认配置 */
   getdefSet (app) {
     return this.getYaml(app, 'defSet')
@@ -27,16 +27,35 @@ class Cfg {
 
   /** 用户配置 */
   getConfig (app) {
+    if (app === 'config') {
+      // config.yaml 为三层结构，defSet/config.yaml 是锅巴模板（含 ${变量}），不可合并
+      let cfg = this.getYaml(app, 'config')
+      if (!cfg) cfg = this.getYamlExample(app)
+      return cfg || {}
+    }
     return { ...this.getdefSet(app), ...this.getYaml(app, 'config') }
   }
 
   /** 设置配置 */
   setConfig (app, obj) {
-    // 先获取默认配置
+    if (app === 'config') {
+      // config.yaml 由锅巴通过模板替换写入，此处做简单兜底
+      return this.setYaml(app, 'config', obj)
+    }
     const defSet = this.getdefSet(app)
-    // 再获取用户配置
     const config = this.getConfig(app)
     return this.setYaml(app, 'config', { ...defSet, ...config, ...obj })
+  }
+
+  /** 读取 .example 回退配置 */
+  getYamlExample (app) {
+    const file = `${this.configPath}/${app}.yaml.example`
+    try {
+      return YAML.parse(fs.readFileSync(file, 'utf8'))
+    } catch (error) {
+      logger.error(`[${app}] 读取.example失败 ${error}`)
+      return false
+    }
   }
 
   /** 将对象写入YAML文件 */
@@ -98,6 +117,18 @@ class Cfg {
   copyPath () {
     if (!fs.existsSync(this.configPath)) fs.mkdirSync(this.configPath)
 
+    // 从 .example 文件复制运行时配置（非 defSet，defSet 是锅巴模板含 ${变量}）
+    try {
+      const exampleFiles = fs.readdirSync(this.configPath).filter(f => f.endsWith('.yaml.example'))
+      for (const exampleFile of exampleFiles) {
+        const targetFile = exampleFile.replace('.example', '')
+        if (!fs.existsSync(`${this.configPath}/${targetFile}`)) {
+          fs.copyFileSync(`${this.configPath}/${exampleFile}`, `${this.configPath}/${targetFile}`)
+        }
+      }
+    } catch {}
+
+    // 兜底：defSet 中 .yaml 文件（如 group_config.yaml）
     let yamlfiles = fs.readdirSync(`${this.defSetPath}`).filter(file => file.endsWith('.yaml'))
     for (let item of yamlfiles) {
       if (!fs.existsSync(`${this.configPath}/${item}`)) {
@@ -108,7 +139,7 @@ class Cfg {
 
   startGT () {
     let apiCfg = this.api
-    if (apiCfg.startApi && apiCfg.Host && apiCfg.Port && apiCfg.Address) new GT_Manual().load()
+    if (apiCfg.startApi && apiCfg.Port && apiCfg.Address) new GT_Manual().load()
   }
 }
 

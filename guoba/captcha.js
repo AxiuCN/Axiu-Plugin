@@ -52,35 +52,28 @@ export function getSchema() {
     },
     {
       field: 'api.startApi',
-      label: '启用手动打码服务',
-      bottomHelpMessage: '使用他人手动api或不想使用请关闭',
+      label: '启用本地手动打码服务',
+      bottomHelpMessage: '关闭后可使用他人服务或停用手动打码',
       component: 'Switch'
     },
     {
-      field: 'api.Host',
-      label: '手动服务IP',
-      bottomHelpMessage: '你的手动打码服务IP',
-      component: 'Input',
-      componentProps: { placeholder: '例：127.0.0.1' }
-    },
-    {
       field: 'api.Port',
-      label: '手动服务端口',
-      bottomHelpMessage: '你的手动打码服务端口',
+      label: '本地手动打码服务端口',
+      bottomHelpMessage: 'GT-Manual 服务监听端口，仅在内置手动打码服务开启时生效',
       component: 'InputNumber',
       componentProps: { min: 0, placeholder: '例：3000' }
     },
     {
       field: 'api.Address',
-      label: '手动服务地址',
-      bottomHelpMessage: '反向代理用完整地址，不用反向代理请与IP端口一致',
+      label: '手动打码服务访问地址',
+      bottomHelpMessage: '发送给用户打开的链接',
       component: 'Input',
       componentProps: { placeholder: '例：http://127.0.0.1:3000' }
     },
     {
       field: 'api.verifyAddr',
-      label: '手动api地址',
-      bottomHelpMessage: '使用他人手动api时修改，用自己的保持与Address一致',
+      label: '手动打码api验证接口',
+      bottomHelpMessage: 'Bot 提交验证码的地址，用自己的服务填 http://127.0.0.1:端口/GTest/register，用他人的按对方提供填写',
       component: 'Input',
       componentProps: { placeholder: '例：http://127.0.0.1:3000/GTest/register' }
     },

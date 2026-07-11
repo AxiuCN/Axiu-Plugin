@@ -11,6 +11,23 @@ const __dirname = path.dirname(__filename)
 const PLUGIN_DIR = path.join(__dirname, '..')
 
 const GROUP_CONFIG_PATH = path.join(PLUGIN_DIR, 'config', 'group_config.yaml')
+const DEFSET_CONFIG_PATH = path.join(PLUGIN_DIR, 'defSet', 'config.yaml')
+const CONFIG_PATH = path.join(PLUGIN_DIR, 'config', 'config.yaml')
+
+/** guoba field → defSet 模板变量名 */
+const TEMPLATE_VARS = {
+  'api.type': 'api_type',
+  'api.api': 'api_api',
+  'api.resapi': 'api_resapi',
+  'api.key': 'api_key',
+  'api.query': 'api_query',
+  'api.resquery': 'api_resquery',
+  'api.startApi': 'api_startApi',
+  'api.Port': 'api_Port',
+  'api.Address': 'api_Address',
+  'api.verifyAddr': 'api_verifyAddr',
+  'api.GtestType': 'api_GtestType'
+}
 
 // ==================== 工具函数 ====================
 
@@ -64,7 +81,6 @@ export function supportGuoba() {
           'api.query': apiCfg.query ?? '',
           'api.resquery': apiCfg.resquery ?? '',
           'api.startApi': apiCfg.startApi ?? false,
-          'api.Host': apiCfg.Host ?? '127.0.0.1',
           'api.Port': apiCfg.Port ?? 3000,
           'api.Address': apiCfg.Address ?? 'http://127.0.0.1:3000',
           'api.verifyAddr': apiCfg.verifyAddr ?? 'http://127.0.0.1:3000/GTest/register',
@@ -81,24 +97,17 @@ export function supportGuoba() {
           const groups = Array.isArray(data.groups) ? data.groups : []
           fs.writeFileSync(GROUP_CONFIG_PATH, YAML.stringify({ groups }), 'utf8')
 
-          // 过码配置：通过 Cfg 单例写入 config/config.yaml
-          const apiCfg = {
-            type: data['api.type'] ?? 1,
-            api: data['api.api'] ?? '',
-            resapi: data['api.resapi'] ?? '',
-            key: data['api.key'] ?? '',
-            query: data['api.query'] ?? '',
-            resquery: data['api.resquery'] ?? '',
-            startApi: data['api.startApi'] ?? false,
-            Host: data['api.Host'] ?? '127.0.0.1',
-            Port: data['api.Port'] ?? 3000,
-            Address: data['api.Address'] ?? 'http://127.0.0.1:3000',
-            verifyAddr: data['api.verifyAddr'] ?? 'http://127.0.0.1:3000/GTest/register',
-            GtestType: data['api.GtestType'] ?? 2
+          // 过码配置：读取 defSet 模板，替换 ${变量} 后写入 config.yaml（保留注释）
+          let template = fs.readFileSync(DEFSET_CONFIG_PATH, 'utf8')
+          for (const [field, varName] of Object.entries(TEMPLATE_VARS)) {
+            const value = data[field] ?? ''
+            template = template.replace(new RegExp(`\\$\\{${varName}\\}`, 'g'), String(value))
           }
+          fs.writeFileSync(CONFIG_PATH, template, 'utf8')
 
-          const current = Cfg.getConfig('config') || {}
-          Cfg.setConfig('config', { ...current, api: apiCfg })
+          // 使 Cfg 缓存失效，下次读取时重新加载
+          delete Cfg.config.config
+          delete Cfg.defSet.config
 
           return Result.ok({}, '保存成功~')
         } catch (err) {

@@ -24,7 +24,7 @@ export default class GT_Manual {
     this.app.get('/GTest/validate/:key', this.get_validate)
     this.app.use(this.invalid)
     this.app.use(this.error)
-    logger.mark(`[loveMys]手动接口启动, http://${this.cfg.Host}:${this.cfg.Port}/GTest/register`)
+    logger.mark(`[loveMys]手动接口启动, ${this.cfg.Address}/GTest/register`)
   }
 
   index (req, res, next) {
