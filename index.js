@@ -1,10 +1,15 @@
 import fs from 'node:fs';
 import { promisify } from 'util';
+import Cfg from './model/Cfg.js';
 
 const readdir = promisify(fs.readdir);
 
 logger.info('----Axiu-Plugin----');
 logger.info('Axiu-Plugin初始化中...');
+
+// 验证码配置初始化 + GT-Manual 启动
+Cfg.copyPath();
+Cfg.startGT();
 
 const files = await readdir('./plugins/Axiu-Plugin/apps').catch((err) => {
   logger.error(err);
