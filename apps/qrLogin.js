@@ -21,13 +21,13 @@ export class QrLoginApp extends plugin {
         {
           reg: '^#扫码(登录|登陆|绑定)$',
           fnc: 'qrCodeLogin',
-          permission: 'master',
+          permission: 'all',
           log: true
         },
         {
           reg: '^#(刷新|更新|获取)(ck|cookie)$',
           fnc: 'updCookie',
-          permission: 'master',
+          permission: 'all',
           log: true
         },
         {

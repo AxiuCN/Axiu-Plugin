@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'url'
 import YAML from 'yaml'
+import * as qrLoginMod from './qrLogin.js'
 import * as groupApproveMod from './groupApprove.js'
 import * as captchaMod from './captcha.js'
 import Cfg from '../model/Cfg.js'
@@ -65,8 +66,9 @@ export function supportGuoba() {
     },
     configInfo: {
       schemas: [
-        ...groupApproveMod.getSchema(),
-        ...captchaMod.getSchema()
+        ...qrLoginMod.getSchema(),
+        ...captchaMod.getSchema(),
+        ...groupApproveMod.getSchema()
       ],
 
       getConfigData() {

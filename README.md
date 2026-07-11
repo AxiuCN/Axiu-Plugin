@@ -1,6 +1,6 @@
 # Axiu-Plugin
 
-阿修自用 Yunzai-Bot v3 插件，提供自动入群审核、代发言、米游社过码、扫码登录等功能。
+阿修自用 Yunzai-Bot v3 插件，提供扫码登录、米游社过码、自动入群审核、代发言等功能。
 
 > MCSM 面板管理已迁移至独立插件 [MCSM-Plugin](https://github.com/AxiuCN/MCSM-Plugin)。
 
@@ -15,13 +15,14 @@ pnpm install --filter=Axiu-Plugin
 
 ## 功能
 
-### 自动入群审核
+### 扫码登录
 
-收到加群申请时，根据群配置的黑白名单答案自动审批，未匹配则 @通知管理员人工审核。
+通过米游社扫码绑定 stoken，支持刷新 cookie、更新抽卡记录。移植自 xiaoyao-cvs-plugin。
 
-### 代发言
-
-`#代@某人 消息内容` 或 `#代QQ号 消息内容`（仅 master，仅群聊），以目标用户身份重新注入消息到插件匹配流程。
+- `#扫码登录` — 生成 QR 码，米游社扫码后自动绑定 stoken，查找游戏角色
+- `#刷新ck` — 遍历已绑定的 stoken，刷新 cookie_token 并绑定到 cookie 系统
+- `#更新抽卡记录` — 获取 authkey，触发抽卡记录拉取
+- 可在锅巴后台开关
 
 ### 米游社验证码过码
 
@@ -31,14 +32,13 @@ pnpm install --filter=Axiu-Plugin
 - 手动打码：内置 GT-Manual Express 服务，通过浏览器完成验证
 - 配置：编辑 `config/config.yaml` 的 `api:` 段
 
-### 扫码登录
+### 自动入群审核
 
-通过米游社扫码绑定 stoken，支持刷新 cookie、更新抽卡记录。移植自 xiaoyao-cvs-plugin。
+收到加群申请时，根据群配置的黑白名单答案自动审批，未匹配则 @通知管理员人工审核。
 
-- `#扫码登录` — 生成 QR 码，米游社扫码后自动绑定 stoken，查找游戏角色
-- `#刷新ck` — 遍历已绑定的 stoken，刷新 cookie_token 并绑定到 cookie 系统
-- `#更新抽卡记录` — 获取 authkey，触发抽卡记录拉取
-- 仅 master 可用，可在锅巴后台开关
+### 代发言
+
+`#代@某人 消息内容` 或 `#代QQ号 消息内容`（仅 master，仅群聊），以目标用户身份重新注入消息到插件匹配流程。
 
 ## 配置
 
