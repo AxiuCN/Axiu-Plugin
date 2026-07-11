@@ -51,11 +51,11 @@ pnpm install --filter=Axiu-Plugin
 git submodule update --init --recursive
 
 # 2. 下载模型文件至 tool/test_nine/test_nine/model/
-# PP-HGNetV2-B4.onnx (九宫格分类)
-# d-fine-n.onnx       (点选检测)
-# yolo11n.onnx        (点选定位)
-# dinov3-small.onnx   (特征提取)
-# atten.onnx          (分类头)
+# https://huggingface.co/luguoyixiazi/model_save/resolve/main/PP-HGNetV2-B4.onnx
+# https://huggingface.co/luguoyixiazi/model_save/resolve/main/d-fine-n.onnx
+# https://huggingface.co/luguoyixiazi/model_save/resolve/main/yolo11n.onnx
+# https://huggingface.co/luguoyixiazi/model_save/resolve/main/dinov3-small.onnx
+# https://huggingface.co/luguoyixiazi/model_save/resolve/main/atten.onnx
 
 # 3. 安装依赖
 pip install -r tool/test_nine/test_nine/requirements_without_train.txt
