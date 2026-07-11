@@ -1,6 +1,6 @@
 # Axiu-Plugin
 
-阿修自用 Yunzai-Bot v3 插件，提供自动入群审核、代发言、米游社过码等功能。
+阿修自用 Yunzai-Bot v3 插件，提供自动入群审核、代发言、米游社过码、扫码登录等功能。
 
 > MCSM 面板管理已迁移至独立插件 [MCSM-Plugin](https://github.com/AxiuCN/MCSM-Plugin)。
 
@@ -30,6 +30,15 @@ pnpm install --filter=Axiu-Plugin
 - 平台：test_nine / ttocr.com / 2captcha.com
 - 手动打码：内置 GT-Manual Express 服务，通过浏览器完成验证
 - 配置：编辑 `config/config.yaml` 的 `api:` 段
+
+### 扫码登录
+
+通过米游社扫码绑定 stoken，支持刷新 cookie、更新抽卡记录。移植自 xiaoyao-cvs-plugin。
+
+- `#扫码登录` — 生成 QR 码，米游社扫码后自动绑定 stoken，查找游戏角色
+- `#刷新ck` — 遍历已绑定的 stoken，刷新 cookie_token 并绑定到 cookie 系统
+- `#更新抽卡记录` — 获取 authkey，触发抽卡记录拉取
+- 仅 master 可用，可在锅巴后台开关
 
 ## 配置
 
@@ -74,3 +83,4 @@ uvicorn main:app --host 0.0.0.0 --port 9645
 - [GT-Manual](https://gitee.com/QQ1146638442/GT-Manual) — 内置手动打码服务引用于此
 - [test_nine](https://github.com/luguoyixiazi/test_nine) — 九宫格+点选 AI 过码，以子模块引入
 - [ClassificationCaptchaOcr](https://github.com/taisuii/ClassificationCaptchaOcr) — resnet 模型及 V4 数据集参考
+- [xiaoyao-cvs-plugin](https://github.com/ctrlcvs/xiaoyao-cvs-plugin) — 扫码登录、stoken 管理体系移植自此项目

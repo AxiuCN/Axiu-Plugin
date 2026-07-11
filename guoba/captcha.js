@@ -84,6 +84,16 @@ export function getSchema() {
       component: 'InputNumber',
       required: true,
       componentProps: { min: 0, max: 2, placeholder: '请输入类型' }
+    },
+    {
+      component: 'Divider',
+      label: '扫码登录设置'
+    },
+    {
+      field: 'api.qrLogin_enabled',
+      label: '启用扫码登录',
+      bottomHelpMessage: '开启后可使用 #扫码登录、#刷新ck、#更新抽卡记录 命令',
+      component: 'Switch'
     }
   ]
 }

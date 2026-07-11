@@ -26,7 +26,8 @@ const TEMPLATE_VARS = {
   'api.Port': 'api_Port',
   'api.Address': 'api_Address',
   'api.verifyAddr': 'api_verifyAddr',
-  'api.GtestType': 'api_GtestType'
+  'api.GtestType': 'api_GtestType',
+  'api.qrLogin_enabled': 'api_qrLogin_enabled'
 }
 
 // ==================== 工具函数 ====================
@@ -84,7 +85,8 @@ export function supportGuoba() {
           'api.Port': apiCfg.Port ?? 3000,
           'api.Address': apiCfg.Address ?? 'http://127.0.0.1:3000',
           'api.verifyAddr': apiCfg.verifyAddr ?? 'http://127.0.0.1:3000/GTest/register',
-          'api.GtestType': apiCfg.GtestType ?? 2
+          'api.GtestType': apiCfg.GtestType ?? 2,
+          'api.qrLogin_enabled': apiCfg.qrLogin_enabled ?? true
         }
       },
 

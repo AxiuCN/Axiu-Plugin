@@ -25,3 +25,6 @@ api:
 
   # 0:仅手动；1:仅自动；2:自动失败换手动
   GtestType: 2
+
+  # 是否启用扫码登录功能（仅master可用）
+  qrLogin_enabled: true
