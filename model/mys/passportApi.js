@@ -5,6 +5,8 @@
 import md5 from 'md5'
 import _ from 'lodash'
 import fetch from 'node-fetch'
+import fs from 'node:fs'
+import YAML from 'yaml'
 import * as mys from './passportTool.js'
 import * as utils from './passportUtils.js'
 
@@ -19,7 +21,20 @@ export default class PassportApi {
     if (e) {
       this.e = e
       this.cookie = e.cookie
-      this.cookies = e.cookie
+
+      // 从 stoken YAML 构建 this.cookies（authKey/stoken/bbs 接口需要 stoken 格式 cookie）
+      try {
+        const file = `./plugins/Axiu-Plugin/data/stoken/${String(e.user_id)}.yaml`
+        if (fs.existsSync(file) && e?.uid) {
+          const ck = YAML.parse(fs.readFileSync(file, 'utf8'))
+          const sk = ck?.[e.uid]
+          if (sk?.stuid && sk?.stoken) {
+            this.cookies = `stuid=${sk.stuid};stoken=${sk.stoken};ltoken=${sk.ltoken || ''}`
+            if (sk?.mid) this.cookies += `;mid=${sk.mid}`
+          }
+        }
+      } catch {}
+      if (!this.cookies) this.cookies = e.cookie
       this.userId = String(e.user_id)
       this.isOs = false
       if (this.e?.uid) {
