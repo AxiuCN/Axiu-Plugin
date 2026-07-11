@@ -42,7 +42,35 @@ pnpm install --filter=Axiu-Plugin
 - 入群审核：复制 `config/group_config.yaml.example` → `config/group_config.yaml`
 - 过码配置：复制 `config/config.yaml.example` → `config/config.yaml`，填写 `api:` 段
 
+## 部署 test_nine（可选，自动过码用）
+
+如已有过码平台可跳过。test_nine 为本地 AI 过码服务，以子模块提供。
+
+```bash
+# 1. 拉取子模块
+git submodule update --init --recursive
+
+# 2. 下载模型文件至 tool/test_nine/test_nine/model/
+# PP-HGNetV2-B4.onnx (九宫格分类)
+# d-fine-n.onnx       (点选检测)
+# yolo11n.onnx        (点选定位)
+# dinov3-small.onnx   (特征提取)
+# atten.onnx          (分类头)
+
+# 3. 安装依赖
+pip install -r tool/test_nine/test_nine/requirements_without_train.txt
+
+# 4. 启动（默认端口 9645）
+uvicorn main:app --host 0.0.0.0 --port 9645
+```
+
+启动后在 `config/config.yaml` 的 `api:` 段设置 `type: 0`，`api` 填 `http://127.0.0.1:9645/pass_uni`。
+
+> 模型下载地址、训练方法及更多参数详见 `tool/test_nine/test_nine/README.md`。
+
 ## 鸣谢
 
-- [loveMys-plugin](https://github.com/kissnavel/loveMys) — 米游社过码功能来源，作者 [@kissnavel](https://github.com/kissnavel)
-- [GT-Manual](https://gitee.com/QQ1146638442/GT-Manual) — 手动打码服务，作者 QQ1146638442
+- [loveMys-plugin](https://github.com/kissnavel/loveMys) — 过码事件处理及配置体系借鉴自此项目
+- [GT-Manual](https://gitee.com/QQ1146638442/GT-Manual) — 内置手动打码服务引用于此
+- [test_nine](https://github.com/luguoyixiazi/test_nine) — 九宫格+点选 AI 过码，以子模块引入
+- [ClassificationCaptchaOcr](https://github.com/taisuii/ClassificationCaptchaOcr) — resnet 模型及 V4 数据集参考
