@@ -147,7 +147,10 @@ export function supportGuoba () {
           'signin.randomDelayMin': signinCfg.randomDelayMin ?? 0,
           'signin.pythonCommand': signinCfg.pythonCommand ?? 'python',
           'signin.notifyGroup': signinCfg.notifyGroup ?? true,
-          'signin.reportGroups': signinCfg.reportGroups ?? '',
+          // GSelectGroup 需要数组，config 存的是逗号分隔字符串，这里做转换
+          'signin.reportGroups': (signinCfg.reportGroups || '')
+            ? String(signinCfg.reportGroups).split(/[,，\s]+/).filter(Boolean)
+            : [],
           'signin.captchaRetries': signinCfg.captchaRetries ?? 3,
           'signin.captchaTimeout': signinCfg.captchaTimeout ?? 240,
 
@@ -196,7 +199,8 @@ export function supportGuoba () {
           // 主配置（api + signin）：读取 defSet 模板，替换 ${变量} 后写入 config.yaml
           let template = fs.readFileSync(DEFSET_CONFIG_PATH, 'utf8')
           for (const [field, varName] of Object.entries(TEMPLATE_VARS)) {
-            const value = data[field] ?? ''
+            let value = data[field] ?? ''
+            if (Array.isArray(value)) value = value.join(',')
             template = template.replace(new RegExp(`\\$\\{${varName}\\}`, 'g'), String(value))
           }
           fs.writeFileSync(CONFIG_PATH, template, 'utf8')

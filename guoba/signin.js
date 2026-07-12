@@ -55,10 +55,10 @@ export function getSigninMainSchema () {
     },
     {
       field: 'signin.reportGroups',
-      label: '报告群号',
-      bottomHelpMessage: '签到报告发送的目标群号，逗号分隔，留空则仅通知 master',
-      component: 'Input',
-      componentProps: { placeholder: '123456789,987654321' }
+      label: '报告群聊',
+      bottomHelpMessage: '签到报告发送的目标群，可多选，留空则仅通知 master',
+      component: 'GSelectGroup',
+      componentProps: { placeholder: '请选择群聊' }
     },
     {
       field: 'signin.captchaRetries',
