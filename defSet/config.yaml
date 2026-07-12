@@ -28,3 +28,20 @@ api:
 
   # 是否启用扫码登录功能（仅master可用）
   qrLogin_enabled: ${api_qrLogin_enabled}
+
+# 米游社签到
+signin:
+  # 是否启用自动签到
+  enable: ${signin_enable}
+  # 签到时间 cron 表达式（Quartz格式），默认每天5:00
+  schedule: ${signin_schedule}
+  # 随机延迟上限（分钟），0=不延迟
+  randomDelayMin: ${signin_randomDelayMin}
+  # Python 命令
+  pythonCommand: ${signin_pythonCommand}
+  # 自动签到完成后在群内通知
+  notifyGroup: ${signin_notifyGroup}
+  # 过码最大重试次数
+  captchaRetries: ${signin_captchaRetries}
+  # 过码超时（秒）
+  captchaTimeout: ${signin_captchaTimeout}

@@ -1,0 +1,93 @@
+# Axiu-Plugin MihoyoBBSTools 签到模板（锅巴模板 / #刷新自动签到 使用）
+# account 段使用 ${变量} 占位符，#刷新自动签到 时替换为最新 cookie
+
+enable: true
+version: 15
+push: ""
+account:
+  cookie: ${cookie}
+  stuid: ${stuid}
+  stoken: ${stoken}
+  mid: ${mid}
+device:
+  name: "Xiaomi MI 6"
+  model: "Mi 6"
+  id: ""
+  fp: ""
+mihoyobbs:
+  enable: ${mihoyobbs_enable}
+  checkin: ${mihoyobbs_checkin}
+  checkin_list:
+    - 5
+    - 2
+  read: ${mihoyobbs_read}
+  like: ${mihoyobbs_like}
+  cancel_like: ${mihoyobbs_cancel_like}
+  share: ${mihoyobbs_share}
+games:
+  cn:
+    enable: ${games_cn_enable}
+    useragent: "Mozilla/5.0 (Linux; Android 12; Unspecified Device) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/103.0.5060.129 Mobile Safari/537.36"
+    retries: ${games_cn_retries}
+    genshin:
+      checkin: ${genshin_checkin}
+      black_list: []
+    honkai2:
+      checkin: ${honkai2_checkin}
+      black_list: []
+    honkai3rd:
+      checkin: ${honkai3rd_checkin}
+      black_list: []
+    tears_of_themis:
+      checkin: ${tears_of_themis_checkin}
+      black_list: []
+    honkai_sr:
+      checkin: ${honkai_sr_checkin}
+      black_list: []
+    zzz:
+      checkin: ${zzz_checkin}
+      black_list: []
+  os:
+    enable: ${games_os_enable}
+    cookie: ${games_os_cookie}
+    lang: "zh-cn"
+    genshin:
+      checkin: ${os_genshin_checkin}
+      black_list: []
+    honkai3rd:
+      checkin: ${os_honkai3rd_checkin}
+      black_list: []
+    tears_of_themis:
+      checkin: ${os_tears_of_themis_checkin}
+      black_list: []
+    honkai_sr:
+      checkin: ${os_honkai_sr_checkin}
+      black_list: []
+    zzz:
+      checkin: ${os_zzz_checkin}
+      black_list: []
+cloud_games:
+  cn:
+    enable: ${cloud_cn_enable}
+    genshin:
+      enable: ${cloud_genshin_enable}
+      token: ""
+    zzz:
+      enable: ${cloud_zzz_enable}
+      token: ""
+  os:
+    lang: "zh-cn"
+    enable: ${cloud_os_enable}
+    genshin:
+      enable: ${cloud_os_genshin_enable}
+      token: ""
+competition:
+  enable: false
+  genius_invokation:
+    enable: false
+    account: []
+    checkin: false
+    weekly: false
+web_activity:
+  enable: ${web_activity_enable}
+  activities: []

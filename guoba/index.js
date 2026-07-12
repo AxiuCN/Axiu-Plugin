@@ -5,6 +5,7 @@ import YAML from 'yaml'
 import * as qrLoginMod from './qrLogin.js'
 import * as groupApproveMod from './groupApprove.js'
 import * as captchaMod from './captcha.js'
+import * as signinMod from './signin.js'
 import Cfg from '../model/Cfg.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -14,6 +15,8 @@ const PLUGIN_DIR = path.join(__dirname, '..')
 const GROUP_CONFIG_PATH = path.join(PLUGIN_DIR, 'config', 'group_config.yaml')
 const DEFSET_CONFIG_PATH = path.join(PLUGIN_DIR, 'defSet', 'config.yaml')
 const CONFIG_PATH = path.join(PLUGIN_DIR, 'config', 'config.yaml')
+const BBS_TOOLS_TEMPLATE_PATH = path.join(PLUGIN_DIR, 'config', 'MihoyoBBSTools_config.yaml')
+const BBS_TOOLS_TEMPLATE_EXAMPLE = path.join(PLUGIN_DIR, 'config', 'MihoyoBBSTools_config.yaml.example')
 
 /** guoba field → defSet 模板变量名 */
 const TEMPLATE_VARS = {
@@ -28,12 +31,19 @@ const TEMPLATE_VARS = {
   'api.Address': 'api_Address',
   'api.verifyAddr': 'api_verifyAddr',
   'api.GtestType': 'api_GtestType',
-  'api.qrLogin_enabled': 'api_qrLogin_enabled'
+  'api.qrLogin_enabled': 'api_qrLogin_enabled',
+  'signin.enable': 'signin_enable',
+  'signin.schedule': 'signin_schedule',
+  'signin.randomDelayMin': 'signin_randomDelayMin',
+  'signin.pythonCommand': 'signin_pythonCommand',
+  'signin.notifyGroup': 'signin_notifyGroup',
+  'signin.captchaRetries': 'signin_captchaRetries',
+  'signin.captchaTimeout': 'signin_captchaTimeout'
 }
 
 // ==================== 工具函数 ====================
 
-function readGroupConfigRaw() {
+function readGroupConfigRaw () {
   try {
     if (fs.existsSync(GROUP_CONFIG_PATH)) {
       return YAML.parse(fs.readFileSync(GROUP_CONFIG_PATH, 'utf8')) || {}
@@ -48,9 +58,35 @@ function readGroupConfigRaw() {
   return { groups: [] }
 }
 
+/**
+ * 读取 MihoyoBBSTools 模板配置
+ * 优先级: config/MihoyoBBSTools_config.yaml > config/MihoyoBBSTools_config.yaml.example
+ */
+function readBbsToolsTemplateRaw () {
+  let file = null
+  if (fs.existsSync(BBS_TOOLS_TEMPLATE_PATH)) {
+    file = BBS_TOOLS_TEMPLATE_PATH
+  } else if (fs.existsSync(BBS_TOOLS_TEMPLATE_EXAMPLE)) {
+    file = BBS_TOOLS_TEMPLATE_EXAMPLE
+  }
+  if (!file) return {}
+  try {
+    return YAML.parse(fs.readFileSync(file, 'utf8')) || {}
+  } catch (err) {
+    logger.error('[Axiu-Plugin] 读取 MihoyoBBSTools 模板失败:', err)
+    return {}
+  }
+}
+
+/** 读取 signin 主配置（从 config.yaml） */
+function readSigninConfigRaw () {
+  const cfg = Cfg.getConfig('config') || {}
+  return cfg.signin || {}
+}
+
 // ==================== 导出 ====================
 
-export function supportGuoba() {
+export function supportGuoba () {
   return {
     pluginInfo: {
       name: 'Axiu-Plugin',
@@ -60,23 +96,35 @@ export function supportGuoba() {
       link: 'https://github.com/AxiuCN/Axiu-Plugin',
       isV3: true,
       isV2: false,
-      description: '自动入群审核、代发言、米游社过码',
+      description: '自动入群审核、代发言、米游社过码、米游社签到',
       icon: 'mdi:robot-outline',
       iconColor: '#1677ff'
     },
     configInfo: {
       schemas: [
         ...qrLoginMod.getSchema(),
+        ...signinMod.getSchema(),
         ...captchaMod.getSchema(),
         ...groupApproveMod.getSchema()
       ],
 
-      getConfigData() {
+      getConfigData () {
         const groupRaw = readGroupConfigRaw()
         const apiCfg = Cfg.api || {}
+        const signinCfg = readSigninConfigRaw()
+        const bbsTemplate = readBbsToolsTemplateRaw()
+        const mihoyobbs = bbsTemplate.mihoyobbs || {}
+        const gamesCn = bbsTemplate.games?.cn || {}
+        const gamesOs = bbsTemplate.games?.os || {}
+        const cloudCn = bbsTemplate.cloud_games?.cn || {}
+        const cloudOs = bbsTemplate.cloud_games?.os || {}
+        const web = bbsTemplate.web_activity || {}
 
         return {
+          // 群配置
           groups: groupRaw.groups || [],
+
+          // api 过码配置
           'api.type': apiCfg.type ?? 1,
           'api.api': apiCfg.api ?? '',
           'api.resapi': apiCfg.resapi ?? '',
@@ -88,11 +136,51 @@ export function supportGuoba() {
           'api.Address': apiCfg.Address ?? 'http://127.0.0.1:3000',
           'api.verifyAddr': apiCfg.verifyAddr ?? 'http://127.0.0.1:3000/GTest/register',
           'api.GtestType': apiCfg.GtestType ?? 2,
-          'api.qrLogin_enabled': apiCfg.qrLogin_enabled ?? true
+          'api.qrLogin_enabled': apiCfg.qrLogin_enabled ?? true,
+
+          // signin 主配置
+          'signin.enable': signinCfg.enable ?? true,
+          'signin.schedule': signinCfg.schedule ?? '0 0 5 * * ? *',
+          'signin.randomDelayMin': signinCfg.randomDelayMin ?? 0,
+          'signin.pythonCommand': signinCfg.pythonCommand ?? 'python',
+          'signin.notifyGroup': signinCfg.notifyGroup ?? true,
+          'signin.captchaRetries': signinCfg.captchaRetries ?? 3,
+          'signin.captchaTimeout': signinCfg.captchaTimeout ?? 240,
+
+          // MihoyoBBSTools 模板
+          'mihoyobbs.enable': mihoyobbs.enable ?? true,
+          'mihoyobbs.checkin': mihoyobbs.checkin ?? true,
+          'mihoyobbs.read': mihoyobbs.read ?? false,
+          'mihoyobbs.like': mihoyobbs.like ?? false,
+          'mihoyobbs.cancel_like': mihoyobbs.cancel_like ?? false,
+          'mihoyobbs.share': mihoyobbs.share ?? false,
+
+          'games.cn.enable': gamesCn.enable ?? true,
+          'games.cn.retries': gamesCn.retries ?? 3,
+          'games.cn.genshin.checkin': gamesCn.genshin?.checkin ?? true,
+          'games.cn.honkai_sr.checkin': gamesCn.honkai_sr?.checkin ?? true,
+          'games.cn.zzz.checkin': gamesCn.zzz?.checkin ?? true,
+          'games.cn.honkai3rd.checkin': gamesCn.honkai3rd?.checkin ?? false,
+          'games.cn.honkai2.checkin': gamesCn.honkai2?.checkin ?? false,
+          'games.cn.tears_of_themis.checkin': gamesCn.tears_of_themis?.checkin ?? false,
+
+          'games.os.enable': gamesOs.enable ?? false,
+          'games.os.cookie': gamesOs.cookie ?? '',
+          'games.os.genshin.checkin': gamesOs.genshin?.checkin ?? false,
+          'games.os.honkai_sr.checkin': gamesOs.honkai_sr?.checkin ?? false,
+          'games.os.zzz.checkin': gamesOs.zzz?.checkin ?? false,
+
+          'cloud_games.cn.enable': cloudCn.enable ?? false,
+          'cloud_games.cn.genshin.enable': cloudCn.genshin?.enable ?? false,
+          'cloud_games.cn.zzz.enable': cloudCn.zzz?.enable ?? false,
+          'cloud_games.os.enable': cloudOs.enable ?? false,
+          'cloud_games.os.genshin.enable': cloudOs.genshin?.enable ?? false,
+
+          'web_activity.enable': web.enable ?? false
         }
       },
 
-      async setConfigData(data, { Result }) {
+      async setConfigData (data, { Result }) {
         try {
           const configDir = path.join(PLUGIN_DIR, 'config')
           if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true })
@@ -101,7 +189,7 @@ export function supportGuoba() {
           const groups = Array.isArray(data.groups) ? data.groups : []
           fs.writeFileSync(GROUP_CONFIG_PATH, YAML.stringify({ groups }), 'utf8')
 
-          // 过码配置：读取 defSet 模板，替换 ${变量} 后写入 config.yaml（保留注释）
+          // 主配置（api + signin）：读取 defSet 模板，替换 ${变量} 后写入 config.yaml
           let template = fs.readFileSync(DEFSET_CONFIG_PATH, 'utf8')
           for (const [field, varName] of Object.entries(TEMPLATE_VARS)) {
             const value = data[field] ?? ''
@@ -109,7 +197,54 @@ export function supportGuoba() {
           }
           fs.writeFileSync(CONFIG_PATH, template, 'utf8')
 
-          // 使 Cfg 缓存失效，下次读取时重新加载
+          // MihoyoBBSTools 模板配置：直接读写 YAML
+          let bbsTemplate = readBbsToolsTemplateRaw()
+          if (!bbsTemplate.mihoyobbs) bbsTemplate.mihoyobbs = {}
+          if (!bbsTemplate.games) bbsTemplate.games = { cn: {}, os: {} }
+          if (!bbsTemplate.games.cn) bbsTemplate.games.cn = {}
+          if (!bbsTemplate.games.os) bbsTemplate.games.os = {}
+          if (!bbsTemplate.cloud_games) bbsTemplate.cloud_games = { cn: {}, os: {} }
+          if (!bbsTemplate.cloud_games.cn) bbsTemplate.cloud_games.cn = { genshin: {}, zzz: {} }
+          if (!bbsTemplate.cloud_games.os) bbsTemplate.cloud_games.os = { genshin: {} }
+
+          // BBS
+          bbsTemplate.mihoyobbs.enable = data['mihoyobbs.enable'] ?? true
+          bbsTemplate.mihoyobbs.checkin = data['mihoyobbs.checkin'] ?? true
+          bbsTemplate.mihoyobbs.read = data['mihoyobbs.read'] ?? false
+          bbsTemplate.mihoyobbs.like = data['mihoyobbs.like'] ?? false
+          bbsTemplate.mihoyobbs.cancel_like = data['mihoyobbs.cancel_like'] ?? false
+          bbsTemplate.mihoyobbs.share = data['mihoyobbs.share'] ?? false
+
+          // CN games
+          bbsTemplate.games.cn.enable = data['games.cn.enable'] ?? true
+          bbsTemplate.games.cn.retries = data['games.cn.retries'] ?? 3
+          bbsTemplate.games.cn.genshin.checkin = data['games.cn.genshin.checkin'] ?? true
+          bbsTemplate.games.cn.honkai_sr.checkin = data['games.cn.honkai_sr.checkin'] ?? true
+          bbsTemplate.games.cn.zzz.checkin = data['games.cn.zzz.checkin'] ?? true
+          bbsTemplate.games.cn.honkai3rd.checkin = data['games.cn.honkai3rd.checkin'] ?? false
+          bbsTemplate.games.cn.honkai2.checkin = data['games.cn.honkai2.checkin'] ?? false
+          bbsTemplate.games.cn.tears_of_themis.checkin = data['games.cn.tears_of_themis.checkin'] ?? false
+
+          // OS games
+          bbsTemplate.games.os.enable = data['games.os.enable'] ?? false
+          bbsTemplate.games.os.cookie = data['games.os.cookie'] ?? ''
+          bbsTemplate.games.os.genshin.checkin = data['games.os.genshin.checkin'] ?? false
+          bbsTemplate.games.os.honkai_sr.checkin = data['games.os.honkai_sr.checkin'] ?? false
+          bbsTemplate.games.os.zzz.checkin = data['games.os.zzz.checkin'] ?? false
+
+          // Cloud
+          bbsTemplate.cloud_games.cn.enable = data['cloud_games.cn.enable'] ?? false
+          bbsTemplate.cloud_games.cn.genshin.enable = data['cloud_games.cn.genshin.enable'] ?? false
+          bbsTemplate.cloud_games.cn.zzz.enable = data['cloud_games.cn.zzz.enable'] ?? false
+          bbsTemplate.cloud_games.os.enable = data['cloud_games.os.enable'] ?? false
+          bbsTemplate.cloud_games.os.genshin.enable = data['cloud_games.os.genshin.enable'] ?? false
+
+          // Web
+          bbsTemplate.web_activity.enable = data['web_activity.enable'] ?? false
+
+          fs.writeFileSync(BBS_TOOLS_TEMPLATE_PATH, YAML.stringify(bbsTemplate), 'utf8')
+
+          // 使 Cfg 缓存失效
           delete Cfg.config.config
           delete Cfg.defSet.config
 
