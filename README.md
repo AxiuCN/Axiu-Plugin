@@ -22,6 +22,7 @@ pnpm install --filter=Axiu-Plugin
 - `#扫码登录` — 生成 QR 码，米游社扫码后自动绑定 stoken，查找游戏角色
 - `#刷新ck` — 遍历已绑定的 stoken，刷新 cookie_token 并绑定到 cookie 系统
 - `#更新抽卡记录` — 获取 authkey，触发抽卡记录拉取
+- **CK 自动刷新** — 米游社 API 返回 10001（CK 过期）时，自动用已绑定的 stoken 刷新 cookie 并重试请求，无需手动 `#刷新ck`
 - 可在锅巴后台开关
 
 ### 米游社验证码过码
