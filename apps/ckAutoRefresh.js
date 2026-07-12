@@ -20,6 +20,7 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import GenshinMysApi from '../../genshin/model/mys/mysApi.js'
 import MiaoMysApi from '../../miao-plugin/models/MysApi.js'
+import MysInfo from '../../genshin/model/mys/mysInfo.js'
 import stokenStore from '../model/stokenStore.js'
 import QrUser from '../model/qrUser.js'
 import { LOG_PREFIX } from '../components/constants.js'
@@ -247,6 +248,32 @@ MiaoMysApi.prototype.getData = async function (api, data) {
   }
 
   return ret
+}
+
+// ==================== 猴子补丁：MysInfo.checkCode（null ckUser 兜底） ====================
+
+/**
+ * mysInfo.js:501 — `this.ckUser.addQueryUid(this.uid)` — 当 ckUser 为 null 时崩溃。
+ *
+ * 触发场景：公共 CK 的 mysUser.ck 为空字符串 → getCookie 禁用该 CK 后递归无果
+ * → this.ckUser 保持构造时的 null。checkCode 处理完 switch 后走到 line 501，崩。
+ *
+ * 修复：try-catch 包裹原 checkCode，拦截 addQueryUid TypeError，
+ * 吞掉错误并返回 res（与原始 line 501→502 return res 行为一致）。
+ */
+
+const _MysInfoCheckCode = MysInfo.prototype.checkCode
+
+MysInfo.prototype.checkCode = async function (res, type, mysApi, data, isTask) {
+  try {
+    return await _MysInfoCheckCode.call(this, res, type, mysApi, data, isTask)
+  } catch (err) {
+    if (err instanceof TypeError && /addQueryUid/.test(err.message)) {
+      logger.warn(`${LOG_PREFIX} [CK自动刷新] checkCode null ckUser 已拦截 uid:${this.uid}`)
+      return res
+    }
+    throw err
+  }
 }
 
 // ==================== 注册 ====================
