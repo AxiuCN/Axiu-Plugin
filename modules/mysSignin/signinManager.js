@@ -24,6 +24,7 @@ import {
 import { runSingleSignin } from '../../model/mysSignin/bbsToolsRunner.js'
 import { CaptchaBridge } from './captchaBridge.js'
 import { SIGNIN_LOG_PREFIX } from '../../components/constants.js'
+import { writeSigninLog } from '../../components/signinLogger.js'
 
 /** 随机延迟（避免 API 限流）*/
 const randomDelay = (min, max) =>
@@ -120,9 +121,20 @@ async function registerUser (userId) {
  */
 async function registerGroupMembers (memberIds) {
   let success = 0
+  let skipped = 0
   const failed = []
 
-  for (const userId of memberIds) {
+  // 去重：同一 QQ 只处理一次
+  const uniqueIds = [...new Set(memberIds.map(String))]
+
+  for (const userId of uniqueIds) {
+    // 已是注册用户则跳过，避免跨群重复创建配置
+    const existing = listUserConfigs(userId)
+    if (existing.length > 0) {
+      skipped++
+      continue
+    }
+
     const result = await registerUser(userId)
     if (result.ok) {
       success += result.count
@@ -134,11 +146,13 @@ async function registerGroupMembers (memberIds) {
   }
 
   return {
-    ok: success > 0,
-    total: memberIds.length,
+    ok: success > 0 || skipped > 0,
+    total: uniqueIds.length,
     success,
+    skipped,
     message: `已为 ${success} 个账号注册签到` +
-      (failed.length > 0 ? `\n${failed.slice(0, 5).join('\n')}` : '') +
+      (skipped > 0 ? `\n跳过 ${skipped} 人（已注册）` : '') +
+      (failed.length > 0 ? `\n失败:\n${failed.slice(0, 5).join('\n')}` : '') +
       (failed.length > 5 ? `\n...及其他 ${failed.length - 5} 个失败` : '')
   }
 }
@@ -438,11 +452,22 @@ function formatUserSigninResult (userId, results) {
  */
 function formatSummaryReport (summary) {
   if (summary.total === 0) return '没有已注册的签到用户'
-  return `今日自动签到完成\n` +
-    `用户: ${summary.success}/${summary.total} 成功\n` +
-    summary.details.map(d =>
-      `  QQ=${d.userId}: ${d.results?.filter(r => r.ok).length || 0}/${d.results?.length || 0}`
-    ).join('\n')
+
+  let msg = `今日自动签到完成\n用户: ${summary.success}/${summary.total} 成功`
+
+  for (const d of summary.details) {
+    const okCount = d.results?.filter(r => r.ok).length || 0
+    const totalCount = d.results?.length || 0
+    const status = okCount === totalCount ? '✓' : '✗'
+    msg += `\n  ${status} QQ=${d.userId}: ${okCount}/${totalCount}`
+
+    // 失败详情
+    const failures = d.results?.filter(r => !r.ok) || []
+    for (const f of failures) {
+      msg += `\n      #${f.n}: ${f.message || '未知错误'}`
+    }
+  }
+  return msg
 }
 
 // ==================== 自动签到锁 ====================

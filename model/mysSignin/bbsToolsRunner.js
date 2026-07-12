@@ -9,6 +9,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'url'
 import { SIGNIN_LOG_PREFIX } from '../../components/constants.js'
+import { writeSigninLog } from '../../components/signinLogger.js'
 import { getSigninConfig } from './bbsToolsConfig.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -75,9 +76,9 @@ function runSingleSignin (options) {
     proc.stdout.on('data', (data) => {
       const text = data.toString()
       stdout += text
-      // MihoyoBBSTools 使用 print 输出进度，透传到日志
+      // Python 签到详细输出写入文件日志，避免刷屏云崽运行日志
       if (text.trim()) {
-        logger?.info(`${SIGNIN_LOG_PREFIX} [py] ${text.trim()}`)
+        writeSigninLog(`[QQ=${userId} #${profileN}] ${text.trim()}`)
       }
     })
 
@@ -93,26 +94,42 @@ function runSingleSignin (options) {
     const timer = setTimeout(() => {
       logger?.error(`${SIGNIN_LOG_PREFIX} 签到超时: QQ=${userId} n=${profileN}`)
       proc.kill('SIGTERM')
-      cleanup()
+      if (captchaBridge) captchaBridge.stop()
+      cleanupDir()
       resolve({ ok: false, statusCode: -1, message: '签到超时（10分钟）' })
     }, timeoutMs)
 
     proc.on('close', (code) => {
       clearTimeout(timer)
-      cleanup()
 
-      // 读取 result.json
+      // 先停止过码桥接（不再需要轮询），保留临时目录以便读取 result.json
+      if (captchaBridge) captchaBridge.stop()
+
+      // 读取 result.json（必须在 cleanupDir 之前，因为 result.json 在临时目录下）
       try {
         if (fs.existsSync(resultFile)) {
           const result = JSON.parse(fs.readFileSync(resultFile, 'utf8'))
           logger?.info(
             `${SIGNIN_LOG_PREFIX} 签到完成: QQ=${userId} n=${profileN} ok=${result.ok} code=${result.statusCode}`
           )
+          cleanupDir()
           resolve(result)
+        } else if (code === 0) {
+          // Python 正常退出但无 result.json：日志中已输出签到结果，视为成功
+          logger?.info(
+            `${SIGNIN_LOG_PREFIX} 签到完成(无result文件): QQ=${userId} n=${profileN} exit=0`
+          )
+          cleanupDir()
+          resolve({
+            ok: true,
+            statusCode: 0,
+            message: stdout.slice(-500) || '签到完成（详见日志）'
+          })
         } else {
           logger?.error(
             `${SIGNIN_LOG_PREFIX} 签到异常: QQ=${userId} n=${profileN} exit=${code} 无结果文件`
           )
+          cleanupDir()
           resolve({
             ok: false,
             statusCode: code || -1,
@@ -121,13 +138,15 @@ function runSingleSignin (options) {
         }
       } catch (err) {
         logger?.error(`${SIGNIN_LOG_PREFIX} 解析结果失败: ${err.message}`)
+        cleanupDir()
         resolve({ ok: false, statusCode: -1, message: `结果解析失败: ${err.message}` })
       }
     })
 
     proc.on('error', (err) => {
       clearTimeout(timer)
-      cleanup()
+      if (captchaBridge) captchaBridge.stop()
+      cleanupDir()
       logger?.error(`${SIGNIN_LOG_PREFIX} 启动Python失败: ${err.message}`)
       resolve({
         ok: false,
@@ -136,9 +155,8 @@ function runSingleSignin (options) {
       })
     })
 
-    function cleanup () {
-      if (captchaBridge) captchaBridge.stop()
-      // 清理临时目录
+    /** 清理临时目录 */
+    function cleanupDir () {
       try {
         fs.rmSync(captchaDir, { recursive: true, force: true })
       } catch {}

@@ -199,16 +199,7 @@ export class MysSigninApp extends plugin {
     setAutoSigninRunning(true)
 
     try {
-      const summary = await signinForAll(false, async ({ userId, ok }) => {
-        // 进度通知仅对失败用户私聊
-        if (!ok) {
-          try {
-            const friend = Bot.pickFriend(userId)
-            await friend.sendMsg('签到执行失败，请检查 stoken 是否有效')
-          } catch {}
-        }
-      })
-
+      const summary = await signinForAll(false)
       const report = formatSummaryReport(summary)
       await e.reply(report)
     } finally {
@@ -259,21 +250,9 @@ export class MysSigninApp extends plugin {
     setAutoSigninRunning(true)
 
     try {
-      const summary = await signinForAll(true, async ({ userId, ok, message }) => {
-        // 通知用户
-        try {
-          const friend = Bot.pickFriend(userId)
-          if (ok) {
-            await friend.sendMsg(`今日签到完成\n${message}`)
-          } else {
-            await friend.sendMsg(`签到失败\n${message}\n请检查 stoken 是否有效，或发送【#刷新自动签到】`)
-          }
-        } catch {
-          logger?.warn(`${SIGNIN_LOG_PREFIX} 无法私聊通知 QQ=${userId}`)
-        }
-      })
+      const summary = await signinForAll(true)
 
-      // 群通知（在已注册用户的群中发送汇总）
+      // 向 master 发送签到汇总（含失败详情）
       if (cfg.notifyGroup && summary.details.length > 0) {
         await this._notifyGroups(summary)
       }
