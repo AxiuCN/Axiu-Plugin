@@ -21,7 +21,7 @@ const BBS_TOOLS_MODULE_DIR = path.join(
 )
 
 /** Python 桥接脚本路径 */
-const RUNNER_SCRIPT = path.join(pluginRoot, 'tool', 'mysSignin_runner.py')
+const RUNNER_SCRIPT = path.join(pluginRoot, 'tool', 'MihoyoBBSTools', 'mysSignin_runner.py')
 
 /**
  * 执行单个用户配置文件的签到

@@ -1,6 +1,6 @@
 /** 过码文件 IPC 桥接
  *
- *  Python mysSignin_runner.py 将 captcha 模块替换为文件 IPC：
+ *  Python tool/MihoyoBBSTools/mysSignin_runner.py 将 captcha 模块替换为文件 IPC：
  *    写入 {captchaDir}/{requestId}.request.json → 轮询 .response.json
  *
  *  本模块负责：
