@@ -24,7 +24,6 @@ mihoyobbs:
   checkin: true
   #签到的社区列表 详情可以看config文件夹下面的readme
   checkin_list:
-    - 5
     - 2
   #看帖
   read: false

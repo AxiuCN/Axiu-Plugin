@@ -34,9 +34,11 @@ const TEMPLATE_VARS = {
   'api.qrLogin_enabled': 'api_qrLogin_enabled',
   'signin.enable': 'signin_enable',
   'signin.schedule': 'signin_schedule',
+  'signin.refreshSchedule': 'signin_refreshSchedule',
   'signin.randomDelayMin': 'signin_randomDelayMin',
   'signin.pythonCommand': 'signin_pythonCommand',
   'signin.notifyGroup': 'signin_notifyGroup',
+  'signin.reportGroups': 'signin_reportGroups',
   'signin.captchaRetries': 'signin_captchaRetries',
   'signin.captchaTimeout': 'signin_captchaTimeout'
 }
@@ -141,9 +143,11 @@ export function supportGuoba () {
           // signin 主配置
           'signin.enable': signinCfg.enable ?? true,
           'signin.schedule': signinCfg.schedule ?? '0 0 5 * * ? *',
+          'signin.refreshSchedule': signinCfg.refreshSchedule ?? '0 30 4 * * ? *',
           'signin.randomDelayMin': signinCfg.randomDelayMin ?? 0,
           'signin.pythonCommand': signinCfg.pythonCommand ?? 'python',
           'signin.notifyGroup': signinCfg.notifyGroup ?? true,
+          'signin.reportGroups': signinCfg.reportGroups ?? '',
           'signin.captchaRetries': signinCfg.captchaRetries ?? 3,
           'signin.captchaTimeout': signinCfg.captchaTimeout ?? 240,
 

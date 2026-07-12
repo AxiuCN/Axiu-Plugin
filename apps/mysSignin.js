@@ -22,6 +22,7 @@ import {
   signinForUser,
   signinForAll,
   refreshUserCookies,
+  refreshAllUserCookies,
   initEnvironment,
   getSigninStatus,
   formatSummaryReport,
@@ -49,9 +50,13 @@ export class MysSigninApp extends plugin {
       ],
       task: [
         {
+          name: '米游社自动刷新cookie',
+          fnc: 'autoRefreshCookies',
+          cron: getSigninConfig().refreshSchedule
+        },
+        {
           name: '米游社自动签到',
           fnc: 'autoSignin',
-          // cron 在 init() 中动态加载
           cron: getSigninConfig().schedule
         }
       ]
@@ -61,8 +66,9 @@ export class MysSigninApp extends plugin {
   /** 动态重载 cron */
   async init () {
     const cfg = getSigninConfig()
-    if (cfg.enable && this.task && this.task[0]) {
-      this.task[0].cron = cfg.schedule
+    if (cfg.enable && this.task) {
+      if (this.task[0]) this.task[0].cron = cfg.refreshSchedule
+      if (this.task[1]) this.task[1].cron = cfg.schedule
     }
   }
 
@@ -225,6 +231,18 @@ export class MysSigninApp extends plugin {
     return true
   }
 
+  // ==================== 自动刷新cookie（定时任务） ====================
+
+  async autoRefreshCookies () {
+    const cfg = getSigninConfig()
+    if (!cfg.enable) return true
+
+    logger?.info(`${SIGNIN_LOG_PREFIX} 定时刷新cookie开始`)
+    const result = await refreshAllUserCookies()
+    logger?.info(`${SIGNIN_LOG_PREFIX} 定时刷新cookie完成: ${result.message}`)
+    return true
+  }
+
   // ==================== 自动签到（定时任务） ====================
 
   async autoSignin () {
@@ -268,18 +286,33 @@ export class MysSigninApp extends plugin {
     return true
   }
 
-  /** 签到完成后向 master 发送汇总 */
+  /** 签到完成后向 master 和配置的群聊发送汇总 */
   async _notifyGroups (summary) {
     const report = formatSummaryReport(summary)
+    const cfg = getSigninConfig()
+
+    // 通知 master
     try {
-      // 通过 config 获取 masterQQ
       const masterQQ = (await import('../../../lib/config/config.js')).default?.masterQQ
       if (masterQQ && masterQQ.length > 0) {
         const friend = Bot.pickFriend(masterQQ[0])
         await friend.sendMsg(report)
       }
     } catch (err) {
-      logger?.warn(`${SIGNIN_LOG_PREFIX} 发送汇总通知失败: ${err.message}`)
+      logger?.warn(`${SIGNIN_LOG_PREFIX} 发送master通知失败: ${err.message}`)
+    }
+
+    // 通知配置的群聊
+    if (cfg.reportGroups) {
+      const groupIds = String(cfg.reportGroups).split(/[,，\s]+/).filter(Boolean)
+      for (const groupId of groupIds) {
+        try {
+          const group = Bot.pickGroup(groupId.trim())
+          if (group) await group.sendMsg(report)
+        } catch (err) {
+          logger?.warn(`${SIGNIN_LOG_PREFIX} 发送群通知失败 group=${groupId}: ${err.message}`)
+        }
+      }
     }
   }
 }

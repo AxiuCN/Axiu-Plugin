@@ -333,6 +333,44 @@ async function refreshUserCookies (userId) {
   return { ok: true, count: refreshed, message: msg }
 }
 
+/**
+ * 刷新所有已注册用户的签到 cookie
+ * 每日 4:30 自动执行，确保 5:00 签到前 cookie 有效
+ * @returns {Promise<{total: number, success: number, message: string}>}
+ */
+async function refreshAllUserCookies () {
+  const qqList = listAllRegisteredQQ()
+  if (qqList.length === 0) {
+    logger?.info(`${SIGNIN_LOG_PREFIX} 无已注册用户，跳过刷新`)
+    return { total: 0, success: 0, message: '无已注册用户' }
+  }
+
+  logger?.info(`${SIGNIN_LOG_PREFIX} 开始批量刷新cookie: ${qqList.length} 个用户`)
+  let success = 0
+  const failed = []
+
+  for (const userId of qqList) {
+    const result = await refreshUserCookies(userId)
+    if (result.ok) {
+      success++
+    } else {
+      failed.push(`QQ=${userId}: ${result.message}`)
+    }
+    await randomDelay(2000, 5000)
+  }
+
+  logger?.info(
+    `${SIGNIN_LOG_PREFIX} 批量刷新cookie完成: ${success}/${qqList.length} 成功`
+  )
+  return {
+    total: qqList.length,
+    success,
+    message: `刷新完成: ${success}/${qqList.length} 成功` +
+      (failed.length > 0 ? `\n失败:\n${failed.slice(0, 5).join('\n')}` : '') +
+      (failed.length > 5 ? `\n...及其他 ${failed.length - 5} 个失败` : '')
+  }
+}
+
 // ==================== 环境初始化 ====================
 
 /**
@@ -468,18 +506,19 @@ function formatUserSigninResult (userId, results) {
 function formatSummaryReport (summary) {
   if (summary.total === 0) return '没有已注册的签到用户'
 
-  let msg = `今日自动签到完成\n用户: ${summary.success}/${summary.total} 成功`
+  let msg = `--- 自动签到报告 ---\n成功: ${summary.success}/${summary.total} 用户`
 
-  for (const d of summary.details) {
-    const okCount = d.results?.filter(r => r.ok).length || 0
-    const totalCount = d.results?.length || 0
-    const status = okCount === totalCount ? '✓' : '✗'
-    msg += `\n  ${status} QQ=${d.userId}: ${okCount}/${totalCount}`
-
-    // 失败详情
-    const failures = d.results?.filter(r => !r.ok) || []
-    for (const f of failures) {
-      msg += `\n      #${f.n}: ${f.message || '未知错误'}`
+  // 仅列出失败账户
+  const failedUsers = summary.details.filter(
+    d => d.results?.some(r => !r.ok)
+  )
+  if (failedUsers.length > 0) {
+    msg += '\n失败账户:'
+    for (const d of failedUsers) {
+      const failures = d.results?.filter(r => !r.ok) || []
+      for (const f of failures) {
+        msg += `\n  QQ=${d.userId}: ${f.message || '未知错误'}`
+      }
     }
   }
   return msg
@@ -500,6 +539,7 @@ export {
   signinForUser,
   signinForAll,
   refreshUserCookies,
+  refreshAllUserCookies,
   initEnvironment,
   getSigninStatus,
   formatUserSigninResult,

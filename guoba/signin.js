@@ -25,6 +25,14 @@ export function getSigninMainSchema () {
       componentProps: { placeholder: '0 0 5 * * ? *' }
     },
     {
+      field: 'signin.refreshSchedule',
+      label: '刷新Cookie时间 (Cron)',
+      bottomHelpMessage: '每日自动刷新全体用户cookie的cron，默认 0 30 4 * * ? * 表示每天4:30',
+      component: 'Input',
+      required: true,
+      componentProps: { placeholder: '0 30 4 * * ? *' }
+    },
+    {
       field: 'signin.randomDelayMin',
       label: '随机延迟上限 (分钟)',
       bottomHelpMessage: '自动签到开始前的随机延迟，避免固定时间被检测，0=不延迟',
@@ -44,6 +52,13 @@ export function getSigninMainSchema () {
       label: '完成后群内通知',
       bottomHelpMessage: '自动签到全部完成后在注册用户所在群发送汇总报告',
       component: 'Switch'
+    },
+    {
+      field: 'signin.reportGroups',
+      label: '报告群号',
+      bottomHelpMessage: '签到报告发送的目标群号，逗号分隔，留空则仅通知 master',
+      component: 'Input',
+      componentProps: { placeholder: '123456789,987654321' }
     },
     {
       field: 'signin.captchaRetries',

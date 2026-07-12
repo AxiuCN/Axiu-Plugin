@@ -35,12 +35,16 @@ signin:
   enable: true
   # 签到时间 cron 表达式（Quartz格式），默认每天5:00
   schedule: "0 0 5 * * ? *"
+  # 自动刷新 cookie 的 cron 表达式，默认每天4:30
+  refreshSchedule: "0 30 4 * * ? *"
   # 随机延迟上限（分钟），0=不延迟
   randomDelayMin: 0
   # Python 命令
   pythonCommand: python
   # 自动签到完成后在群内通知
   notifyGroup: true
+  # 签到报告发送的目标群号，逗号分隔，为空则仅通知 master
+  reportGroups: ""
   # 过码最大重试次数
   captchaRetries: 3
   # 过码超时（秒）

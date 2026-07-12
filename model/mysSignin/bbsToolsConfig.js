@@ -131,9 +131,11 @@ function getSigninConfig () {
   return {
     enable: s.enable ?? true,
     schedule: s.schedule ?? '0 0 5 * * ? *',
+    refreshSchedule: s.refreshSchedule ?? '0 30 4 * * ? *',
     randomDelayMin: s.randomDelayMin ?? 0,
     pythonCommand: s.pythonCommand ?? 'python',
     notifyGroup: s.notifyGroup ?? true,
+    reportGroups: s.reportGroups ?? '',
     captchaRetries: s.captchaRetries ?? 3,
     captchaTimeout: s.captchaTimeout ?? 240
   }
