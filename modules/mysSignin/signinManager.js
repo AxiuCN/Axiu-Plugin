@@ -80,10 +80,25 @@ async function registerUser (userId) {
   }
 
   const accounts = Object.entries(stokenData)
+
+  // 按 stuid 去重：同一米游社账号可能有多个游戏角色（原神+星铁），共用一份签到配置
+  const seenStuid = new Set()
+  const uniqueAccounts = []
+  for (const [uid, st] of accounts) {
+    if (!st?.stuid || !st?.stoken) continue
+    const key = String(st.stuid)
+    if (seenStuid.has(key)) {
+      logger?.info(`${SIGNIN_LOG_PREFIX} 跳过重复stuid: QQ=${userId} uid=${uid} stuid=${key}`)
+      continue
+    }
+    seenStuid.add(key)
+    uniqueAccounts.push([uid, st])
+  }
+
   let registered = 0
   const errors = []
 
-  for (const [uid, st] of accounts) {
+  for (const [uid, st] of uniqueAccounts) {
     if (!st?.stuid || !st?.stoken) {
       errors.push(`uid=${uid}: stoken 数据不完整`)
       continue
@@ -99,7 +114,7 @@ async function registerUser (userId) {
     try {
       writeUserConfig(userId, n, st, cookie)
       registered++
-      logger?.info(`${SIGNIN_LOG_PREFIX} 注册成功: QQ=${userId} n=${n} uid=${uid}`)
+      logger?.info(`${SIGNIN_LOG_PREFIX} 注册成功: QQ=${userId} n=${n} uid=${uid} stuid=${String(st.stuid)}`)
     } catch (err) {
       errors.push(`uid=${uid}: 写入配置失败: ${err.message}`)
     }
