@@ -85,8 +85,10 @@ function runSingleSignin (options) {
     proc.stderr.on('data', (data) => {
       const text = data.toString()
       stderr += text
+      // MihoyoBBSTools 使用 Python logging 模块，默认输出到 stderr
+      // 这些都是正常业务日志（签到进度、任务状态等），同样写入文件日志
       if (text.trim()) {
-        logger?.warn(`${SIGNIN_LOG_PREFIX} [py:err] ${text.trim()}`)
+        writeSigninLog(`[QQ=${userId} #${profileN}] ${text.trim()}`)
       }
     })
 

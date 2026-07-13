@@ -5,7 +5,7 @@
  *    #注册自动签到 — 为当前用户注册签到（所有已绑定 stoken 的账号）
  *    #注册本群签到 — 为群内所有已绑定 stoken 的成员注册（仅 master/admin）
  *    #签到名单列表 — 列出所有已注册签到用户（仅 master）
- *    #开始签到     — 手动执行当前用户的签到
+ *    #签到         — 手动执行当前用户的签到
  *    #全部签到     — 手动执行全部已注册用户签到（仅 master，自动签到期间不可用）
  *    #刷新自动签到 — 刷新当前用户所有签到配置的 cookie
  *    #签到状态     — 查看当前用户绑定和签到注册情况
@@ -43,7 +43,7 @@ export class MysSigninApp extends plugin {
         { reg: '^#注册自动签到$', fnc: 'register', permission: 'all', log: true },
         { reg: '^#注册本群签到$', fnc: 'groupRegister', permission: 'all', log: true },
         { reg: '^#签到名单列表$', fnc: 'listProfiles', permission: 'master', log: true },
-        { reg: '^#(开始|手动|测试)签到$', fnc: 'startSignin', permission: 'all', log: true },
+        { reg: '^#(开始|手动|测试)?签到$', fnc: 'startSignin', permission: 'all', log: true },
         { reg: '^#全部签到$', fnc: 'signinAll', permission: 'master', log: true },
         { reg: '^#刷新自动签到$', fnc: 'refreshCookieCmd', permission: 'all', log: true },
         { reg: '^#签到状态$', fnc: 'signinStatus', permission: 'all', log: true }
@@ -240,6 +240,10 @@ export class MysSigninApp extends plugin {
     logger?.info(`${SIGNIN_LOG_PREFIX} 定时刷新cookie开始`)
     const result = await refreshAllUserCookies()
     logger?.info(`${SIGNIN_LOG_PREFIX} 定时刷新cookie完成: ${result.message}`)
+
+    if (cfg.notifyGroup && result.total > 0) {
+      await this._sendNotification(`--- 自动刷新Cookie报告 ---\n${result.message}`)
+    }
     return true
   }
 
@@ -270,9 +274,9 @@ export class MysSigninApp extends plugin {
     try {
       const summary = await signinForAll(true)
 
-      // 向 master 发送签到汇总（含失败详情）
+      // 发送签到汇总通知
       if (cfg.notifyGroup && summary.details.length > 0) {
-        await this._notifyGroups(summary)
+        await this._sendNotification(formatSummaryReport(summary))
       }
 
       logger?.info(
@@ -286,9 +290,8 @@ export class MysSigninApp extends plugin {
     return true
   }
 
-  /** 签到完成后向 master 和配置的群聊发送汇总 */
-  async _notifyGroups (summary) {
-    const report = formatSummaryReport(summary)
+  /** 向 master 和配置的群聊发送通知消息 */
+  async _sendNotification (message) {
     const cfg = getSigninConfig()
 
     // 通知 master
@@ -296,7 +299,7 @@ export class MysSigninApp extends plugin {
       const masterQQ = (await import('../../../lib/config/config.js')).default?.masterQQ
       if (masterQQ && masterQQ.length > 0) {
         const friend = Bot.pickFriend(masterQQ[0])
-        await friend.sendMsg(report)
+        await friend.sendMsg(message)
       }
     } catch (err) {
       logger?.warn(`${SIGNIN_LOG_PREFIX} 发送master通知失败: ${err.message}`)
@@ -308,7 +311,7 @@ export class MysSigninApp extends plugin {
       for (const groupId of groupIds) {
         try {
           const group = Bot.pickGroup(groupId.trim())
-          if (group) await group.sendMsg(report)
+          if (group) await group.sendMsg(message)
         } catch (err) {
           logger?.warn(`${SIGNIN_LOG_PREFIX} 发送群通知失败 group=${groupId}: ${err.message}`)
         }

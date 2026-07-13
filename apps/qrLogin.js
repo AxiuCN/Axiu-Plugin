@@ -63,12 +63,32 @@ export class QrLoginApp extends plugin {
     const loginRes = await qr.GetQrCode(ticket)
     if (!loginRes) return true
 
-    // 绑定 stoken
-    await this._bindStoken(e, loginRes)
+    // 绑定 stoken + CK（对齐逍遥 bindSkCK）
+    await this._bindSkCK(e, loginRes)
     return true
   }
 
-  /** 扫码成功后绑定 stoken */
+  /** 扫码成功后绑定 stoken 并自动将 CK 注入 cookie 池（对齐逍遥 bindSkCK） */
+  async _bindSkCK (e, loginRes) {
+    // 1. 绑定 stoken
+    e.msg = loginRes.stoken
+    e.raw_message = loginRes.stoken
+    await this._bindStoken(e, loginRes)
+
+    // 2. 绑定 CK 到 V3 cookie 池（GetQrCode 已返回完整 cookie，无需再次获取）
+    e.ck = loginRes.cookie
+    e.msg = loginRes.cookie
+    e.raw_message = loginRes.cookie
+    try {
+      const userck = (await import('../../../plugins/genshin/model/user.js')).default
+      await (new userck(e)).bing()
+      logger?.info(`${LOG_PREFIX} 扫码登录自动绑定CK成功: QQ=${e.user_id}`)
+    } catch (err) {
+      logger?.warn(`${LOG_PREFIX} 自动绑定CK失败: QQ=${e.user_id} ${err.message}`)
+    }
+  }
+
+  /** 扫码成功后绑定 stoken（对齐逍遥 bindStoken） */
   async _bindStoken (e, loginRes) {
     const user = new QrUser(e)
 
