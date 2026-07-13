@@ -51,12 +51,12 @@ export class MysSigninApp extends plugin {
       task: [
         {
           name: '米游社自动刷新cookie',
-          fnc: 'autoRefreshCookies',
+          fnc: () => this.autoRefreshCookies(),
           cron: getSigninConfig().refreshSchedule
         },
         {
           name: '米游社自动签到',
-          fnc: 'autoSignin',
+          fnc: () => this.autoSignin(),
           cron: getSigninConfig().schedule
         }
       ]
