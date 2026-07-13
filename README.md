@@ -20,7 +20,7 @@ pnpm install --filter=Axiu-Plugin
 
 通过米游社扫码绑定 stoken，支持刷新 cookie、更新抽卡记录。移植自 xiaoyao-cvs-plugin。
 
-- `#扫码登录` — 生成 QR 码，米游社扫码后自动绑定 stoken，查找游戏角色
+- `#扫码登录` — 生成 QR 码，米游社扫码后自动绑定 stoken 并查找游戏角色，同时自动绑定 CK 到 cookie 池（无需手动 `#刷新ck`）
 - `#刷新ck` — 遍历已绑定的 stoken，刷新 cookie_token 并绑定到 cookie 系统
 - `#更新抽卡记录` — 获取 authkey，触发抽卡记录拉取
 - **CK 自动刷新** — 米游社 API 返回 10001（CK 过期）时，自动用已绑定的 stoken 刷新 cookie 并重试请求，无需手动 `#刷新ck`
@@ -43,20 +43,21 @@ pnpm install --filter=Axiu-Plugin
 | `#初始化签到环境` | 检查 Python、pip install 依赖、拉取 MihoyoBBSTools 子模块（仅 master） |
 | `#注册自动签到` | 用已绑定的 stoken 注册签到，生成个人签到配置 |
 | `#注册本群签到` | 为群内所有已绑定 stoken 的成员批量注册（仅群主/管理员） |
-| `#开始签到` / `#手动签到` | 手动执行当前用户的签到 |
+| `#签到` | 手动执行当前用户的签到（兼容旧命令 `#开始签到` / `#手动签到`） |
 | `#全部签到` | 执行全部已注册用户的签到（仅 master） |
 | `#签到状态` | 查看已绑定账号数及每个签到配置的开关状态 |
 | `#刷新自动签到` | 用 stoken 刷新所有个人签到配置的 cookie |
 | `#签到名单列表` | 列出所有已注册签到用户（仅 master） |
 
-- 默认每天 5:00 自动签到（cron 可配），完成后向 master 发送汇总
-- 支持一个 QQ 绑定多个米游社账号（`{qq}_1.yaml`、`{qq}_2.yaml` …）
+- 每天 4:30 全体刷新 cookie，5:00 自动签到（cron 均可配），完成后向 master 和配置群聊发送汇总
+- 签到详细日志写入 `log/signin-{date}.log`，保留 7 天自动清理
+- 支持一个 QQ 绑定多个米游社账号（`{qq}_1.yaml`、`{qq}_2.yaml` …），同一 stuid 自动去重
 - 社区签到触发验证码时自动过码（最多重试 3 次，复用现有过码平台）
 - 个人签到配置存储在 `tool/MihoyoBBSTools/MihoyoBBSTools/config/{qq}_n.yaml`
-- 可在锅巴后台配置签到时间、游戏开关、BBS 任务开关等
+- 可在锅巴后台配置签到时间、游戏开关、BBS 任务开关、报告群聊等
 
 **手动配置**：
-- 签到主配置（schedule、python 等）：`config/config.yaml` → `signin:` 段
+- 签到主配置（schedule、refreshSchedule、pythonCommand、reportGroups 等）：`config/config.yaml` → `signin:` 段
 - 签到模板（游戏、BBS 任务开关）：`config/MihoyoBBSTools_config.yaml`
 
 ### 米游社验证码过码
@@ -112,6 +113,10 @@ uvicorn main:app --host 0.0.0.0 --port 9645
 启动后在 `config/config.yaml` 的 `api:` 段设置 `type: 0`，`api` 填 `http://127.0.0.1:9645/pass_uni`。
 
 > 模型下载地址、训练方法及更多参数详见 `tool/test_nine/test_nine/README.md`。
+
+## 交流与讨论
+
+如有问题，请加入 QQ 群 **965272093** 交流反馈。
 
 ## 鸣谢
 
