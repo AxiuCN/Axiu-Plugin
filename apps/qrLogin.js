@@ -51,16 +51,18 @@ export class QrLoginApp extends plugin {
 
     const { url, ticket } = res.data
 
-    // 渲染 QR 码 HTML 页面并发送
+    // 渲染 QR 码 HTML 页面
     const imgRet = await render('qrCode', 'index', { url })
     if (!imgRet) {
       e.reply('QR码渲染失败，请稍后再试')
       return true
     }
-    await e.reply(imgRet)
+    // 发送 QR 码，@绑定者（对齐逍遥：at用户 + 捕获消息ID用于扫码后撤回）
+    const replyResult = await e.reply([segment.at(e.user_id), '\n请使用米游社扫描二维码登录', imgRet])
+    const qrMsgId = replyResult?.message_id || replyResult
 
-    // 轮询等待扫码
-    const loginRes = await qr.GetQrCode(ticket)
+    // 轮询等待扫码（传入消息ID，扫码后自动撤回QR码）
+    const loginRes = await qr.GetQrCode(ticket, qrMsgId)
     if (!loginRes) return true
 
     // 绑定 stoken + CK（对齐逍遥 bindSkCK）
