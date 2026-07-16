@@ -67,7 +67,8 @@ export default class QrLogin {
 
       const status = res?.data?.status || res?.data?.stat
       if (status === 'Scanned' && redisData.GetQrCode === 1) {
-        logger.mark(JSON.stringify(res))
+        // 【安全】不记录完整响应：虽无 token 但 user_info 含手机号/实名信息
+        logger.mark(`[Axiu-Plugin] QR status=Scanned user=${this.e?.user_id}`)
         // 撤回二维码图片
         if (qrMsgId) {
           try {
@@ -78,7 +79,8 @@ export default class QrLogin {
         redisData.GetQrCode++
       }
       if (status === 'Confirmed') {
-        logger.mark(JSON.stringify(res))
+        // 【安全】不记录完整响应：tokens[] 包含明文 stoken，泄露即账号接管
+        logger.mark(`[Axiu-Plugin] QR status=Confirmed user=${this.e?.user_id}`)
         break
       }
     }

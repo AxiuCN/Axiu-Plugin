@@ -13,8 +13,18 @@ export default class GT_Manual {
   }
 
   load () {
-    this.app.listen(this.cfg.Port)
-    this.app.use(express.static(process.cwd()))
+    // 【安全修复】原代码未指定监听地址，默认监听所有网络接口（0.0.0.0）
+    // 公网环境下 GT-Manual 服务直接暴露，现改为仅监听本地回环地址
+    // 需通过反向代理访问时，在配置中将 bindHost 设为 0.0.0.0
+    // this.app.listen(this.cfg.Port)
+    this.app.listen(this.cfg.Port, this.cfg.bindHost || '127.0.0.1')
+
+    // 【安全修复】已禁用 express.static(process.cwd())
+    // 原代码将 Yunzai 根目录作为静态文件服务根目录，导致 config/*.yaml、
+    // 插件源码、node_modules 等全部可通过 HTTP 访问。
+    // 不需要替换：GT-Manual HTML 页面引用的 CSS/JS 均来自外部 CDN
+    // （https://img-hut.top/gt/），无需本地静态文件服务。
+    // this.app.use(express.static(process.cwd()))
     this.app.use(express.urlencoded({ extended: false }))
     this.app.use(express.json())
     this.app.get('/GTest/:key', this.index)

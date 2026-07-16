@@ -18,6 +18,8 @@ api:
   startApi: ${api_startApi}
   # 内置打码服务监听端口
   Port: ${api_Port}
+  # 监听地址，本地部署 127.0.0.1，需反向代理时改 0.0.0.0
+  bindHost: ${api_bindHost}
   # 发送给用户的打码链接前缀，必须是用户设备能访问到的地址
   Address: ${api_Address}
   # Bot 提交验证码的地址，用自己的服务保持默认即可，用他人的按对方提供填写
