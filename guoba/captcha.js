@@ -64,6 +64,13 @@ export function getSchema() {
       componentProps: { min: 0, placeholder: '例：3000' }
     },
     {
+      field: 'api.bindHost',
+      label: '手动打码服务监听地址',
+      bottomHelpMessage: '本地部署用 127.0.0.1，需反向代理时改为 0.0.0.0',
+      component: 'Input',
+      componentProps: { placeholder: '127.0.0.1' }
+    },
+    {
       field: 'api.Address',
       label: '手动打码服务访问地址',
       bottomHelpMessage: '发送给用户打开的链接',
