@@ -12,7 +12,6 @@
  *  修饰符: 上期/本期 | 简易（跳过详细API）| 往期（仲裁三期历史）
  */
 
-import plugin from '../../../../lib/plugins/plugin.js'
 import MysSrApi from '../model/mys/mysSrApi.js'
 import { render } from '../components/render.js'
 import { LOG_PREFIX } from '../components/constants.js'
