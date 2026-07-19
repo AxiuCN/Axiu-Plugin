@@ -258,21 +258,27 @@ export class ChallengeApp extends plugin {
     await e.reply('正在获取忘却之庭数据，请稍后……')
     const res = await this.queryChallenge(e, 2)
     if (!res) return false
-    await render('challenge/SR', 'index', res)
+    const img = await render('challenge/SR', 'index', res)
+    if (img) await e.reply(img)
+    return true
   }
 
   async challengeStory (e) {
     await e.reply('正在获取虚构叙事数据，请稍后……')
     const res = await this.queryChallenge(e, 1)
     if (!res) return false
-    await render('challenge/SR', 'index', res)
+    const img = await render('challenge/SR', 'index', res)
+    if (img) await e.reply(img)
+    return true
   }
 
   async challengeBoss (e) {
     await e.reply('正在获取末日幻影数据，请稍后……')
     const res = await this.queryChallenge(e, 0)
     if (!res) return false
-    await render('challenge/SR', 'index', res)
+    const img = await render('challenge/SR', 'index', res)
+    if (img) await e.reply(img)
+    return true
   }
 
   async challengePeak (e) {
@@ -289,7 +295,9 @@ export class ChallengeApp extends plugin {
       res.early = this._recentPeak(records[2])
     }
 
-    await render('challenge/SR', tplFile, res)
+    const img = await render('challenge/SR', tplFile, res)
+    if (img) await e.reply(img)
+    return true
   }
 
   async challenge (e) {
@@ -308,18 +316,22 @@ export class ChallengeApp extends plugin {
 
     if (!results[0] || !results[1] || !results[2]) return false
 
-    await render('challenge/SR', 'index_all', {
+    const img = await render('challenge/SR', 'index_all', {
       hall: results[0],
       story: results[1],
       boss: results[2]
     })
+    if (img) await e.reply(img)
+    return true
   }
 
   async challengeCurrent (e) {
     await e.reply('正在获取最新深渊数据，请稍后……')
     const res = await this.queryChallenge(e, this._getCurrentChallengeType())
     if (!res) return false
-    await render('challenge/SR', 'index', res)
+    const img = await render('challenge/SR', 'index', res)
+    if (img) await e.reply(img)
+    return true
   }
 
   // ==================== 工具方法 ====================
