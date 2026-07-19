@@ -355,46 +355,32 @@ export class ChallengeApp extends plugin {
 
   /** 获取 SR UID */
   async _userUid (e) {
-    // 优先从消息中提取
-    const match = e.msg.match(/\d{9,10}/)
-    if (match) return match[0]
+    // 直接使用已解析的 UID
+    if (e.uid && /(18|[1-9])[0-9]{8}/.test(e.uid)) return e.uid
 
-    // 优先通过 genshin MysInfo 获取（含绑定 UID + 群名片解析）
+    // 从消息中提取
+    const msgMatch = e.msg.match(/\d{9,10}/)
+    if (msgMatch) return msgMatch[0]
+
+    // 通过 MysInfo 全链路获取
     try {
-      const MysInfo = (await import('../../../genshin/model/mys/mysInfo.js')).default
-      const uid = await MysInfo.getUid(e, false)
+      const MysInfo = (await import('../../genshin/model/mys/mysInfo.js')).default
+      const uid = await MysInfo.getUid(e, true)
       if (uid) return uid
-    } catch (err) {
-      logger.debug(`${LOG_PREFIX}[challenge] MysInfo.getUid 失败: ${err.message}`)
-    }
+    } catch {}
 
-    // 降级：从 CK 绑定的游戏角色中查找星铁 UID（用户可能未显式绑定 SR UID）
-    try {
-      const NoteUser = (await import('../../../genshin/model/mys/NoteUser.js')).default
-      const user = await NoteUser.create(e)
-      const ckUid = user.getCkUid?.('sr')
-      if (ckUid) {
-        user.autoRegUid(ckUid, 'sr')
-        return ckUid
-      }
-    } catch (err) {
-      logger.debug(`${LOG_PREFIX}[challenge] NoteUser.getCkUid 失败: ${err.message}`)
-    }
-
-    await e.reply('找不到UID，请发送 #刷新ck 或 #扫码登录 绑定角色')
+    await e.reply('找不到UID，请先 #绑定uid 绑定你的游戏UID，或使用 #扫码登录 绑定账号后重试')
     return false
   }
 
   /** 获取 SR Cookie */
   async _userCk (e, uid) {
     try {
-      const MysInfo = (await import('../../../genshin/model/mys/mysInfo.js')).default
+      const MysInfo = (await import('../../genshin/model/mys/mysInfo.js')).default
       const result = await MysInfo.checkUidBing(uid, 'sr')
       const ck = result?.ck
       if (ck) return ck
-    } catch (err) {
-      logger.debug(`${LOG_PREFIX}[challenge] checkUidBing 失败: ${err.message}`)
-    }
+    } catch {}
 
     await e.reply(`UID:${uid} 当前尚未绑定Cookie，请发送 #扫码登录 绑定`)
     return false
