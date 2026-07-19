@@ -1,5 +1,6 @@
-/** QR 扫码登录 + 刷新CK + 更新抽卡记录
+/** QR 扫码登录 + 刷新CK
  *  从 xiaoyao-cvs-plugin apps/mhyTopUpLogin.js + apps/user.js 合并移植
+ *  注：#更新抽卡记录 已迁移至 apps/gachaLog.js
  */
 
 import plugin from '../../../lib/plugins/plugin.js'
@@ -14,7 +15,7 @@ export class QrLoginApp extends plugin {
   constructor () {
     super({
       name: '[Axiu-Plugin] 扫码登录',
-      dsc: 'QR扫码登录、刷新CK、更新抽卡记录',
+      dsc: 'QR扫码登录、刷新CK',
       event: 'message',
       priority: 500,
       rule: [
@@ -27,12 +28,6 @@ export class QrLoginApp extends plugin {
         {
           reg: '^#(刷新|更新|获取)(ck|cookie)$',
           fnc: 'updCookie',
-          permission: 'all',
-          log: true
-        },
-        {
-          reg: '^#(更新|获取|导出)抽卡记录$',
-          fnc: 'gachaLog',
           permission: 'all',
           log: true
         }
@@ -190,85 +185,4 @@ export class QrLoginApp extends plugin {
     }
     return true
   }
-
-  // ==================== #更新抽卡记录 ====================
-
-  async gachaLog (e) {
-    const user = new QrUser(e)
-    await user.cookie(e)
-
-    // 频率限制
-    const redisKey = `Axiu-Plugin:gachaLog:${e.user_id}`
-    const redisData = await redis.get(redisKey)
-    if (redisData) {
-      const remaining = Math.ceil((JSON.parse(redisData).expire - Date.now() / 1000))
-      if (remaining > 0) {
-        e.reply(`请求过快，请${remaining}秒后重试...`)
-        return true
-      }
-    }
-
-    const isGet = /导出|获取/.test(e.msg)
-    if (!e.isPrivate && isGet) {
-      e.reply('请私聊发送')
-      return true
-    }
-
-    // 获取 authkey
-    if (!e.uid) {
-      e.uid = e?.runtime?.user?._regUid
-    }
-    e.region = getServer(e.uid)
-
-    const authkeyRes = await user.getData('authKey', {
-      auth_appid: 'webview_gacha'
-    })
-    if (!authkeyRes?.data) {
-      e.reply(`uid:${e.uid},authkey获取失败：${(authkeyRes?.message || '').includes('登录失效') ? '请重新绑定stoken' : authkeyRes?.message}`)
-      return true
-    }
-
-    const authkey = authkeyRes.data.authkey
-
-    // 构造抽卡记录 URL → 委托 genshin 插件
-    e.msg = `https://public-operation-hk4e.mihoyo.com/gacha_info/api/getGachaLog?authkey_ver=1&sign_type=2&auth_appid=webview_gacha&init_type=301&gacha_id=fecafa7b6560db5f3182222395d88aaa6aaac1bc&timestamp=${Math.floor(Date.now() / 1000)}&lang=zh-cn&device_type=mobile&plat_type=ios&region=${e.region}&authkey=${encodeURIComponent(authkey)}&game_biz=hk4e_cn&gacha_type=301&page=1&size=5&end_id=0`
-
-    const sendMsg = []
-    e.reply('抽卡记录获取中请稍等...')
-    e._reply = e.reply
-    e.reply = (msg) => { sendMsg.push(msg) }
-
-    if (isGet) {
-      sendMsg.push(`uid:${e.uid}`, e.msg)
-    } else {
-      try {
-        const gachaLog = (await import('../../../plugins/genshin/model/gachaLog.js')).default
-        await (new gachaLog(e)).logUrl()
-      } catch (err) {
-        logger.error(`${LOG_PREFIX} 更新抽卡记录失败: ${err.message}`)
-        e.reply(`更新抽卡记录失败：${err.message}`)
-      }
-    }
-
-    // 合并转发
-    if (sendMsg.length > 0) {
-      const bot = e.bot || Bot
-      const nickname = bot.nickname || 'Yunzai-Bot'
-      const msgList = sendMsg.map(msg => ({
-        message: msg,
-        nickname,
-        user_id: bot.uin
-      }))
-      const forwardMsg = e.isGroup
-        ? await e.group.makeForwardMsg(msgList)
-        : await e.friend.makeForwardMsg(msgList)
-      await e._reply(forwardMsg)
-    }
-
-    // 设置频率限制缓存
-    const gclogEx = 5 * 60 // 5 分钟
-    redis.set(redisKey, JSON.stringify({ expire: Math.floor(Date.now() / 1000) + gclogEx }), { EX: gclogEx })
-    return true
-  }
 }
-

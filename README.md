@@ -1,6 +1,6 @@
 # Axiu-Plugin / 阿修插件
 
-阿修自用 Yunzai-Bot v3 插件，提供扫码登录、米游社签到、米游社过码、自动入群审核、代发言等功能。
+阿修自用 Yunzai-Bot v3 插件，提供扫码登录、抽卡记录、米游社签到、米游社过码、自动入群审核、代发言等功能。
 
 > MCSM 面板管理已迁移至独立插件 [MCSM-Plugin](https://github.com/AxiuCN/MCSM-Plugin)。
 
@@ -18,13 +18,27 @@ pnpm install --filter=Axiu-Plugin
 
 ### 扫码登录
 
-通过米游社扫码绑定 stoken，支持刷新 cookie、更新抽卡记录。移植自 xiaoyao-cvs-plugin。
+通过米游社扫码绑定 stoken，支持刷新 cookie。移植自 xiaoyao-cvs-plugin。
 
 - `#扫码登录` — 生成 QR 码，米游社扫码后自动绑定 stoken 并查找游戏角色，同时自动绑定 CK 到 cookie 池（无需手动 `#刷新ck`）
 - `#刷新ck` — 遍历已绑定的 stoken，刷新 cookie_token 并绑定到 cookie 系统
-- `#更新抽卡记录` — 获取 authkey，触发抽卡记录拉取
 - **CK 自动刷新** — 米游社 API 返回 10001（CK 过期）时，自动用已绑定的 stoken 刷新 cookie 并重试请求，无需手动 `#刷新ck`
 - 可在锅巴后台开关
+
+### 抽卡记录
+
+整合 Mihoyo 官方 API 和提瓦特小助手两种抽卡记录获取方式，统一保存到 genshin 插件的本地 GachaLog 存储。小助手功能移植自天如插件（TianRu-plugin）。
+
+| 命令 | 说明 |
+|------|------|
+| `#更新抽卡记录` | 通过 Mihoyo 官方 API 增量更新抽卡记录（仅最近 6 个月） |
+| `#获取抽卡记录` | 同上，但以文本形式返回抽卡链接（需私聊） |
+| `#更新小助手抽卡记录 [链接]` | 从提瓦特小助手（lelaer.com）导入全历史 UIGF 记录 |
+| `#获取小助手抽卡链接` | 生成米游社抽卡链接供手动使用（仅私聊） |
+
+- 已绑定 stoken 的用户无需提供链接，自动获取 authkey
+- 未绑定 stoken 时提示发送抽卡记录链接（两步交互）
+- 小助手数据与 Mihoyo 官方数据共用同一本地存储，自动去重
 
 ### 米游社签到
 
@@ -114,10 +128,6 @@ uvicorn main:app --host 0.0.0.0 --port 9645
 
 > 模型下载地址、训练方法及更多参数详见 `tool/test_nine/test_nine/README.md`。
 
-## 交流与讨论
-
-如有问题，请加入 QQ 群 **965272093** 交流反馈。
-
 ## 鸣谢
 
 - [loveMys-plugin](https://github.com/kissnavel/loveMys) — 过码事件处理及配置体系借鉴自此项目
@@ -127,3 +137,4 @@ uvicorn main:app --host 0.0.0.0 --port 9645
 - [xiaoyao-cvs-plugin](https://github.com/ctrlcvs/xiaoyao-cvs-plugin) — 扫码登录、stoken 管理体系移植自此项目
 - [Lotus-Plugin](https://github.com/MOPELotus/Lotus-Plugin) — 签到架构、过码桥接、计划式调度思路借鉴自此项目
 - [MihoyoBBSTools](https://github.com/Womsxd/MihoyoBBSTools) — Python 签到引擎，米游社签到及游戏签到核心，以子模块引入
+- [TianRu-plugin](https://github.com/HDTianRu/TianRu-plugin) — 提瓦特小助手抽卡记录功能移植自此项目
