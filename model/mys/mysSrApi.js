@@ -183,7 +183,7 @@ export default class MysSrApi extends MysApi {
     headers.Cookie = ck
 
     if (data.headers) {
-      headers = { ...headers, ...data.headers }
+      Object.assign(headers, data.headers)
     }
 
     if (type !== 'getFp' && !headers['x-rpc-device_fp'] && this._device_fp?.data?.device_fp) {
