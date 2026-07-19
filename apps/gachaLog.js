@@ -50,7 +50,7 @@ export class GachaLogApp extends plugin {
     })
   }
 
-  // ==================== 命令1: #更新抽卡记录 ====================
+  // ==================== 命令1: #更新抽卡记录（从 qrLogin 迁移，仅保留更新） ====================
 
   async gachaLog (e) {
     const user = new QrUser(e)
@@ -86,8 +86,6 @@ export class GachaLogApp extends plugin {
     // 构造抽卡 URL → 委托 genshin 插件
     e.msg = `https://public-operation-hk4e.mihoyo.com/gacha_info/api/getGachaLog?authkey_ver=1&sign_type=2&auth_appid=webview_gacha&init_type=301&gacha_id=fecafa7b6560db5f3182222395d88aaa6aaac1bc&timestamp=${Math.floor(Date.now() / 1000)}&lang=zh-cn&device_type=mobile&plat_type=ios&region=${e.region}&authkey=${encodeURIComponent(authkey)}&game_biz=hk4e_cn&gacha_type=301&page=1&size=5&end_id=0`
 
-    e.reply('抽卡记录获取中请稍等...')
-
     try {
       const GachaLog = (await import('../../genshin/model/gachaLog.js')).default
       await (new GachaLog(e)).logUrl()
@@ -102,7 +100,7 @@ export class GachaLogApp extends plugin {
     return true
   }
 
-  // ==================== 命令2: #更新小助手抽卡记录 ====================
+  // ==================== 命令2: #更新小助手抽卡记录（从天如移植） ====================
 
   async gachaLogAssistant (e) {
     // 频率限制
