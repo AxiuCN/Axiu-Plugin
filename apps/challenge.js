@@ -37,7 +37,7 @@ const CHALLENGE_API_SIMPLE_KEYS = [
 export class ChallengeApp extends plugin {
   constructor () {
     super({
-      name: '[Axiu-Plugin] 终局挑战',
+      name: '终局挑战',
       dsc: '星铁末日幻影、虚构叙事、忘却之庭、异相仲裁查询',
       event: 'message',
       priority: 500,
@@ -177,7 +177,7 @@ export class ChallengeApp extends plugin {
 
     // 楼层数据格式化
     if (challengeType !== 3) {
-      data.all_floor_detail = _.map(data.all_floor_detail, (floor) => ({
+      data.all_floor_detail = data.all_floor_detail.map(floor => ({
         ...floor,
         node_1: {
           ...floor.node_1,
@@ -209,7 +209,7 @@ export class ChallengeApp extends plugin {
           this._timeFormat(data.peak_records.boss_record.challenge_time, true)
       }
       // 异相仲裁 — 骑士
-      data.peak_records.mob_records = _.map(data.peak_records.mob_records, (record) => ({
+      data.peak_records.mob_records = data.peak_records.mob_records.map(record => ({
         ...record,
         ...(record.challenge_time && {
           challengeTime: this._timeFormat(record.challenge_time, true)
@@ -219,7 +219,7 @@ export class ChallengeApp extends plugin {
 
     // 末日幻影、虚构叙事：计算两边节点总分
     if ([0, 1].includes(challengeType)) {
-      data.all_floor_detail = _.map(data.all_floor_detail, (floor) => {
+      data.all_floor_detail = data.all_floor_detail.map(floor => {
         if (floor.node_1.score != null) {
           let totalScore = parseInt(floor.node_1.score)
           if (floor.node_2 && floor.node_2.score != null) totalScore += parseInt(floor.node_2.score)
@@ -244,7 +244,7 @@ export class ChallengeApp extends plugin {
       data.boss_record.challengeTime = this._timeFormat(data.boss_record.challenge_time, true)
     }
 
-    data.mob_records = _.map(data.mob_records, (r) => ({
+    data.mob_records = data.mob_records.map(r => ({
       ...r,
       ...(r.challenge_time && { challengeTime: this._timeFormat(r.challenge_time, true) })
     }))
