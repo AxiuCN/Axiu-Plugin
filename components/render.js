@@ -40,7 +40,8 @@ export async function render (app, tpl, data = {}, imgType = 'jpeg') {
 
   // 注入系统版权信息
   data.sys = {
-    copyright: 'Created By Yunzai-Bot & Axiu-Plugin'
+    copyright: 'Created By TRSS-yunzai & Axiu-Plugin',
+    createdby: 'Created By TRSS-yunzai & Axiu-Plugin'
   }
 
   return await puppeteer.screenshot(`Axiu-Plugin/${app}/${tpl}`, data)
