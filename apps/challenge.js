@@ -37,7 +37,7 @@ const CHALLENGE_API_SIMPLE_KEYS = [
 export class ChallengeApp extends plugin {
   constructor () {
     super({
-      name: '终局挑战',
+      name: '[Axiu-Plugin] 终局挑战',
       dsc: '星铁末日幻影、虚构叙事、忘却之庭、异相仲裁查询',
       event: 'message',
       priority: 500,
@@ -110,7 +110,7 @@ export class ChallengeApp extends plugin {
 
     // 获取设备指纹
     let deviceFp = await api.getData('getFp')
-    if (deviceFp?.retcode !== 0) return false
+    if (!deviceFp?.data?.device_fp) return false
     deviceFp = deviceFp?.data?.device_fp
 
     let challengeData, res, simpleRes
