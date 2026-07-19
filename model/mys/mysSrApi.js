@@ -5,7 +5,7 @@
 
 import md5 from 'md5'
 import fetch from 'node-fetch'
-import MysApi from '../../../../genshin/model/mys/mysApi.js'
+import MysApi from '../../../genshin/model/mys/mysApi.js'
 import SRApiTool from './srApiTool.js'
 import { generateSeed } from './srApiTool.js'
 
