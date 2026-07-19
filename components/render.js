@@ -18,7 +18,7 @@ const pluginRoot = path.join(process.cwd(), 'plugins/Axiu-Plugin')
  */
 export async function render (app, tpl, data = {}, imgType = 'jpeg') {
   data._plugin = 'Axiu-Plugin'
-  data._res_path = `../../../../../plugins/Axiu-Plugin/resources/`
+  data._res_path = `${path.resolve('plugins/Axiu-Plugin/resources/').replace(/\\/g, '/')}/`
 
   if (imgType === 'png') {
     data.omitBackground = true

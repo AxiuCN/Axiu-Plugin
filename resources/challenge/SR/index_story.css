@@ -2,7 +2,7 @@
   padding: 40px 40px 0 40px;
   width: 800px;
   overflow: hidden;
-  background: url('../challenge/images/bg_2.8d088acd.png') center no-repeat;
+  background: url('./images/bg_2.8d088acd.png') center no-repeat;
   background-size: cover;
   color: #f0eaca;
   font-family: 'SR', sans-serif;
@@ -78,7 +78,7 @@ img.red-clock {
   margin-top: 10px;
   border-radius: 12px;
   padding: 30px 30px;
-  background: url('../challenge/images/top_bg_2.4b303ec9.png') no-repeat;
+  background: url('./images/top_bg_2.4b303ec9.png') no-repeat;
   background-size: cover;
 }
 
@@ -121,7 +121,7 @@ img.red-clock {
   margin-top: 20px;
   border-top-right-radius: 36px;
   padding: 4px;
-  background: url('../challenge/images/floor_2.5d63517c.png') no-repeat;
+  background: url('./images/floor_2.5d63517c.png') no-repeat;
   background-size: cover;
 }
 
@@ -201,11 +201,11 @@ img.red-clock {
 }
 
 .detail-avatar.rank5 {
-  background-image: url("../challenge/images/character_r_5.99d42eb7.png");
+  background-image: url("./images/character_r_5.99d42eb7.png");
 }
 
 .detail-avatar.rank4 {
-  background-image: url("../challenge/images/character_r_4.24f329b7.png");
+  background-image: url("./images/character_r_4.24f329b7.png");
 }
 
 .detail-avatar-border {
@@ -338,7 +338,7 @@ img.buff-icon {
 }
 
 .boss-node3 {
-  background: url('../challenge/images/boss_node3_bg.923d912f.png') no-repeat;
+  background: url('./images/boss_node3_bg.923d912f.png') no-repeat;
   background-size: cover;
 }
 
@@ -368,7 +368,7 @@ img.boss {
 }
 
 .detail-bar-node3 {
-  background: url('../challenge/images/memory_node3_time_bg.ccb847b8.png') no-repeat;
+  background: url('./images/memory_node3_time_bg.ccb847b8.png') no-repeat;
   background-size: cover;
 }
 

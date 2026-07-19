@@ -2,7 +2,7 @@
   padding: 40px 40px 0 40px;
   width: 2496px;
   overflow: hidden;
-  background: url('../challenge/images/pc_bg.46428ec0.png') center no-repeat;
+  background: url('./images/pc_bg.46428ec0.png') center no-repeat;
   background-size: cover;
   color: #f0eaca;
   font-family: 'SR', sans-serif;
@@ -81,7 +81,7 @@ img.red-clock {
   margin-top: 10px;
   border-radius: 12px;
   padding: 30px 30px;
-  background: url('../challenge/images/block_bg.b669cdc3.png') no-repeat;
+  background: url('./images/block_bg.b669cdc3.png') no-repeat;
   background-size: cover;
 }
 
@@ -169,7 +169,7 @@ img.rogue-star-small {
   margin-top: 20px;
   border-top-right-radius: 36px;
   padding: 4px;
-  background: url('../challenge/images/normal_boss_bg.047e5b19.png') no-repeat;
+  background: url('./images/normal_boss_bg.047e5b19.png') no-repeat;
   background-size: cover;
 }
 
@@ -177,7 +177,7 @@ img.rogue-star-small {
   margin-top: 20px;
   border-top-right-radius: 36px;
   padding: 4px;
-  background: url('../challenge/images/hell_boss_bg.ca675173.png') no-repeat;
+  background: url('./images/hell_boss_bg.ca675173.png') no-repeat;
   background-size: cover;
 }
 
@@ -185,7 +185,7 @@ img.rogue-star-small {
   margin-top: 20px;
   border-top-right-radius: 36px;
   padding: 4px;
-  background: url('../challenge/images/xsg_bg.962ba3e3.png') no-repeat;
+  background: url('./images/xsg_bg.962ba3e3.png') no-repeat;
   background-size: cover;
 }
 
@@ -226,11 +226,11 @@ img.rogue-star-small {
 }
 
 .detail-avatar.rank5 {
-  background-image: url("../challenge/images/character_r_5.99d42eb7.png");
+  background-image: url("./images/character_r_5.99d42eb7.png");
 }
 
 .detail-avatar.rank4 {
-  background-image: url("../challenge/images/character_r_4.24f329b7.png");
+  background-image: url("./images/character_r_4.24f329b7.png");
 }
 
 .detail-avatar-border {
