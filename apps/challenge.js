@@ -359,13 +359,26 @@ export class ChallengeApp extends plugin {
     const match = e.msg.match(/\d{9,10}/)
     if (match) return match[0]
 
-    // 降级：通过 genshin MysInfo 获取
+    // 优先通过 genshin MysInfo 获取（含绑定 UID + 群名片解析）
     try {
       const MysInfo = (await import('../../../genshin/model/mys/mysInfo.js')).default
       const uid = await MysInfo.getUid(e, false)
       if (uid) return uid
     } catch (err) {
       logger.debug(`${LOG_PREFIX}[challenge] MysInfo.getUid 失败: ${err.message}`)
+    }
+
+    // 降级：从 CK 绑定的游戏角色中查找星铁 UID（用户可能未显式绑定 SR UID）
+    try {
+      const NoteUser = (await import('../../../genshin/model/mys/NoteUser.js')).default
+      const user = await NoteUser.create(e)
+      const ckUid = user.getCkUid?.('sr')
+      if (ckUid) {
+        user.autoRegUid(ckUid, 'sr')
+        return ckUid
+      }
+    } catch (err) {
+      logger.debug(`${LOG_PREFIX}[challenge] NoteUser.getCkUid 失败: ${err.message}`)
     }
 
     await e.reply('找不到UID，请发送 #刷新ck 或 #扫码登录 绑定角色')
