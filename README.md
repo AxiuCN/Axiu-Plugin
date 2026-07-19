@@ -39,6 +39,24 @@ pnpm install --filter=Axiu-Plugin
 - 已绑定 stoken 的用户无需提供链接，自动获取 authkey
 - 小助手数据与 Mihoyo 官方数据共用同一本地存储，自动去重
 
+### 终局挑战
+
+查询星穹铁道终局挑战数据（末日幻影、虚构叙事、忘却之庭、异相仲裁），移植自 StarRail-plugin。
+
+| 命令 | 说明 |
+|------|------|
+| `#末日` / `#末日幻影` | 末日幻影数据 |
+| `#虚构` / `#虚构叙事` | 虚构叙事数据 |
+| `#忘却` / `#混沌回忆` | 忘却之庭数据 |
+| `#仲裁` / `#异相仲裁` | 异相仲裁数据 |
+| `#深渊` | 全部三种深渊（末日+虚构+忘却） |
+| `#最新深渊` / `#当期深渊` | 当前最新一期 |
+
+- 支持 `上期` / `本期`（默认：本期）、`简易`（跳过详细API）修饰符
+- 仲裁额外支持 `往期`（显示三期历史）
+- `#星铁` 前缀可选
+- 查询遇到验证码时自动调用本插件过码平台
+
 ### 米游社签到
 
 基于 [MihoyoBBSTools](https://github.com/Womsxd/MihoyoBBSTools)（Python，git 子模块）的社区+游戏签到。
@@ -137,3 +155,4 @@ uvicorn main:app --host 0.0.0.0 --port 9645
 - [Lotus-Plugin](https://github.com/MOPELotus/Lotus-Plugin) — 签到架构、过码桥接、计划式调度思路借鉴自此项目
 - [MihoyoBBSTools](https://github.com/Womsxd/MihoyoBBSTools) — Python 签到引擎，米游社签到及游戏签到核心，以子模块引入
 - [TianRu-plugin](https://github.com/HDTianRu/TianRu-plugin) — 提瓦特小助手抽卡记录功能移植自此项目
+- [StarRail-plugin](https://github.com/Nwflower/StarRail-plugin) — 星铁终局挑战功能移植自此项目

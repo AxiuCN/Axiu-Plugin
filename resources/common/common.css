@@ -1,4 +1,8 @@
 @font-face {
+  font-family: "SR";
+  src: url("../common/font/SR.ttf") format("truetype");
+}
+@font-face {
   font-family: "HWZS";
   src: url("../common/font/华文中宋.TTF");
   font-weight: normal;
