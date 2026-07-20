@@ -21,7 +21,7 @@ const TTL = 90 * 24 * 3600 // 90 天
 const TYPE_NAMES = ['末日幻影', '虚构叙事', '忘却之庭', '异相仲裁']
 
 // nanoka 图鉴数据目录（Atlas-Plugin 的子模块）
-const NANOKA_BASE = path.resolve(pluginRoot, '../../Atlas-Plugin/tool/nanoka-atlas-backend/nanoka-atlas-backend/data/items/简体中文/星铁')
+const NANOKA_BASE = path.resolve(pluginRoot, '../Atlas-Plugin/tool/nanoka-atlas-backend/nanoka-atlas-backend/data/items/简体中文/星铁')
 // 挑战类型 → nanoka 目录名
 const NANOKA_DIR = ['末日幻影', '虚构叙事', '混沌回忆', '异相仲裁']
 
