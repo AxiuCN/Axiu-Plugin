@@ -9,10 +9,10 @@ export function getSchema () {
       bottomHelpMessage: '开启后可使用 *末日、*虚构、*混沌、*仲裁、*深渊 等命令',
       component: 'Switch'
     },
-    { label: '挑战排行', component: 'SOFT_GROUP_BEGIN' },
+    { component: 'Divider' },
     {
       field: 'srChallengeRank.enabled',
-      label: '启用挑战排行',
+      label: '启用终局挑战排行',
       bottomHelpMessage: '开启后群聊查询时自动上报数据，支持 *忘却排名 等排行命令',
       component: 'Switch'
     },
