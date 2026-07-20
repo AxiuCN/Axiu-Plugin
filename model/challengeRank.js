@@ -236,14 +236,13 @@ export default class ChallengeRank {
       const deepFloor = floors[0] || {}
       const floorStar = deepFloor.star_num != null ? Number(deepFloor.star_num) : 0
       const floorRound = deepFloor.round_num != null ? Number(deepFloor.round_num) : 0
-      const extraStar = Number(data.extra_star_num) || 0
 
-      // 排行分 = 本层星数 + 星启星数
-      scores.star = floorStar + extraStar
+      // 本层 star_num 已含星启之星，不重复加
+      scores.star = floorStar
       extra.star_num = floorStar
       extra.floor_star = floorStar
       extra.floor_round = floorRound
-      if (data.extra_star_num != null) { extra.extra_star_num = extraStar }
+      if (data.extra_star_num != null) { extra.extra_star_num = Number(data.extra_star_num) || 0 }
 
       if (data.max_floor != null) {
         let f = parseInt(data.max_floor)

@@ -543,20 +543,20 @@ export class ChallengeApp extends plugin {
         case 0: // 末日: 难度 | ★ | 分
           return [
             { v: extra.max_floor || '-', l: '难度' },
-            { v: extra.star_num != null ? extra.star_num + (extra.extra_star_num || 0) : '-', l: '★' },
+            { v: extra.star_num != null ? extra.star_num  : '-', l: '★' },
             { v: extra.total_score ?? '-', l: '分' }
           ]
         case 1: // 虚构: 层 | ★ | 分 | 轮
           return [
             { v: extra.max_floor || '-', l: '层' },
-            { v: extra.star_num != null ? extra.star_num + (extra.extra_star_num || 0) : '-', l: '★' },
+            { v: extra.star_num != null ? extra.star_num  : '-', l: '★' },
             { v: extra.total_score ?? '-', l: '分' },
             { v: extra.round_num ?? '-', l: '轮' }
           ]
         case 2: // 忘却: 层 | ★ | 轮
           return [
             { v: extra.max_floor || '-', l: '层' },
-            { v: extra.star_num != null ? extra.star_num + (extra.extra_star_num || 0) : '-', l: '★' },
+            { v: extra.star_num != null ? extra.star_num  : '-', l: '★' },
             { v: extra.round_num ?? '-', l: '轮' }
           ]
         case 3: // 仲裁: 模式 | 王棋 | 骑士 | 轮(王棋/骑士)
