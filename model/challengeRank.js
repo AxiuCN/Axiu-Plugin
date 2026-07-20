@@ -245,7 +245,11 @@ export default class ChallengeRank {
       extra.floor_round = floorRound
       if (data.extra_star_num != null) { extra.extra_star_num = extraStar }
 
-      if (data.max_floor != null) { const f = parseInt(data.max_floor); if (!isNaN(f)) { scores.floor = f; extra.max_floor = data.max_floor } }
+      if (data.max_floor != null) {
+        let f = parseInt(data.max_floor)
+        if (isNaN(f)) f = floors.length
+        if (!isNaN(f)) { scores.floor = f; extra.max_floor = data.max_floor }
+      }
       if (data.battle_num != null) { scores.battle = -Number(data.battle_num); extra.battle_num = Number(data.battle_num) }
 
       // 轮数取最深层
@@ -280,7 +284,7 @@ export default class ChallengeRank {
     // 写 ZSET（每个维度一个 key）
     for (const dim of this.getDimensions(challengeType)) {
       const val = scores[dim.key]
-      if (val == null || val === 0) continue
+      if (val == null) continue
       try {
         const rk = rankKey(groupId, challengeType, dim.key, scheduleId)
         await redis.zAdd(rk, { score: val, value: String(uid) })
