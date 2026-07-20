@@ -12,6 +12,7 @@ const exampleFile = path.join(configDir, 'config.yaml.example')
 /** 默认配置 */
 const defaultConfig = {
   srChallenge: { enabled: true },
+  srChallengeRank: { enabled: true, rankNumber: 20 },
   proxySpeak: { enabled: true }
 }
 

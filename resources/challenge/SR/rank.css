@@ -1,0 +1,139 @@
+.container {
+  padding: 30px 30px 20px 30px;
+  width: 800px;
+  overflow: hidden;
+  background: url('./images/bg_2.8d088acd.png') center no-repeat;
+  background-size: cover;
+  color: #f0eaca;
+  font-family: 'SR', 'YS', 'Number', sans-serif;
+  box-sizing: border-box;
+}
+
+.container * {
+  box-sizing: border-box;
+}
+
+.head-box {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.head-box .title {
+  font-size: 28px;
+  font-weight: bold;
+  color: #ffd780;
+  text-shadow: 0 0 10px rgba(255, 215, 128, 0.5);
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(240, 234, 202, 0.2);
+}
+
+.rank-info {
+  text-align: center;
+  font-size: 14px;
+  color: rgba(240, 234, 202, 0.6);
+  margin-bottom: 15px;
+}
+
+.rank-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.rank-header {
+  display: flex;
+  padding: 10px 15px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px 8px 0 0;
+  font-size: 14px;
+  color: rgba(240, 234, 202, 0.7);
+  font-weight: bold;
+  border-bottom: 1px solid rgba(240, 234, 202, 0.15);
+}
+
+.rank-row {
+  display: flex;
+  padding: 10px 15px;
+  align-items: center;
+  border-bottom: 1px solid rgba(240, 234, 202, 0.08);
+  transition: background 0.2s;
+}
+
+.rank-row:last-child {
+  border-bottom: none;
+}
+
+.rank-row:hover {
+  background: rgba(255, 215, 128, 0.05);
+}
+
+.rank-row.rank-top {
+  background: rgba(255, 215, 128, 0.08);
+}
+
+.rank-col {
+  flex: 1;
+  text-align: center;
+}
+
+.rank-num {
+  flex: 0 0 60px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.rank-uid {
+  flex: 1;
+  font-size: 15px;
+  font-family: 'Number', monospace;
+  color: rgba(240, 234, 202, 0.9);
+}
+
+.rank-score {
+  flex: 0 0 100px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.rank-score-val {
+  color: #ffd780;
+}
+
+.rank-top .rank-score-val {
+  color: #ffb347;
+  font-size: 18px;
+}
+
+.rank-self {
+  margin-top: 20px;
+  padding: 12px 20px;
+  background: rgba(255, 215, 128, 0.12);
+  border: 1px solid rgba(255, 215, 128, 0.3);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+}
+
+.self-label {
+  font-size: 13px;
+  color: rgba(240, 234, 202, 0.6);
+}
+
+.self-rank {
+  font-size: 20px;
+  font-weight: bold;
+  color: #ffb347;
+}
+
+.self-uid {
+  font-size: 14px;
+  color: rgba(240, 234, 202, 0.8);
+  font-family: 'Number', monospace;
+}
+
+.self-score {
+  font-size: 16px;
+  color: #ffd780;
+  font-weight: bold;
+}

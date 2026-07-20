@@ -18,6 +18,7 @@ import MysSrApi from '../model/mys/mysSrApi.js'
 import { render } from '../components/render.js'
 import { LOG_PREFIX } from '../components/constants.js'
 import { getPluginConfig } from '../components/config.js'
+import ChallengeRank from '../model/challengeRank.js'
 
 /** 挑战类型 → 中文名映射 */
 const TYPE_NAMES = ['末日幻影', '虚构叙事', '忘却之庭', '异相仲裁']
@@ -74,6 +75,23 @@ export class ChallengeApp extends plugin {
         {
           reg: '^(#?星铁|[*＊])?(最新|当期)(简易)?(深渊)$',
           fnc: 'challengeCurrent'
+        },
+        // 排行查看：*忘却排名, *末日排名 分数, *仲裁排行
+        {
+          reg: '^(#?星铁|[*＊])?(末日|虚构|忘却|混沌|仲裁|异相)(排名|排行)',
+          fnc: 'challengeRank'
+        },
+        // 重置排行：*重置忘却排名（仅 master）
+        {
+          reg: '^(#?星铁|[*＊])?重置(末日|虚构|忘却|混沌|仲裁|异相)(排名|排行)',
+          fnc: 'challengeRankReset',
+          permission: 'master'
+        },
+        // 开关排行：*开启/关闭挑战排名（仅 master）
+        {
+          reg: '^(#?星铁|[*＊])?(开启|关闭)(挑战)(排名|排行)',
+          fnc: 'challengeRankManage',
+          permission: 'master'
         }
       ]
     })
@@ -83,6 +101,29 @@ export class ChallengeApp extends plugin {
   _isEnabled () {
     const cfg = getPluginConfig()
     return cfg?.srChallenge?.enabled !== false
+  }
+
+  /** 检查排行功能是否开启 */
+  _isRankEnabled () {
+    const cfg = getPluginConfig()
+    return cfg?.srChallengeRank?.enabled !== false
+  }
+
+  /**
+   * 上报排行数据（仅在群聊 + 详细 API 成功时）
+   * @param {object} data - 格式化后的 data
+   * @param {string} uid
+   * @param {number} challengeType
+   * @param {string} scheduleType
+   * @param {boolean} isDetailedSuccess - 详细 API 是否返回 0
+   */
+  _reportRanking (data, uid, challengeType, scheduleType, isDetailedSuccess) {
+    if (!this.e.isGroup || !isDetailedSuccess) return
+    if (!this._isRankEnabled()) return
+    const scheduleId = ChallengeRank.getScheduleId(data, challengeType, scheduleType)
+    ChallengeRank.report(uid, this.e.group_id, challengeType, data, scheduleId).catch(
+      err => logger?.error(`${LOG_PREFIX}[排行] 上报失败`, err)
+    )
   }
 
   /** 获取用户认证（uid + ck），失败时已发送错误消息，调用方直接 return true */
@@ -272,6 +313,8 @@ export class ChallengeApp extends plugin {
       })
     }
 
+    this._reportRanking(data, uid, challengeType, scheduleType, !simple && res?.retcode === 0)
+
     return { data, uid, challengeType, type: scheduleType }
   }
 
@@ -392,6 +435,115 @@ export class ChallengeApp extends plugin {
     if (!res) return true
     const img = await render('challenge/SR', 'index', res)
     if (img) await e.reply(img)
+    return true
+  }
+
+  // ==================== 排行命令 ====================
+
+  /** 挑战类型别名 → challengeType */
+  _resolveChallengeAlias (text) {
+    if (/末日/.test(text)) return 0
+    if (/虚构|叙事/.test(text)) return 1
+    if (/忘却|混沌/.test(text)) return 2
+    if (/仲裁|异相|异乡/.test(text)) return 3
+    return -1
+  }
+
+  /**
+   * *忘却排名 [维度] — 查看本群排行
+   * 支持指定维度：*忘却排名 分数、*末日排名 轮数
+   */
+  async challengeRank (e) {
+    if (!e.isGroup) {
+      await e.reply('排行功能仅限群聊使用')
+      return true
+    }
+    if (!this._isRankEnabled()) {
+      await e.reply('挑战排行功能已关闭，请联系管理员开启')
+      return true
+    }
+
+    const challengeType = this._resolveChallengeAlias(e.msg)
+    if (challengeType < 0) return true
+
+    // 解析维度（消息中剔除挑战类型关键词后剩余部分）
+    const typeNames = ['末日', '末日幻影', '虚构', '虚构叙事', '叙事', '忘却', '忘却之庭', '混沌', '混沌回忆', '仲裁', '异相仲裁', '异相', '异乡']
+    let rest = e.msg
+    for (const name of typeNames) {
+      rest = rest.replace(name, '')
+    }
+    rest = rest.replace(/^(#?星铁|[*＊])/, '').replace(/^(排名|排行)/, '').trim()
+    const dimension = ChallengeRank.resolveDimensionAlias(rest) || ChallengeRank.getDefaultDimension(challengeType)
+
+    // 获取群配置
+    const groupCfg = await ChallengeRank.getGroupCfg(e.group_id)
+    if (groupCfg.status === 0) {
+      await e.reply('本群挑战排行已关闭')
+      return true
+    }
+
+    // 获取排行人数上限
+    const cfg = getPluginConfig()
+    const topN = cfg?.srChallengeRank?.rankNumber || 20
+
+    // 获取当前赛季 scheduleId
+    const scheduleId = String(Math.floor(Date.now() / (1000 * 60 * 60 * 24 * 14))) // 两周一个赛季
+    const typeName = ChallengeRank.getTypeName(challengeType)
+    const dims = ChallengeRank.getDimensions(challengeType)
+    const dimDef = dims.find(d => d.key === dimension)
+    const dimLabel = dimDef?.label || dimension
+
+    // 查询排行
+    const list = await ChallengeRank.getRank(e.group_id, challengeType, dimension, scheduleId, topN)
+    if (!list.length) {
+      await e.reply(`本群暂无${typeName}排行数据，请先发送挑战查询命令（如 *${['末日', '虚构', '忘却', '仲裁'][challengeType]}）上报数据`)
+      return true
+    }
+
+    // 获取查询者自己的排名
+    const selfRank = e.uid
+      ? await ChallengeRank.getRankForUid(e.uid, e.group_id, challengeType, dimension, scheduleId)
+      : null
+    const totalCount = await ChallengeRank.getRankCount(e.group_id, challengeType, dimension, scheduleId)
+
+    // 渲染排行
+    const renderData = {
+      title: `*${typeName}·${dimLabel}排行`,
+      challengeType,
+      dimension,
+      dimLabel,
+      list,
+      selfRank,
+      totalCount,
+      groupId: e.group_id,
+      topN
+    }
+    const img = await render('challenge/SR', 'rank', renderData)
+    if (img) await e.reply(img)
+    return true
+  }
+
+  /**
+   * *重置忘却排名 — 重置本群某类型排行（仅 master）
+   */
+  async challengeRankReset (e) {
+    const challengeType = this._resolveChallengeAlias(e.msg)
+    if (challengeType < 0) return true
+
+    const typeName = ChallengeRank.getTypeName(challengeType)
+    await ChallengeRank.resetRank(e.group_id, challengeType)
+    await e.reply(`已重置本群${typeName}排行数据`)
+    return true
+  }
+
+  /**
+   * *开启/关闭挑战排名 — 开关本群排行功能（仅 master）
+   */
+  async challengeRankManage (e) {
+    const enable = e.msg.includes('开启')
+    const status = enable ? 1 : 0
+    await ChallengeRank.setGroupStatus(e.group_id, status)
+    await e.reply(`已${enable ? '开启' : '关闭'}本群挑战排行功能`)
     return true
   }
 

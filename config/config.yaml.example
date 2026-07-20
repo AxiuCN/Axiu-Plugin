@@ -57,6 +57,13 @@ srChallenge:
   # 是否启用终局挑战查询（关闭后 *末日/*虚构/*混沌 等命令不响应）
   enabled: true
 
+# 星铁终局挑战排行
+srChallengeRank:
+  # 是否启用挑战排行（关闭后不上报、不响应排行命令）
+  enabled: true
+  # 排行上榜人数上限（5-50）
+  rankNumber: 20
+
 # 代发言
 proxySpeak:
   # 是否启用代发言功能（关闭后 #代 命令不响应）

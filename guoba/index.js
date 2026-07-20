@@ -46,6 +46,8 @@ const TEMPLATE_VARS = {
   'signin.captchaRetries': 'signin_captchaRetries',
   'signin.captchaTimeout': 'signin_captchaTimeout',
   'srChallenge.enabled': 'srChallenge_enabled',
+  'srChallengeRank.enabled': 'srChallengeRank_enabled',
+  'srChallengeRank.rankNumber': 'srChallengeRank_rankNumber',
   'proxySpeak.enabled': 'proxySpeak_enabled'
 }
 
@@ -151,6 +153,10 @@ export function supportGuoba () {
 
           // srChallenge
           'srChallenge.enabled': getPluginConfig()?.srChallenge?.enabled ?? true,
+
+          // srChallengeRank
+          'srChallengeRank.enabled': getPluginConfig()?.srChallengeRank?.enabled ?? true,
+          'srChallengeRank.rankNumber': getPluginConfig()?.srChallengeRank?.rankNumber ?? 20,
 
           // proxySpeak
           'proxySpeak.enabled': getPluginConfig()?.proxySpeak?.enabled ?? true,
