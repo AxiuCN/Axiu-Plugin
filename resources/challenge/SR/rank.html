@@ -24,6 +24,10 @@
   <span>显示 Top {{topN}}</span>
 </div>
 
+{{if sortHint}}
+<div class="rank-sort">排序: {{sortHint}}</div>
+{{/if}}
+
 <div class="rank-list">
   {{each list ds idx}}
   <div class="rank-item tier-{{ds.rank <= 3 ? ds.rank : 0}}">

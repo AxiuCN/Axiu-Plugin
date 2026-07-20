@@ -39,7 +39,14 @@
   text-align: center;
   font-size: 13px;
   color: rgba(240,234,202,0.5);
-  margin-bottom: 14px;
+  margin-bottom: 4px;
+}
+
+.rank-sort {
+  text-align: center;
+  font-size: 12px;
+  color: rgba(240,234,202,0.35);
+  margin-bottom: 12px;
 }
 
 .rank-info .sep {

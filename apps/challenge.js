@@ -496,7 +496,7 @@ export class ChallengeApp extends plugin {
     }
     const dims = ChallengeRank.getDimensions(challengeType)
     const dimDef = dims.find(d => d.key === dimension)
-    const dimLabel = dimDef?.label || dimension
+    const dimLabel = dimDef?.label || (dimension === '__' ? (() => { switch (challengeType) { case 0: return '分数'; case 1: return '星数'; case 2: return '星数'; case 3: return '王棋星数'; default: return '综合' } })() : dimension)
 
     // 查询排行
     const list = await ChallengeRank.getRank(e.group_id, challengeType, dimension, scheduleId, topN)
@@ -540,6 +540,17 @@ export class ChallengeApp extends plugin {
     // 获取赛季元信息
     const seasonMeta = await ChallengeRank.getSeasonMeta(challengeType, e.group_id)
 
+    // 排序说明
+    const COMPOUND_HINT = {
+      0: '难度 → 总分',
+      1: '层数 → 星数 → 分数 → 轮数(少优先)',
+      2: '层数 → 星数 → 轮数(少优先)',
+      3: '绝境优先 → 王棋星数 → 骑士星数 → 轮数(少优先)'
+    }
+    const sortHint = dimension === '__'
+      ? COMPOUND_HINT[challengeType] || ''
+      : `${dimLabel}${dimDef?.higher !== false ? '（降序）' : '（升序）'}`
+
     // 渲染排行
     const renderData = {
       title: `*${typeName}·${dimLabel}排行`,
@@ -554,7 +565,8 @@ export class ChallengeApp extends plugin {
       beginTime: seasonMeta?.beginTime || '',
       endTime: seasonMeta?.endTime || '',
       periodNumber: seasonMeta?.periodNumber || null,
-      scheduleName: seasonMeta?.scheduleName || ''
+      scheduleName: seasonMeta?.scheduleName || '',
+      sortHint
     }
     const img = await render('challenge/SR', 'rank', renderData)
     if (img) await e.reply(img)

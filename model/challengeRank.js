@@ -59,16 +59,37 @@ const DIMENSIONS = {
   ]
 }
 
-const DEFAULT_DIMENSION = { 0: 'score', 1: 'score', 2: 'star', 3: 'boss' }
+const DEFAULT_DIMENSION = { 0: '__', 1: '__', 2: '__', 3: '__' }
+
+/**
+ * 综合排序分数 — 多维度加权编码
+ * 忘却: 层数 > 星数 > 轮数(升)   末日: 难度 > 总分
+ * 虚构: 层数 > 星数 > 分数 > 轮数(升)   仲裁: 绝境 > 王棋 > 骑士 > 轮数(升)
+ */
+function compoundScore (scores, extra, challengeType) {
+  const R = (v) => Math.max(0, Math.min(v, 99)) // 轮数/战斗数上限
+  switch (challengeType) {
+    case 0: // 末日: 难度(floor) > 总分(score)
+      return (scores.floor || 0) * 100000 + (scores.score || 0)
+    case 1: // 虚构: 层数 > 星数 > 分数 > 轮数(升)
+      return (scores.floor || 0) * 10000000 + (scores.star || 0) * 100000 + (scores.score || 0) * 10 + (99 - R(extra.round_num || 0))
+    case 2: // 忘却: 层数 > 星数 > 轮数(升)
+      return (scores.floor || 0) * 10000 + (scores.star || 0) * 100 + (99 - R(extra.round_num || 0))
+    case 3: // 仲裁: 绝境 > 王棋 > 骑士 > 轮数(升)
+      return (scores.hard || 0) * 1000000 + (scores.boss || 0) * 10000 + (scores.mob || 0) * 100 + (99 - R(extra.round_num || 0))
+    default: return 0
+  }
+}
 
 const DIM_ALIAS = {
-  '星': 'star', '星数': 'star', '星星': 'star',
+  '星': 'star', '星数': 'star', '星星': 'star', '总星数': 'star',
   '分数': 'score', '总分': 'score', '得分': 'score',
-  '轮数': 'round', '轮次': 'round', '回合': 'round',
-  '战斗': 'battle', '次数': 'battle',
-  '层数': 'floor', '最深': 'floor',
-  '王棋': 'boss', '骑士': 'mob',
-  '绝境': 'hard'
+  '轮数': 'round', '轮次': 'round', '回合': 'round', '使用轮数': 'round',
+  '战斗': 'battle', '次数': 'battle', '战斗次数': 'battle',
+  '层数': 'floor', '最深': 'floor', '最深抵达': 'floor',
+  '王棋': 'boss', '王棋星数': 'boss',
+  '骑士': 'mob', '骑士星数': 'mob',
+  '绝境': 'hard', '绝境模式': 'hard'
 }
 
 // ==================== Key 构造 ====================
@@ -218,6 +239,18 @@ export default class ChallengeRank {
   static async report (uid, qq, groupId, challengeType, data, scheduleId) {
     const { scores, extra } = this.extractScores(data, challengeType)
 
+    // 综合排序分
+    const compound = compoundScore(scores, extra, challengeType)
+    if (compound > 0) {
+      try {
+        const ck = rankKey(groupId, challengeType, '__', scheduleId)
+        await redis.zAdd(ck, { score: compound, value: String(uid) })
+        await redis.expire(ck, TTL)
+      } catch (err) {
+        logger?.error(`${LOG_PREFIX}[排行] compound zAdd 失败`, err)
+      }
+    }
+
     // 写 ZSET（每个维度一个 key）
     for (const dim of this.getDimensions(challengeType)) {
       const val = scores[dim.key]
@@ -295,6 +328,7 @@ export default class ChallengeRank {
   }
 
   static async getRank (groupId, challengeType, dimension, scheduleId, topN = 20) {
+    const isCompound = dimension === '__'
     const key = rankKey(groupId, challengeType, dimension, scheduleId)
     let members
     try {
@@ -306,20 +340,33 @@ export default class ChallengeRank {
     const uids = members.map(m => String(m.value || m.member))
     const infoMap = await this._getUidInfoMap(uids)
 
+    // 综合排序时，展示分 = 各类型主要维度原始值
+    const displayScore = (extra, ct) => {
+      switch (ct) {
+        case 0: return extra.total_score || extra.star_num || 0   // 末日: 总分
+        case 1: return extra.star_num || 0                        // 虚构: 星数
+        case 2: return extra.star_num || 0                        // 忘却: 星数
+        case 3: return extra.boss_stars || 0                      // 仲裁: 王棋星数
+        default: return 0
+      }
+    }
+
     return members.map((m, i) => {
       const uid = String(m.value || m.member)
       const info = infoMap[uid] || {}
+      const ext = info[challengeType]?.extra || {}
       return {
         rank: i + 1,
         uid,
-        score: Math.round(m.score),
+        score: isCompound ? displayScore(ext, challengeType) : Math.round(m.score),
         qq: info.qq || '',
-        extra: info[challengeType]?.extra || {}
+        extra: ext
       }
     })
   }
 
   static async getRankForUid (uid, groupId, challengeType, dimension, scheduleId) {
+    const isCompound = dimension === '__'
     const key = rankKey(groupId, challengeType, dimension, scheduleId)
     try {
       const rank = await redis.zRevRank(key, String(uid))
@@ -336,7 +383,10 @@ export default class ChallengeRank {
         }
       } catch {}
 
-      return { rank: rank + 1, uid: String(uid), score: Math.round(score), qq, extra }
+      let displayScore = isCompound
+        ? (() => { switch (challengeType) { case 0: return extra.total_score || extra.star_num || 0; case 1: return extra.star_num || 0; case 2: return extra.star_num || 0; case 3: return extra.boss_stars || 0; default: return 0 } })()
+        : Math.round(score)
+      return { rank: rank + 1, uid: String(uid), score: displayScore, qq, extra }
     } catch { return null }
   }
 
