@@ -161,9 +161,9 @@
 }
 
 .rv-val {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 800;
-  font-family: 'Number', monospace;
+  font-family: 'SR', 'Number', monospace;
   color: #ffd780;
   line-height: 1.2;
 }

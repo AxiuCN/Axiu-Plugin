@@ -560,12 +560,12 @@ export class ChallengeApp extends plugin {
             { v: extra.star_num != null ? extra.star_num + (extra.extra_star_num || 0) : '-', l: '★' },
             { v: extra.round_num ?? '-', l: '轮' }
           ]
-        case 3: // 仲裁: 模式 | 王棋 | 骑士 | 轮
+        case 3: // 仲裁: 模式 | 王棋 | 骑士 | 轮(王棋/骑士)
           return [
             { v: extra.hard_mode ? '绝境' : '普通', l: '' },
             { v: extra.boss_stars ?? '-', l: '王棋' },
             { v: extra.mob_stars ?? '-', l: '骑士' },
-            { v: extra.round_num ?? '-', l: '轮' }
+            { v: extra.round_num != null ? `${extra.round_num}(${extra.round_label || '轮'})` : '-', l: '轮' }
           ]
         default: return []
       }

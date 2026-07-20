@@ -209,27 +209,52 @@ export default class ChallengeRank {
       if (!rec) return { scores, extra }
       if (rec.boss_stars != null) { scores.boss = Number(rec.boss_stars); extra.boss_stars = Number(rec.boss_stars) }
       if (rec.mob_stars != null) { scores.mob = Number(rec.mob_stars); extra.mob_stars = Number(rec.mob_stars) }
-      let totalRound = 0; let hasRound = false
-      if (rec.boss_record?.round_num != null) { totalRound += Number(rec.boss_record.round_num); extra.boss_round = Number(rec.boss_record.round_num); hasRound = true }
-      if (rec.mob_records?.length) {
-        const mr = []; for (const m of rec.mob_records) { if (m.round_num != null) { totalRound += Number(m.round_num); mr.push(Number(m.round_num)); hasRound = true } }
+
+      // 轮数：打王棋只算王棋轮，否则只算骑士轮
+      const bossRound = rec.boss_record?.round_num != null ? Number(rec.boss_record.round_num) : null
+      let roundVal = 0; let roundLabel = ''
+      if (bossRound != null) {
+        roundVal = bossRound; roundLabel = '王棋'
+        extra.boss_round = bossRound
+      } else if (rec.mob_records?.length) {
+        const mr = []
+        for (const m of rec.mob_records) {
+          if (m.round_num != null) { roundVal += Number(m.round_num); mr.push(Number(m.round_num)) }
+        }
         extra.mob_rounds = mr
+        if (mr.length) roundLabel = '骑士'
       }
-      if (hasRound) { scores.round = -totalRound; extra.round_num = totalRound }
+      if (roundVal > 0) {
+        scores.round = -roundVal
+        extra.round_num = roundVal
+        extra.round_label = roundLabel
+      }
       if (rec.boss_record?.hard_mode != null) { scores.hard = rec.boss_record.hard_mode ? 1 : 0; extra.hard_mode = rec.boss_record.hard_mode }
     } else {
-      if (data.star_num != null) { scores.star = Number(data.star_num); extra.star_num = Number(data.star_num) }
-      if (data.extra_star_num != null) { extra.extra_star_num = Number(data.extra_star_num) }
+      // 最深层（all_floor_detail 最后一项）的本层数据
+      const floors = data.all_floor_detail || []
+      const lastFloor = floors[floors.length - 1] || {}
+      const floorStar = lastFloor.star_num != null ? Number(lastFloor.star_num) : 0
+      const floorRound = lastFloor.round_num != null ? Number(lastFloor.round_num) : 0
+      const extraStar = Number(data.extra_star_num) || 0
+
+      // 排行分 = 本层星数 + 星启星数
+      scores.star = floorStar + extraStar
+      extra.star_num = floorStar
+      extra.floor_star = floorStar
+      extra.floor_round = floorRound
+      if (data.extra_star_num != null) { extra.extra_star_num = extraStar }
+
       if (data.max_floor != null) { const f = parseInt(data.max_floor); if (!isNaN(f)) { scores.floor = f; extra.max_floor = data.max_floor } }
       if (data.battle_num != null) { scores.battle = -Number(data.battle_num); extra.battle_num = Number(data.battle_num) }
-      if (data.all_floor_detail?.length) {
-        let tr = 0; let hr = false
-        for (const fl of data.all_floor_detail) { if (fl.round_num != null) { tr += Number(fl.round_num); hr = true } }
-        if (hr) { scores.round = -tr; extra.round_num = tr }
-        if ([0, 1].includes(challengeType) && data.all_floor_detail.some(f => f.score != null)) {
-          let ts = 0; for (const fl of data.all_floor_detail) ts += Number(fl.score) || 0
-          if (ts > 0) { scores.score = ts; extra.total_score = ts }
-        }
+
+      // 轮数取最深层
+      if (lastFloor.round_num != null) { scores.round = -floorRound; extra.round_num = floorRound }
+      // 分数取最深层
+      if ([0, 1].includes(challengeType) && lastFloor.score != null) {
+        const fs = Number(lastFloor.score) || 0
+        scores.score = fs
+        extra.total_score = fs
       }
     }
     return { scores, extra }
