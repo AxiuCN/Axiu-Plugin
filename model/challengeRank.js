@@ -1,48 +1,65 @@
 /**
  * 终局挑战排行存储模型
  *
- * 基于 Redis ZSET 实现群聊排行：
- *   Key: Axiu:challenge:rank:{groupId}:{challengeType}:{dimension}:{scheduleId}
- *   member: uid（游戏 UID）
- *   score:  排行数值（round_num/battle_num 等越小越好指标取反存储）
+ * 基于文件系统存储群聊排行：
+ *   data/challenge/SR/{typeName}/{scheduleId}/{uid}.json
  *
  * 排行时机：用户在群聊中查询挑战数据（详细版 API 成功）时自动上报
+ * 群配置（开关）保留 Redis KV 存储
  */
 
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { LOG_PREFIX } from '../components/constants.js'
 
-/** 排行维度定义 — 各 challengeType 支持的维度及提取规则 */
+// ==================== 常量 ====================
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const pluginRoot = path.resolve(__dirname, '..')
+const DATA_BASE = path.join(pluginRoot, 'data', 'challenge', 'SR')
+
+/** 挑战类型中文名（同时也是目录名） */
+const TYPE_NAMES = ['末日幻影', '虚构叙事', '忘却之庭', '异相仲裁']
+
+/** 各类型起始日期 — 用于计算「第N期」，周期42天/期（6周一个星铁版本） */
+const EPOCH_CONFIG = {
+  0: { start: new Date('2024-06-19T04:00:00'), cycleDays: 42 },
+  1: { start: new Date('2024-01-08T04:00:00'), cycleDays: 42 },
+  2: { start: new Date('2023-04-26T04:00:00'), cycleDays: 42 }
+  // 3: 异相仲裁不按固定周期
+}
+
+/** 排行维度定义 */
 const DIMENSIONS = {
-  // 忘却之庭
+  0: [
+    { key: 'star', label: '星数', desc: '总星数', higher: true },
+    { key: 'score', label: '分数', desc: '总分', higher: true },
+    { key: 'battle', label: '战斗', desc: '战斗次数', higher: false },
+    { key: 'round', label: '轮数', desc: '使用轮数', higher: false }
+  ],
+  1: [
+    { key: 'star', label: '星数', desc: '总星数', higher: true },
+    { key: 'score', label: '分数', desc: '总分', higher: true },
+    { key: 'battle', label: '战斗', desc: '战斗次数', higher: false },
+    { key: 'round', label: '轮数', desc: '使用轮数', higher: false }
+  ],
   2: [
     { key: 'star', label: '星数', desc: '总星数', higher: true },
     { key: 'round', label: '轮数', desc: '使用轮数', higher: false },
     { key: 'battle', label: '战斗', desc: '战斗次数', higher: false },
     { key: 'floor', label: '层数', desc: '最深抵达', higher: true }
   ],
-  // 虚构叙事 / 末日幻影（共用）
-  default_: [
-    { key: 'star', label: '星数', desc: '总星数', higher: true },
-    { key: 'score', label: '分数', desc: '总分', higher: true },
-    { key: 'battle', label: '战斗', desc: '战斗次数', higher: false },
-    { key: 'round', label: '轮数', desc: '使用轮数', higher: false }
+  3: [
+    { key: 'boss', label: '王棋', desc: '王棋星数', higher: true },
+    { key: 'mob', label: '骑士', desc: '骑士星数', higher: true },
+    { key: 'round', label: '轮数', desc: '总轮数', higher: false },
+    { key: 'hard', label: '绝境', desc: '绝境模式', higher: true }
   ]
 }
-DIMENSIONS[0] = DIMENSIONS.default_ // 末日幻影
-DIMENSIONS[1] = DIMENSIONS.default_ // 虚构叙事
 
-// 异相仲裁
-DIMENSIONS[3] = [
-  { key: 'boss', label: '王棋', desc: '王棋星数', higher: true },
-  { key: 'mob', label: '骑士', desc: '骑士星数', higher: true },
-  { key: 'round', label: '轮数', desc: '总轮数', higher: false },
-  { key: 'hard', label: '绝境', desc: '绝境模式', higher: true }
-]
-
-/** 各 challengeType 默认排行维度 */
 const DEFAULT_DIMENSION = { 0: 'score', 1: 'score', 2: 'star', 3: 'boss' }
 
-/** 排行维度别名映射（命令关键词 → 维度 key） */
 const DIM_ALIAS = {
   '星': 'star', '星数': 'star', '星星': 'star',
   '分数': 'score', '总分': 'score', '得分': 'score',
@@ -53,58 +70,36 @@ const DIM_ALIAS = {
   '绝境': 'hard'
 }
 
-/** 挑战类型中文名 */
-const TYPE_NAMES = ['末日幻影', '虚构叙事', '忘却之庭', '异相仲裁']
+// ==================== 路径工具 ====================
 
-/** Redis Key 前缀 */
-const KEY_PREFIX = 'Axiu:challenge:rank'
-
-/** ZSET 完整 key */
-function rankKey (groupId, challengeType, dimension, scheduleId) {
-  return `${KEY_PREFIX}:${groupId}:${challengeType}:${dimension}:${scheduleId}`
+function currentKeyPath (typeName, groupId) {
+  return path.join(DATA_BASE, typeName, `${groupId}-current.json`)
 }
 
-/** 群配置 key */
-function cfgKey (groupId) {
-  return `${KEY_PREFIX}:${groupId}:cfg`
+function uidJsonPath (typeName, scheduleId, uid) {
+  return path.join(DATA_BASE, typeName, String(scheduleId), `${uid}.json`)
 }
 
-/** UID 信息缓存 key */
-function uidInfoKey (uid) {
-  return `${KEY_PREFIX}:uid-info:${uid}`
+function seasonDir (typeName, scheduleId) {
+  return path.join(DATA_BASE, typeName, String(scheduleId))
 }
+
+// ==================== 主类 ====================
 
 export default class ChallengeRank {
   // ==================== 维度工具 ====================
 
-  /**
-   * 获取某 challengeType 支持的维度列表
-   * @param {number} challengeType 0-3
-   * @returns {Array<{key, label, desc, higher}>}
-   */
   static getDimensions (challengeType) {
-    return DIMENSIONS[challengeType] || DIMENSIONS.default_
+    return DIMENSIONS[challengeType] || DIMENSIONS[0]
   }
 
-  /**
-   * 获取默认维度 key
-   * @param {number} challengeType
-   * @returns {string}
-   */
   static getDefaultDimension (challengeType) {
     return DEFAULT_DIMENSION[challengeType] || 'star'
   }
 
-  /**
-   * 解析维度别名 → 维度 key
-   * @param {string} text 用户输入的关键词
-   * @returns {string|null}
-   */
   static resolveDimensionAlias (text) {
     if (!text) return null
-    // 精确匹配
     if (DIM_ALIAS[text]) return DIM_ALIAS[text]
-    // 最长前缀模糊匹配
     const keys = Object.keys(DIM_ALIAS).sort((a, b) => b.length - a.length)
     for (const k of keys) {
       if (text.includes(k)) return DIM_ALIAS[k]
@@ -112,21 +107,12 @@ export default class ChallengeRank {
     return null
   }
 
-  /** 获取挑战类型中文名 */
   static getTypeName (challengeType) {
     return TYPE_NAMES[challengeType] || '未知'
   }
 
-  // ==================== scheduleId ====================
+  // ==================== scheduleId 提取 ====================
 
-  /**
-   * 从格式化后的 data 提取 schedule_id
-   * 多路径尝试：schedule_id → group_id → begin_time
-   * @param {object} data - queryChallenge 返回的格式化 data
-   * @param {number} challengeType
-   * @param {string} type - scheduleType "1"|"2"|"3"
-   * @returns {string}
-   */
   static getScheduleId (data, challengeType, type) {
     if (data.schedule_id != null) return String(data.schedule_id)
     if (data.groups?.[0]?.group_id != null) return String(data.groups[0].group_id)
@@ -143,15 +129,24 @@ export default class ChallengeRank {
     return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
   }
 
+  // ==================== 期数计算 ====================
+
   /**
-   * 获取当前赛季 scheduleId（用于排名查询，保持与上报一致）
+   * 基于 API begin_time 计算第几期
+   * @param {object} data - queryChallenge 返回的格式化 data
    * @param {number} challengeType
-   * @param {number|string} groupId
-   * @returns {Promise<string|null>}
+   * @returns {number|null} 期数（从 1 开始），异相仲裁或缺失时间时返回 null
    */
-  static async getCurrentScheduleId (challengeType, groupId) {
+  static getPeriodNumber (data, challengeType) {
+    if (challengeType === 3) return null
+    const cfg = EPOCH_CONFIG[challengeType]
+    if (!cfg || !data.begin_time) return null
     try {
-      return await redis.get(`${KEY_PREFIX}:current:${challengeType}:${groupId}`)
+      const { year, month, day, hour = 4, minute = 0 } = data.begin_time
+      const apiDate = new Date(year, month - 1, day, hour, minute)
+      const diff = apiDate.getTime() - cfg.start.getTime()
+      if (diff < 0) return 1
+      return Math.floor(diff / (cfg.cycleDays * 24 * 3600 * 1000)) + 1
     } catch {
       return null
     }
@@ -160,49 +155,68 @@ export default class ChallengeRank {
   // ==================== score 提取 ====================
 
   /**
-   * 从格式化后的 data 提取各维度 score
-   * @param {object} data - queryChallenge 返回的格式化 data
-   * @param {number} challengeType
-   * @returns {object} { star: 36, round: -5, ... }（越小越好已取反）
+   * 从格式化后的 data 提取各维度 score + 原始值
+   * @returns {{ scores: object, extra: object }}
    */
   static extractScores (data, challengeType) {
     const scores = {}
+    const extra = {}
 
     if (challengeType === 3) {
-      // === 异相仲裁 ===
       const rec = data.peak_records
-      if (!rec) return scores
+      if (!rec) return { scores, extra }
 
-      if (rec.boss_stars != null) scores.boss = Number(rec.boss_stars)
-      if (rec.mob_stars != null) scores.mob = Number(rec.mob_stars)
+      if (rec.boss_stars != null) {
+        scores.boss = Number(rec.boss_stars)
+        extra.boss_stars = Number(rec.boss_stars)
+      }
+      if (rec.mob_stars != null) {
+        scores.mob = Number(rec.mob_stars)
+        extra.mob_stars = Number(rec.mob_stars)
+      }
 
       let totalRound = 0
       let hasRound = false
       if (rec.boss_record?.round_num != null) {
         totalRound += Number(rec.boss_record.round_num)
+        extra.boss_round = Number(rec.boss_record.round_num)
         hasRound = true
       }
       if (rec.mob_records?.length) {
+        const mobRounds = []
         for (const m of rec.mob_records) {
           if (m.round_num != null) {
             totalRound += Number(m.round_num)
+            mobRounds.push(Number(m.round_num))
             hasRound = true
           }
         }
+        extra.mob_rounds = mobRounds
       }
-      if (hasRound) scores.round = -totalRound
-
+      if (hasRound) {
+        scores.round = -totalRound
+        extra.round_num = totalRound
+      }
       if (rec.boss_record?.hard_mode != null) {
         scores.hard = rec.boss_record.hard_mode ? 1 : 0
+        extra.hard_mode = rec.boss_record.hard_mode
       }
     } else {
-      // === 忘却之庭 / 虚构叙事 / 末日幻影 ===
-      if (data.star_num != null) scores.star = Number(data.star_num)
+      if (data.star_num != null) {
+        scores.star = Number(data.star_num)
+        extra.star_num = Number(data.star_num)
+      }
       if (data.max_floor != null) {
         const floor = parseInt(data.max_floor)
-        if (!isNaN(floor)) scores.floor = floor
+        if (!isNaN(floor)) {
+          scores.floor = floor
+          extra.max_floor = data.max_floor
+        }
       }
-      if (data.battle_num != null) scores.battle = -Number(data.battle_num)
+      if (data.battle_num != null) {
+        scores.battle = -Number(data.battle_num)
+        extra.battle_num = Number(data.battle_num)
+      }
 
       if (data.all_floor_detail?.length) {
         let totalRound = 0
@@ -213,137 +227,207 @@ export default class ChallengeRank {
             hasRound = true
           }
         }
-        if (hasRound) scores.round = -totalRound
-
+        if (hasRound) {
+          scores.round = -totalRound
+          extra.round_num = totalRound
+        }
         if ([0, 1].includes(challengeType) && data.all_floor_detail.some(f => f.score != null)) {
           let totalScore = 0
           for (const floor of data.all_floor_detail) {
             totalScore += Number(floor.score) || 0
           }
-          if (totalScore > 0) scores.score = totalScore
+          if (totalScore > 0) {
+            scores.score = totalScore
+            extra.total_score = totalScore
+          }
         }
       }
     }
 
-    return scores
+    return { scores, extra }
   }
 
   // ==================== 上报 ====================
 
   /**
-   * 将 uid 的挑战数据写入所有适用维度的 ZSET
+   * 将 uid 的挑战数据写入 JSON 文件
    * @param {string} uid - 游戏 UID
+   * @param {string|number} qq - QQ 号
    * @param {number|string} groupId - QQ 群号
    * @param {number} challengeType - 0-3
    * @param {object} data - queryChallenge 返回的格式化 data
    * @param {string} scheduleId - 赛季标识
    */
-  static async report (uid, groupId, challengeType, data, scheduleId) {
-    const scores = this.extractScores(data, challengeType)
-    const dims = this.getDimensions(challengeType)
+  static async report (uid, qq, groupId, challengeType, data, scheduleId) {
+    const typeName = TYPE_NAMES[challengeType]
+    const { scores, extra } = this.extractScores(data, challengeType)
 
-    for (const dim of dims) {
-      const value = scores[dim.key]
-      if (value == null || value === 0) continue
-
-      const key = rankKey(groupId, challengeType, dim.key, scheduleId)
-      try {
-        await redis.zAdd(key, { score: value, value: uid })
-      } catch (err) {
-        logger?.error(`${LOG_PREFIX}[排行] zAdd 失败: ${key}`, err)
-      }
+    const record = {
+      uid: String(uid),
+      qq: String(qq || ''),
+      time: Date.now(),
+      scheduleId: String(scheduleId),
+      scores,
+      extra
     }
 
-    // 更新当前赛季 scheduleId（排名查询用）
+    // 写入 uid.json
+    const targetDir = path.join(DATA_BASE, typeName, String(scheduleId))
     try {
-      await redis.set(`${KEY_PREFIX}:current:${challengeType}:${groupId}`, scheduleId)
-    } catch {}
-
-    // 更新 UID 信息缓存（TTL 90 天）
-    try {
-      const infoKey = uidInfoKey(uid)
-      const existing = await redis.get(infoKey)
-      const info = existing ? JSON.parse(existing) : {}
-      info.qq = info.qq || null
-      info[challengeType] = info[challengeType] || {}
-      for (const [dim, val] of Object.entries(scores)) {
-        const prev = info[challengeType][dim]
-        if (prev == null || val > prev) {
-          info[challengeType][dim] = val
-        }
-      }
-      await redis.setEx(infoKey, 90 * 24 * 3600, JSON.stringify(info))
+      fs.mkdirSync(targetDir, { recursive: true })
+      fs.writeFileSync(
+        path.join(targetDir, `${uid}.json`),
+        JSON.stringify(record, null, 2),
+        'utf8'
+      )
     } catch (err) {
-      logger?.error(`${LOG_PREFIX}[排行] 更新 UID 信息缓存失败`, err)
+      logger?.error(`${LOG_PREFIX}[排行] 写入排行文件失败`, err)
+      return
+    }
+
+    // 更新当前赛季标记（含时间/期数信息）
+    try {
+      fs.mkdirSync(path.join(DATA_BASE, typeName), { recursive: true })
+      const marker = {
+        scheduleId: String(scheduleId),
+        time: Date.now()
+      }
+      if (data.beginTime) marker.beginTime = data.beginTime
+      if (data.endTime) marker.endTime = data.endTime
+      const periodNum = this.getPeriodNumber(data, challengeType)
+      if (periodNum != null) marker.periodNumber = periodNum
+
+      fs.writeFileSync(
+        currentKeyPath(typeName, groupId),
+        JSON.stringify(marker, null, 2),
+        'utf8'
+      )
+    } catch (err) {
+      logger?.error(`${LOG_PREFIX}[排行] 写入赛季标记失败`, err)
     }
   }
 
   // ==================== 查询 ====================
 
+  static async getCurrentScheduleId (challengeType, groupId) {
+    const typeName = TYPE_NAMES[challengeType]
+    try {
+      const raw = fs.readFileSync(currentKeyPath(typeName, groupId), 'utf8')
+      return JSON.parse(raw)?.scheduleId || null
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * 获取当前赛季的元信息（含 beginTime/endTime/periodNumber）
+   * @returns {Promise<{scheduleId, beginTime?, endTime?, periodNumber?, time}|null>}
+   */
+  static async getSeasonMeta (challengeType, groupId) {
+    const typeName = TYPE_NAMES[challengeType]
+    try {
+      const raw = fs.readFileSync(currentKeyPath(typeName, groupId), 'utf8')
+      return JSON.parse(raw) || null
+    } catch {
+      return null
+    }
+  }
+
   /**
    * 获取 Top N 排行列表
-   * @param {number|string} groupId
-   * @param {number} challengeType
-   * @param {string} dimension - 维度 key
-   * @param {string} scheduleId
-   * @param {number} topN
-   * @returns {Promise<Array<{rank, uid, score, rawScore}>>}
+   * @returns {Promise<Array<{rank, uid, score, record}>>}
    */
   static async getRank (groupId, challengeType, dimension, scheduleId, topN = 20) {
-    const key = rankKey(groupId, challengeType, dimension, scheduleId)
-    let members
+    const sDir = seasonDir(TYPE_NAMES[challengeType], scheduleId)
+
+    let files = []
     try {
-      // ZSET 默认升序，取最后 topN 个（最高分）
-      members = await redis.zRangeWithScores(key, -topN, -1)
-    } catch (err) {
-      logger?.error(`${LOG_PREFIX}[排行] zRangeWithScores 失败: ${key}`, err)
+      files = fs.readdirSync(sDir).filter(
+        f => f.endsWith('.json') && !f.endsWith('-current.json')
+      )
+    } catch {
       return []
     }
-    if (!members?.length) return []
 
-    members.reverse()
+    const entries = []
+    for (const file of files) {
+      try {
+        const raw = fs.readFileSync(path.join(sDir, file), 'utf8')
+        const record = JSON.parse(raw)
+        const score = record.scores?.[dimension]
+        if (score == null || score === 0) continue
+        entries.push({ uid: record.uid, score, record })
+      } catch { /* 跳过损坏文件 */ }
+    }
 
-    const dims = this.getDimensions(challengeType)
-    const dimDef = dims.find(d => d.key === dimension)
-    const isReversed = dimDef && !dimDef.higher
+    // 降序排序（越小越好的维度已在 scores 中取反）
+    entries.sort((a, b) => {
+      if (a.score !== b.score) return b.score - a.score
+      return String(a.uid).localeCompare(String(b.uid))
+    })
 
-    return members.map((m, i) => ({
+    return entries.slice(0, topN).map((e, i) => ({
       rank: i + 1,
-      uid: String(m.value || m.member),
-      score: isReversed ? -(m.score) : Math.round(m.score),
-      rawScore: m.score
+      uid: e.uid,
+      score: Math.round(e.score),
+      record: e.record
     }))
   }
 
   /**
    * 获取某 uid 在排行中的名次
-   * @returns {{ rank, uid, score } | null}
    */
   static async getRankForUid (uid, groupId, challengeType, dimension, scheduleId) {
-    const key = rankKey(groupId, challengeType, dimension, scheduleId)
+    const typeName = TYPE_NAMES[challengeType]
+    const sDir = seasonDir(typeName, scheduleId)
+
+    let record
     try {
-      const rank = await redis.zRevRank(key, uid)
-      if (rank == null) return null
-      const score = await redis.zScore(key, uid)
-      const dims = this.getDimensions(challengeType)
-      const dimDef = dims.find(d => d.key === dimension)
-      const isReversed = dimDef && !dimDef.higher
-      return {
-        rank: rank + 1,
-        uid: String(uid),
-        score: isReversed ? -(score) : Math.round(score)
-      }
-    } catch (err) {
-      logger?.error(`${LOG_PREFIX}[排行] zRevRank 失败`, err)
+      record = JSON.parse(fs.readFileSync(uidJsonPath(typeName, scheduleId, uid), 'utf8'))
+    } catch {
       return null
     }
+
+    const targetScore = record.scores?.[dimension]
+    if (targetScore == null || targetScore === 0) return null
+
+    let files = []
+    try {
+      files = fs.readdirSync(sDir).filter(
+        f => f.endsWith('.json') && !f.endsWith('-current.json')
+      )
+    } catch {
+      return null
+    }
+
+    let rank = 1
+    for (const file of files) {
+      if (file === `${uid}.json`) continue
+      try {
+        const r = JSON.parse(fs.readFileSync(path.join(sDir, file), 'utf8'))
+        const s = r.scores?.[dimension]
+        if (s == null || s === 0) continue
+        if (s > targetScore || (s === targetScore && String(r.uid).localeCompare(String(uid)) < 0)) rank++
+      } catch { /* skip */ }
+    }
+
+    return { rank, uid: String(uid), score: Math.round(targetScore), record }
   }
 
-  /** 获取排行总人数 */
   static async getRankCount (groupId, challengeType, dimension, scheduleId) {
-    const key = rankKey(groupId, challengeType, dimension, scheduleId)
+    const sDir = seasonDir(TYPE_NAMES[challengeType], scheduleId)
     try {
-      return await redis.zCard(key)
+      const files = fs.readdirSync(sDir).filter(
+        f => f.endsWith('.json') && !f.endsWith('-current.json')
+      )
+      let count = 0
+      for (const file of files) {
+        try {
+          const record = JSON.parse(fs.readFileSync(path.join(sDir, file), 'utf8'))
+          if (record.scores?.[dimension] != null && record.scores[dimension] !== 0) count++
+        } catch { /* skip */ }
+      }
+      return count
     } catch {
       return 0
     }
@@ -351,50 +435,48 @@ export default class ChallengeRank {
 
   // ==================== 管理 ====================
 
-  /**
-   * 重置群排行
-   * @param {number|string} groupId
-   * @param {number|null} challengeType - null 时重置该群所有类型
-   */
   static async resetRank (groupId, challengeType = null) {
-    const pattern = challengeType != null
-      ? `${KEY_PREFIX}:${groupId}:${challengeType}:*`
-      : `${KEY_PREFIX}:${groupId}:*`
+    const types = challengeType != null ? [challengeType] : [0, 1, 2, 3]
+    for (const ct of types) {
+      const cp = currentKeyPath(TYPE_NAMES[ct], groupId)
+      try {
+        if (fs.existsSync(cp)) fs.unlinkSync(cp)
+      } catch (err) {
+        logger?.error(`${LOG_PREFIX}[排行] 重置标记失败`, err)
+      }
+    }
+    logger?.mark(`${LOG_PREFIX}[排行] 已重置群 ${groupId} 的赛季标记`)
+  }
+
+  static async resetRankData (challengeType) {
+    const typeDir = path.join(DATA_BASE, TYPE_NAMES[challengeType])
     try {
-      const keys = await redis.keys(pattern)
-      if (keys?.length) {
-        await redis.del(...keys)
-        logger?.mark(`${LOG_PREFIX}[排行] 已重置群 ${groupId} 排行: ${keys.length} 个 key`)
+      if (fs.existsSync(typeDir)) {
+        fs.rmSync(typeDir, { recursive: true, force: true })
+        logger?.mark(`${LOG_PREFIX}[排行] 已删除 ${TYPE_NAMES[challengeType]} 所有排行数据`)
       }
     } catch (err) {
-      logger?.error(`${LOG_PREFIX}[排行] 重置排行失败`, err)
+      logger?.error(`${LOG_PREFIX}[排行] 删除排行数据失败`, err)
     }
   }
 
-  // ==================== 群配置 ====================
+  // ==================== 群配置（Redis） ====================
 
-  /**
-   * 获取群排行配置
-   * @returns {{ status: number, timestamp: number }}
-   */
+  static _cfgKey (groupId) {
+    return `Axiu:challenge:rank:${groupId}:cfg`
+  }
+
   static async getGroupCfg (groupId) {
-    const key = cfgKey(groupId)
     try {
-      const raw = await redis.get(key)
+      const raw = await redis.get(this._cfgKey(groupId))
       if (raw) return JSON.parse(raw)
     } catch {}
     return { status: 1, timestamp: Date.now() }
   }
 
-  /**
-   * 设置群排行状态
-   * @param {number|string} groupId
-   * @param {number} status 1=启用, 0=关闭
-   */
   static async setGroupStatus (groupId, status) {
-    const key = cfgKey(groupId)
     try {
-      await redis.set(key, JSON.stringify({ status, timestamp: Date.now() }))
+      await redis.set(this._cfgKey(groupId), JSON.stringify({ status, timestamp: Date.now() }))
     } catch (err) {
       logger?.error(`${LOG_PREFIX}[排行] 设置群状态失败`, err)
     }

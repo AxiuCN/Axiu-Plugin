@@ -121,7 +121,8 @@ export class ChallengeApp extends plugin {
     if (!this.e.isGroup || !isDetailedSuccess) return
     if (!this._isRankEnabled()) return
     const scheduleId = ChallengeRank.getScheduleId(data, challengeType, scheduleType)
-    ChallengeRank.report(uid, this.e.group_id, challengeType, data, scheduleId).catch(
+    const qq = this.e.user_id
+    ChallengeRank.report(uid, qq, this.e.group_id, challengeType, data, scheduleId).catch(
       err => logger?.error(`${LOG_PREFIX}[排行] 上报失败`, err)
     )
   }
@@ -510,6 +511,38 @@ export class ChallengeApp extends plugin {
       : null
     const totalCount = await ChallengeRank.getRankCount(e.group_id, challengeType, dimension, scheduleId)
 
+    // 获取 QQ 身份信息（头像、昵称）— 参考 miao-plugin ProfileRank
+    const fetchMember = async (record) => {
+      if (!record?.qq) return {}
+      try {
+        const member = Bot.pickMember(e.group_id, record.qq)
+        const [avatarUrl] = await Promise.all([
+          member?.getAvatarUrl?.().catch(() => null)
+        ])
+        return {
+          qqFace: avatarUrl || null,
+          nickname: member?.card || member?.name || record.qq
+        }
+      } catch {
+        return {}
+      }
+    }
+
+    await Promise.all(list.map(async (item) => {
+      const info = await fetchMember(item.record)
+      item.qqFace = info.qqFace
+      item.nickname = info.nickname
+    }))
+
+    if (selfRank) {
+      const info = await fetchMember(selfRank.record)
+      selfRank.qqFace = info.qqFace
+      selfRank.nickname = info.nickname
+    }
+
+    // 获取赛季元信息
+    const seasonMeta = await ChallengeRank.getSeasonMeta(challengeType, e.group_id)
+
     // 渲染排行
     const renderData = {
       title: `*${typeName}·${dimLabel}排行`,
@@ -520,7 +553,10 @@ export class ChallengeApp extends plugin {
       selfRank,
       totalCount,
       groupId: e.group_id,
-      topN
+      topN,
+      beginTime: seasonMeta?.beginTime || '',
+      endTime: seasonMeta?.endTime || '',
+      periodNumber: seasonMeta?.periodNumber || null
     }
     const img = await render('challenge/SR', 'rank', renderData)
     if (img) await e.reply(img)
