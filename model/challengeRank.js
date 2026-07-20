@@ -130,9 +130,11 @@ export default class ChallengeRank {
   static getPeriodNumber (data, challengeType) {
     if (challengeType === 3) return null
     const cfg = EPOCH_CONFIG[challengeType]
-    if (!cfg || !data.begin_time) return null
+    // 末日/虚构的原始时间在 groups[0]，忘却的原始时间在顶层
+    const timeData = data.begin_time || data.groups?.[0]?.begin_time
+    if (!cfg || !timeData) return null
     try {
-      const { year, month, day, hour = 4, minute = 0 } = data.begin_time
+      const { year, month, day, hour = 4, minute = 0 } = timeData
       const apiDate = new Date(year, month - 1, day, hour, minute)
       const diff = apiDate.getTime() - cfg.start.getTime()
       if (diff < 0) return 1
@@ -197,11 +199,23 @@ export default class ChallengeRank {
 
     // 赛季元信息
     try {
-      const name = data.name_mi18n || data.name || ''
+      // 赛季名称：仲裁在 peak_records.group，其他类型在顶层（可能没有）
+      const name = data.peak_records?.group?.name_mi18n
+        || data.name_mi18n || data.name || ''
+      // 时间：末日/虚构在 groups[0]，忘却/仲裁在顶层/peak_records.group
+      const fmt = (t) => t ? `${t.year}.${String(t.month).padStart(2,'0')}.${String(t.day).padStart(2,'0')}` : ''
+      const bt = data.beginTime
+        || fmt(data.peak_records?.group?.begin_time)
+        || fmt(data.groups?.[0]?.begin_time)
+        || ''
+      const et = data.endTime
+        || fmt(data.peak_records?.group?.end_time)
+        || fmt(data.groups?.[0]?.end_time)
+        || ''
       await redis.set(seasonKey(challengeType, scheduleId), JSON.stringify({
         scheduleName: name,
-        beginTime: data.beginTime || '',
-        endTime: data.endTime || '',
+        beginTime: bt,
+        endTime: et,
         periodNumber: this.getPeriodNumber(data, challengeType)
       }))
     } catch {}
