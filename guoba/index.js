@@ -6,6 +6,8 @@ import * as qrLoginMod from './qrLogin.js'
 import * as groupApproveMod from './groupApprove.js'
 import * as captchaMod from './captcha.js'
 import * as signinMod from './signin.js'
+import * as srChallengeMod from './srChallenge.js'
+import * as proxySpeakMod from './proxySpeak.js'
 import Cfg from '../model/Cfg.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -41,7 +43,9 @@ const TEMPLATE_VARS = {
   'signin.notifyGroup': 'signin_notifyGroup',
   'signin.reportGroups': 'signin_reportGroups',
   'signin.captchaRetries': 'signin_captchaRetries',
-  'signin.captchaTimeout': 'signin_captchaTimeout'
+  'signin.captchaTimeout': 'signin_captchaTimeout',
+  'srChallenge.enabled': 'srChallenge_enabled',
+  'proxySpeak.enabled': 'proxySpeak_enabled'
 }
 
 // ==================== 工具函数 ====================
@@ -107,8 +111,10 @@ export function supportGuoba () {
       schemas: [
         ...qrLoginMod.getSchema(),
         ...signinMod.getSchema(),
+        ...srChallengeMod.getSchema(),
         ...captchaMod.getSchema(),
-        ...groupApproveMod.getSchema()
+        ...groupApproveMod.getSchema(),
+        ...proxySpeakMod.getSchema()
       ],
 
       getConfigData () {
@@ -141,6 +147,12 @@ export function supportGuoba () {
           'api.verifyAddr': apiCfg.verifyAddr ?? 'http://127.0.0.1:3000/GTest/register',
           'api.GtestType': apiCfg.GtestType ?? 2,
           'api.qrLogin_enabled': apiCfg.qrLogin_enabled ?? true,
+
+          // srChallenge
+          'srChallenge.enabled': (Cfg.getConfig('config')?.srChallenge || {}).enabled ?? true,
+
+          // proxySpeak
+          'proxySpeak.enabled': (Cfg.getConfig('config')?.proxySpeak || {}).enabled ?? true,
 
           // signin 主配置
           'signin.enable': signinCfg.enable ?? true,
