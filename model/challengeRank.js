@@ -197,7 +197,9 @@ export default class ChallengeRank {
 
     // 赛季元信息
     try {
+      const name = data.name_mi18n || data.name || ''
       await redis.set(seasonKey(challengeType, scheduleId), JSON.stringify({
+        scheduleName: name,
         beginTime: data.beginTime || '',
         endTime: data.endTime || '',
         periodNumber: this.getPeriodNumber(data, challengeType)

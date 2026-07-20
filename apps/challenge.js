@@ -553,7 +553,8 @@ export class ChallengeApp extends plugin {
       topN,
       beginTime: seasonMeta?.beginTime || '',
       endTime: seasonMeta?.endTime || '',
-      periodNumber: seasonMeta?.periodNumber || null
+      periodNumber: seasonMeta?.periodNumber || null,
+      scheduleName: seasonMeta?.scheduleName || ''
     }
     const img = await render('challenge/SR', 'rank', renderData)
     if (img) await e.reply(img)
