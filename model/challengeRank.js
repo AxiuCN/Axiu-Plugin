@@ -180,7 +180,7 @@ export default class ChallengeRank {
 
   // ==================== 上报 ====================
 
-  static async report (uid, qq, groupId, challengeType, data, scheduleId) {
+  static async report (uid, qq, groupId, challengeType, data, scheduleId, seasonName = '') {
     const { scores, extra } = this.extractScores(data, challengeType)
 
     // 写 ZSET（每个维度一个 key）
@@ -199,9 +199,6 @@ export default class ChallengeRank {
 
     // 赛季元信息
     try {
-      // 赛季名称：仲裁在 peak_records.group，其他类型在顶层（可能没有）
-      const name = data.peak_records?.group?.name_mi18n
-        || data.name_mi18n || data.name || ''
       // 时间：末日/虚构在 groups[0]，忘却/仲裁在顶层/peak_records.group
       const fmt = (t) => t ? `${t.year}.${String(t.month).padStart(2,'0')}.${String(t.day).padStart(2,'0')}` : ''
       const bt = data.beginTime
@@ -213,7 +210,7 @@ export default class ChallengeRank {
         || fmt(data.groups?.[0]?.end_time)
         || ''
       await redis.set(seasonKey(challengeType, scheduleId), JSON.stringify({
-        scheduleName: name,
+        scheduleName: seasonName,
         beginTime: bt,
         endTime: et,
         periodNumber: this.getPeriodNumber(data, challengeType)
