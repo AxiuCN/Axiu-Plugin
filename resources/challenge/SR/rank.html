@@ -5,66 +5,57 @@
 {{/block}}
 
 {{block 'main'}}
-<div class="rank-container">
-  <div class="rank-header-box">
-    <div class="rank-title">
-      <span>{{title}}</span>
-      {{if periodNumber}}
-      <span class="period">— 第{{periodNumber}}期</span>
+
+<h2 class="rank-head">
+  {{title}}{{if periodNumber}} — 第{{periodNumber}}期{{/if}}
+</h2>
+
+{{if beginTime}}
+<div class="rank-subhead">{{beginTime}}～{{endTime}}</div>
+{{/if}}
+
+<div class="rank-info">
+  <span>排行人数: {{totalCount}}</span>
+  <span class="sep">|</span>
+  <span>显示 Top {{topN}}</span>
+</div>
+
+<div class="rank-list">
+  {{each list ds idx}}
+  <div class="rank-item tier-{{ds.rank <= 3 ? ds.rank : 0}}">
+    <div class="rank-no no-{{ds.rank <= 3 ? ds.rank : ''}}">{{ds.rank}}</div>
+    <div class="rank-face">
+      {{if ds.qqFace}}
+      <img class="face-img" src="{{ds.qqFace}}" />
+      {{else}}
+      <div class="face-no">?</div>
       {{/if}}
     </div>
-    {{if beginTime}}
-    <div class="rank-time">{{beginTime}}～{{endTime}}</div>
+    <div class="rank-user">
+      {{if ds.nickname}}
+      <div class="user-name">{{ds.nickname}}</div>
+      {{/if}}
+      <div class="user-uid">{{ds.uid}}</div>
+    </div>
+    <div class="rank-val">{{ds.score}}</div>
+  </div>
+  {{/each}}
+</div>
+
+{{if selfRank}}
+<div class="rank-me">
+  <div class="me-face">
+    {{if selfRank.qqFace}}
+    <img class="face-img" src="{{selfRank.qqFace}}" />
+    {{else}}
+    <div class="face-no">?</div>
     {{/if}}
   </div>
-
-  <div class="rank-stats">
-    <span>排行人数: {{totalCount}}</span>
-    <span class="stat-sep">|</span>
-    <span>显示 Top {{topN}}</span>
-  </div>
-
-  <div class="rank-body">
-    {{each list ds idx}}
-    <div class="rank-item rank-tier-{{ds.rank <= 3 ? ds.rank : 0}}">
-      <div class="rank-pos rank-pos-{{ds.rank <= 3 ? ds.rank : 0}}">{{ds.rank}}</div>
-      <div class="rank-avatar">
-        {{if ds.qqFace}}
-        <div class="avatar-img" style="background-image:url({{ds.qqFace}})"></div>
-        {{else}}
-        <div class="avatar-placeholder">?</div>
-        {{/if}}
-      </div>
-      <div class="rank-info-col">
-        {{if ds.nickname}}
-        <div class="rank-nickname">{{ds.nickname}}</div>
-        {{/if}}
-        <div class="rank-uid">{{ds.uid}}</div>
-      </div>
-      <div class="rank-score">{{ds.score}}</div>
-      <div class="rank-dim">{{dimLabel}}</div>
-    </div>
-    {{/each}}
-  </div>
-
-  {{if selfRank}}
-  <div class="rank-self-box">
-    <div class="self-avatar">
-      {{if selfRank.qqFace}}
-      <div class="avatar-img" style="background-image:url({{selfRank.qqFace}})"></div>
-      {{else}}
-      <div class="avatar-placeholder">?</div>
-      {{/if}}
-    </div>
-    <div class="self-info">
-      <div class="self-label">你的排名</div>
-      <div class="self-position">#{{selfRank.rank}}</div>
-    </div>
-    <div class="self-detail">
-      <span class="self-uid">UID {{selfRank.uid}}</span>
-      <span class="self-score">{{selfRank.score}} {{dimLabel}}</span>
-    </div>
-  </div>
-  {{/if}}
+  <div class="me-label">你的排名</div>
+  <div class="me-rank">#{{selfRank.rank}}</div>
+  <div class="me-uid">UID {{selfRank.uid}}</div>
+  <div class="me-score">{{selfRank.score}} {{dimLabel}}</div>
 </div>
+{{/if}}
+
 {{/block}}

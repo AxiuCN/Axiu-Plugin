@@ -1,6 +1,6 @@
-.rank-container {
-  padding: 30px 20px 20px;
-  width: 720px;
+.container {
+  padding: 30px 30px 20px 30px;
+  width: 800px;
   overflow: hidden;
   background: url('./images/bg_2.8d088acd.png') center / cover no-repeat;
   color: #f0eaca;
@@ -8,56 +8,40 @@
   box-sizing: border-box;
 }
 
-.rank-container * {
-  box-sizing: border-box;
-}
+.container * { box-sizing: border-box; }
 
-/* ===== 头部 ===== */
-
-.rank-header-box {
+/* ===== 标题 ===== */
+.rank-head {
   text-align: center;
-  margin-bottom: 10px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid rgba(240, 234, 202, 0.2);
-}
-
-.rank-title {
-  font-size: 26px;
+  font-size: 28px;
   font-weight: bold;
   color: #ffd780;
-  text-shadow: 0 0 10px rgba(255, 215, 128, 0.5);
-  line-height: 1.4;
+  text-shadow: 0 0 10px rgba(255,215,128,0.5);
+  margin-bottom: 4px;
 }
 
-.rank-title .period {
-  font-size: 20px;
-  color: rgba(255, 215, 128, 0.7);
-}
-
-.rank-time {
-  margin-top: 4px;
+.rank-subhead {
+  text-align: center;
   font-size: 14px;
-  color: rgba(240, 234, 202, 0.5);
+  color: rgba(240,234,202,0.5);
+  margin-bottom: 12px;
 }
 
-/* ===== 统计信息 ===== */
-
-.rank-stats {
+/* ===== 统计 ===== */
+.rank-info {
   text-align: center;
   font-size: 13px;
-  color: rgba(240, 234, 202, 0.55);
+  color: rgba(240,234,202,0.5);
   margin-bottom: 14px;
-  letter-spacing: 1px;
 }
 
-.stat-sep {
+.rank-info .sep {
   margin: 0 10px;
-  color: rgba(240, 234, 202, 0.25);
+  color: rgba(240,234,202,0.2);
 }
 
-/* ===== 排行条目 ===== */
-
-.rank-body {
+/* ===== 排行列表 ===== */
+.rank-list {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -68,116 +52,79 @@
   align-items: center;
   padding: 8px 14px;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.2);
-  transition: background 0.15s;
+  background: rgba(0,0,0,0.2);
 }
 
-/* 前三行高亮 */
-.rank-tier-1 {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.12), rgba(255, 215, 0, 0.04));
-  border: 1px solid rgba(255, 215, 0, 0.25);
+.tier-1 {
+  background: linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,215,0,0.04));
+  border: 1px solid rgba(255,215,0,0.25);
 }
 
-.rank-tier-2 {
-  background: linear-gradient(135deg, rgba(192, 192, 192, 0.10), rgba(192, 192, 192, 0.03));
-  border: 1px solid rgba(192, 192, 192, 0.20);
+.tier-2 {
+  background: linear-gradient(135deg, rgba(192,192,192,0.10), rgba(192,192,192,0.03));
+  border: 1px solid rgba(192,192,192,0.20);
 }
 
-.rank-tier-3 {
-  background: linear-gradient(135deg, rgba(205, 127, 50, 0.10), rgba(205, 127, 50, 0.03));
-  border: 1px solid rgba(205, 127, 50, 0.20);
+.tier-3 {
+  background: linear-gradient(135deg, rgba(205,127,50,0.10), rgba(205,127,50,0.03));
+  border: 1px solid rgba(205,127,50,0.20);
 }
 
 /* ===== 排名数字 ===== */
-
-.rank-pos {
-  width: 40px;
+.rank-no {
+  width: 36px;
   text-align: center;
   font-size: 18px;
   font-weight: 800;
   font-family: 'Number', monospace;
   flex-shrink: 0;
+  color: rgba(240,234,202,0.55);
 }
 
-.rank-pos-0 {
-  color: rgba(240, 234, 202, 0.6);
-}
-
-.rank-pos-1 {
-  color: #ffd780;
-  font-size: 22px;
-  text-shadow: 0 0 8px rgba(255, 215, 128, 0.6);
-}
-
-.rank-pos-2 {
-  color: #c0c0c0;
-  font-size: 20px;
-  text-shadow: 0 0 6px rgba(192, 192, 192, 0.4);
-}
-
-.rank-pos-3 {
-  color: #cd7f32;
-  font-size: 20px;
-  text-shadow: 0 0 6px rgba(205, 127, 50, 0.4);
-}
+.no-1 { color: #ffd780; font-size: 22px; text-shadow: 0 0 8px rgba(255,215,128,0.5); }
+.no-2 { color: #c0c0c0; font-size: 20px; text-shadow: 0 0 6px rgba(192,192,192,0.3); }
+.no-3 { color: #cd7f32; font-size: 20px; text-shadow: 0 0 6px rgba(205,127,50,0.3); }
 
 /* ===== 头像 ===== */
-
-.rank-avatar {
-  width: 48px;
-  height: 48px;
+.rank-face {
+  width: 44px;
+  height: 44px;
   flex-shrink: 0;
   margin: 0 12px;
 }
 
-.avatar-img {
+.face-img {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  border: 2px solid rgba(240, 234, 202, 0.25);
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
+  object-fit: cover;
+  border: 2px solid rgba(240,234,202,0.25);
 }
 
-.rank-tier-1 .avatar-img {
-  border-color: rgba(255, 215, 0, 0.5);
-  box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
-}
+.tier-1 .face-img { border-color: rgba(255,215,0,0.5); }
+.tier-2 .face-img { border-color: rgba(192,192,192,0.4); }
+.tier-3 .face-img { border-color: rgba(205,127,50,0.4); }
 
-.rank-tier-2 .avatar-img {
-  border-color: rgba(192, 192, 192, 0.4);
-}
-
-.rank-tier-3 .avatar-img {
-  border-color: rgba(205, 127, 50, 0.4);
-}
-
-.avatar-placeholder {
+.face-no {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: rgba(240, 234, 202, 0.1);
-  border: 2px solid rgba(240, 234, 202, 0.2);
+  background: rgba(240,234,202,0.08);
+  border: 2px solid rgba(240,234,202,0.18);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
-  color: rgba(240, 234, 202, 0.4);
+  font-size: 18px;
+  color: rgba(240,234,202,0.3);
 }
 
-/* ===== 用户信息列 ===== */
-
-.rank-info-col {
+/* ===== 用户信息 ===== */
+.rank-user {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
 }
 
-.rank-nickname {
+.user-name {
   font-size: 15px;
   font-weight: 600;
   color: #f0eaca;
@@ -186,110 +133,54 @@
   text-overflow: ellipsis;
 }
 
-.rank-uid {
+.user-uid {
   font-size: 12px;
-  color: rgba(240, 234, 202, 0.5);
+  color: rgba(240,234,202,0.45);
   font-family: 'Number', monospace;
 }
 
-/* ===== 分数列 ===== */
-
-.rank-score {
-  min-width: 70px;
-  text-align: right;
+/* ===== 分数 ===== */
+.rank-val {
   font-size: 18px;
   font-weight: 800;
   font-family: 'Number', monospace;
-  flex-shrink: 0;
   color: #ffd780;
-  overflow: hidden;
-}
-
-.rank-tier-1 .rank-score {
-  color: #ffd700;
-  font-size: 20px;
-  text-shadow: 0 0 6px rgba(255, 215, 0, 0.4);
-}
-
-.rank-tier-2 .rank-score {
-  color: #d0d0d0;
-}
-
-.rank-tier-3 .rank-score {
-  color: #e09145;
-}
-
-.rank-dim {
-  width: 50px;
-  text-align: left;
-  font-size: 12px;
-  color: rgba(240, 234, 202, 0.4);
-  margin-left: 6px;
+  min-width: 60px;
+  text-align: right;
   flex-shrink: 0;
 }
 
-/* ===== 自排名 ===== */
+.tier-1 .rank-val { color: #ffd700; font-size: 20px; text-shadow: 0 0 6px rgba(255,215,0,0.3); }
+.tier-2 .rank-val { color: #d0d0d0; }
+.tier-3 .rank-val { color: #e09145; }
 
-.rank-self-box {
+/* ===== 我的排名 ===== */
+.rank-me {
   margin-top: 18px;
-  padding: 12px 18px;
-  background: rgba(255, 215, 128, 0.10);
-  border: 1px solid rgba(255, 215, 128, 0.25);
+  padding: 10px 18px;
+  background: rgba(255,215,128,0.10);
+  border: 1px solid rgba(255,215,128,0.25);
   border-radius: 10px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
-.self-avatar {
-  width: 44px;
-  height: 44px;
+.me-face {
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
 }
 
-.self-avatar .avatar-img {
-  border-color: rgba(255, 215, 128, 0.4);
-}
+.me-face .face-img { border-color: rgba(255,215,128,0.4); }
+.me-face .face-no { border-color: rgba(255,215,128,0.25); }
 
-.self-avatar .avatar-placeholder {
-  border-color: rgba(255, 215, 128, 0.3);
-}
-
-.self-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex-shrink: 0;
-}
-
-.self-label {
-  font-size: 12px;
-  color: rgba(240, 234, 202, 0.5);
-}
-
-.self-position {
-  font-size: 22px;
-  font-weight: 800;
-  color: #ffd780;
-  font-family: 'Number', monospace;
-}
-
-.self-detail {
-  flex: 1;
-  text-align: right;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.self-uid {
-  font-size: 13px;
-  color: rgba(240, 234, 202, 0.6);
-  font-family: 'Number', monospace;
-}
-
-.self-score {
-  font-size: 17px;
+.me-label { font-size: 12px; color: rgba(240,234,202,0.5); }
+.me-rank { font-size: 20px; font-weight: 800; color: #ffd780; font-family: 'Number', monospace; }
+.me-uid { font-size: 13px; color: rgba(240,234,202,0.5); font-family: 'Number', monospace; }
+.me-score {
+  margin-left: auto;
+  font-size: 16px;
   font-weight: 700;
   color: #ffd780;
 }

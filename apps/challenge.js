@@ -512,28 +512,29 @@ export class ChallengeApp extends plugin {
     const totalCount = await ChallengeRank.getRankCount(e.group_id, challengeType, dimension, scheduleId)
 
     // 获取 QQ 身份信息（头像、昵称）— 参考 miao-plugin ProfileRank
-    const fetchMember = async (qq) => {
-      if (!qq) return {}
-      try {
-        const member = Bot.pickMember(e.group_id, qq)
-        const avatarUrl = await member?.getAvatarUrl?.().catch(() => null)
-        return {
-          qqFace: avatarUrl || `https://q.qlogo.cn/g?b=qq&s=0&nk=${qq}`,
-          nickname: member?.card || member?.name || ''
-        }
-      } catch { return {} }
+    const pickMember = (qq) => {
+      if (!qq) return null
+      try { return e.group.pickMember(qq) } catch { return null }
     }
 
     await Promise.all(list.map(async (item) => {
-      const info = await fetchMember(item.qq)
-      item.qqFace = info.qqFace
-      item.nickname = info.nickname
+      const member = pickMember(item.qq)
+      if (member) {
+        try {
+          item.qqFace = await member.getAvatarUrl?.().catch(() => null) || `https://q.qlogo.cn/g?b=qq&nk=${item.qq}&s=100`
+        } catch { item.qqFace = `https://q.qlogo.cn/g?b=qq&nk=${item.qq}&s=100` }
+        item.nickname = member.card || member.name || ''
+      }
     }))
 
     if (selfRank) {
-      const info = await fetchMember(selfRank.qq)
-      selfRank.qqFace = info.qqFace
-      selfRank.nickname = info.nickname
+      const member = pickMember(selfRank.qq)
+      if (member) {
+        try {
+          selfRank.qqFace = await member.getAvatarUrl?.().catch(() => null) || `https://q.qlogo.cn/g?b=qq&nk=${selfRank.qq}&s=100`
+        } catch { selfRank.qqFace = `https://q.qlogo.cn/g?b=qq&nk=${selfRank.qq}&s=100` }
+        selfRank.nickname = member.card || member.name || ''
+      }
     }
 
     // 获取赛季元信息
