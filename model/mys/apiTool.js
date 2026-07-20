@@ -1,4 +1,4 @@
-import Cfg from '../Cfg.js'
+import gsCfg from '../gsCfg.js'
 import crypto from 'crypto'
 
 export default class apiTool {
@@ -58,26 +58,26 @@ export default class apiTool {
         }
       },
       test_nine: {
-        url: `${Cfg.api.api}`,
+        url: `${gsCfg.api.api}`,
         query: `gt=${data.gt}&challenge=${data.challenge}`
       },
       recognize: {
-        url: `${Cfg.api.api}`,
-        config: `${Cfg.api.key}&${Cfg.api.query}&gt=${data.gt}&challenge=${data.challenge}`,
+        url: `${gsCfg.api.api}`,
+        config: `${gsCfg.api.key}&${gsCfg.api.query}&gt=${data.gt}&challenge=${data.challenge}`,
         types: 'noheader'
       },
       results: {
-        url: `${Cfg.api.resapi}`,
-        config: `${Cfg.api.key}&resultid=${data.resultid}`,
+        url: `${gsCfg.api.resapi}`,
+        config: `${gsCfg.api.key}&resultid=${data.resultid}`,
         types: 'noheader'
       },
       in: {
-        url: `${Cfg.api.api}`,
-        query: `${Cfg.api.key}&${Cfg.api.query}&gt=${data.gt}&challenge=${data.challenge}`
+        url: `${gsCfg.api.api}`,
+        query: `${gsCfg.api.key}&${gsCfg.api.query}&gt=${data.gt}&challenge=${data.challenge}`
       },
       res: {
-        url: `${Cfg.api.resapi}`,
-        query: `${Cfg.api.key}&${Cfg.api.resquery}&id=${data.request}`
+        url: `${gsCfg.api.resapi}`,
+        query: `${gsCfg.api.key}&${gsCfg.api.resquery}&id=${data.request}`
       },
       /** fp参数用于减少验证码 */
       ...(/cn_|_cn/.test(this.server) ? {

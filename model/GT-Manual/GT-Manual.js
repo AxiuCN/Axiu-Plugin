@@ -1,5 +1,5 @@
 import express from 'express'
-import Cfg from '../Cfg.js'
+import gsCfg from '../gsCfg.js'
 import _ from 'lodash'
 
 let tmp = {}
@@ -8,7 +8,7 @@ let result = {}
 const Path = 'https://img-hut.top/gt/'
 export default class GT_Manual {
   constructor() {
-    this.cfg = Cfg.api
+    this.cfg = gsCfg.api
     this.app = express()
   }
 
@@ -80,8 +80,8 @@ export default class GT_Manual {
     /** 未点击2分钟后删除 */
     setTimeout(() => delete tmp[key] && delete isRegister[key], 120000)
     GT_Manual.send(res, {
-      link: `${Cfg.api.Address}/GTest/${key}`,
-      result: `${Cfg.api.Address}/GTest/validate/${key}`
+      link: `${gsCfg.api.Address}/GTest/${key}`,
+      result: `${gsCfg.api.Address}/GTest/validate/${key}`
     })
   }
 

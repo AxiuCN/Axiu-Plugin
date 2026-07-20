@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'url'
 import path from 'node:path'
 import plugin from '../../../lib/plugins/plugin.js'
-import { getGroupApproveConfig } from '../components/config.js'
+import { getGroupApproveConfig } from '../components/groupConfig.js'
 import { handleRequest } from '../modules/groupApprove/ApproveManager.js'
 
 const __filename = fileURLToPath(import.meta.url)

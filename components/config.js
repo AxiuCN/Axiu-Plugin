@@ -1,86 +1,45 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import YAML from 'yaml'
-import { getDefaultGroupConfig } from './constants.js'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const pluginRoot = path.resolve(__dirname, '..')
+const configDir = path.join(pluginRoot, 'config')
+const configFile = path.join(configDir, 'config.yaml')
+const exampleFile = path.join(configDir, 'config.yaml.example')
+
+/** 默认配置 */
+const defaultConfig = {
+  srChallenge: { enabled: true },
+  proxySpeak: { enabled: true }
+}
 
 /**
- * 加载入群审核配置
- * 优先级：config/group_config.yaml > config/group_config.yaml.example > 空 Map
- * 首次启动时自动从 .example 复制到 group_config.yaml
- * 支持两种 YAML 格式：
- *   - 列表格式（锅巴 GSubForm）：groups: [{groupId, whitelistAnswers, blacklistAnswers}]
- *   - 映射格式（手动编辑）：groups: {"123": {whitelistAnswers: [...], blacklistAnswers: [...]}}
- * @param {string} pluginRoot - 插件根目录
- * @returns {Map<string, {whitelistAnswers: string[], blacklistAnswers: string[]}>}
+ * 获取插件配置
+ * config.yaml 不存在时从 .example 复制；.example 也不存在则返回默认值
+ * @returns {object} 配置对象
  */
-export function getGroupApproveConfig(pluginRoot) {
-  const configPath = path.join(pluginRoot, 'config', 'group_config.yaml')
-  const examplePath = path.join(pluginRoot, 'config', 'group_config.yaml.example')
-
-  let raw = null
-
-  if (fs.existsSync(configPath)) {
+export function getPluginConfig () {
+  if (fs.existsSync(configFile)) {
     try {
-      raw = YAML.parse(fs.readFileSync(configPath, 'utf8')) || {}
-    } catch (err) {
-      logger.error('[Axiu-Plugin] 解析 group_config.yaml 失败:', err)
-      return getDefaultGroupConfig()
-    }
-  } else if (fs.existsSync(examplePath)) {
-    try {
-      const dir = path.dirname(configPath)
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-      fs.copyFileSync(examplePath, configPath)
-      logger.info('[Axiu-Plugin] 已从 .example 创建 group_config.yaml，请按需修改')
-      raw = YAML.parse(fs.readFileSync(examplePath, 'utf8')) || {}
-    } catch (err) {
-      logger.error('[Axiu-Plugin] 从 .example 复制群配置失败:', err)
-      return getDefaultGroupConfig()
+      return { ...defaultConfig, ...YAML.parse(fs.readFileSync(configFile, 'utf8')) }
+    } catch (e) {
+      logger?.warn('[Axiu-Plugin] 配置文件解析失败，使用默认配置')
+      return defaultConfig
     }
   }
-
-  if (!raw) {
-    logger.warn('[Axiu-Plugin] 无入群审核配置文件，使用空配置')
-    return getDefaultGroupConfig()
+  if (fs.existsSync(exampleFile)) {
+    fs.copyFileSync(exampleFile, configFile)
+    logger?.info('[Axiu-Plugin] 已从 config.yaml.example 创建配置文件')
+    try {
+      return { ...defaultConfig, ...YAML.parse(fs.readFileSync(configFile, 'utf8')) }
+    } catch (e) {
+      return defaultConfig
+    }
   }
-
-  return normalizeGroupConfig(raw)
+  return defaultConfig
 }
 
-/**
- * 将 YAML 解析结果标准化为 Map 格式
- * @param {object} raw - YAML 解析结果
- * @returns {Map<string, {whitelistAnswers: string[], blacklistAnswers: string[]}>}
- */
-function normalizeGroupConfig(raw) {
-  const map = new Map()
-  const groups = raw.groups
-  if (!groups) return map
+export { pluginRoot, configDir, configFile, exampleFile }
 
-  /** @type {Array<{groupId?: string, whitelistAnswers?: string|string[], blacklistAnswers?: string|string[]}>} */
-  const items = Array.isArray(groups)
-    ? groups
-    : Object.entries(groups).map(([groupId, cfg]) => ({ groupId, ...cfg }))
-
-  for (const item of items) {
-    const groupId = String(item.groupId || '').trim()
-    if (!groupId) continue
-
-    map.set(groupId, {
-      whitelistAnswers: normalizeAnswerList(item.whitelistAnswers),
-      blacklistAnswers: normalizeAnswerList(item.blacklistAnswers)
-    })
-  }
-
-  return map
-}
-
-/**
- * 标准化答案列表（GTags 原生数组，直接返回）
- * @param {string[]|undefined} answers
- * @returns {string[]}
- */
-function normalizeAnswerList(answers) {
-  if (!Array.isArray(answers)) return []
-  return answers.map(a => String(a).trim()).filter(Boolean)
-}

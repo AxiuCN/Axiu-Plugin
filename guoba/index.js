@@ -8,7 +8,8 @@ import * as captchaMod from './captcha.js'
 import * as signinMod from './signin.js'
 import * as srChallengeMod from './srChallenge.js'
 import * as proxySpeakMod from './proxySpeak.js'
-import Cfg from '../model/Cfg.js'
+import gsCfg from '../model/gsCfg.js'
+import { getPluginConfig } from '../components/config.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -87,7 +88,7 @@ function readBbsToolsTemplateRaw () {
 
 /** 读取 signin 主配置（从 config.yaml） */
 function readSigninConfigRaw () {
-  const cfg = Cfg.getConfig('config') || {}
+  const cfg = gsCfg.getConfig('config') || {}
   return cfg.signin || {}
 }
 
@@ -111,15 +112,15 @@ export function supportGuoba () {
       schemas: [
         ...qrLoginMod.getSchema(),
         ...signinMod.getSchema(),
-        ...srChallengeMod.getSchema(),
         ...captchaMod.getSchema(),
+        ...srChallengeMod.getSchema(),
         ...groupApproveMod.getSchema(),
         ...proxySpeakMod.getSchema()
       ],
 
       getConfigData () {
         const groupRaw = readGroupConfigRaw()
-        const apiCfg = Cfg.api || {}
+        const apiCfg = gsCfg.api || {}
         const signinCfg = readSigninConfigRaw()
         const bbsTemplate = readBbsToolsTemplateRaw()
         const mihoyobbs = bbsTemplate.mihoyobbs || {}
@@ -149,10 +150,10 @@ export function supportGuoba () {
           'api.qrLogin_enabled': apiCfg.qrLogin_enabled ?? true,
 
           // srChallenge
-          'srChallenge.enabled': (Cfg.getConfig('config')?.srChallenge || {}).enabled ?? true,
+          'srChallenge.enabled': getPluginConfig()?.srChallenge?.enabled ?? true,
 
           // proxySpeak
-          'proxySpeak.enabled': (Cfg.getConfig('config')?.proxySpeak || {}).enabled ?? true,
+          'proxySpeak.enabled': getPluginConfig()?.proxySpeak?.enabled ?? true,
 
           // signin 主配置
           'signin.enable': signinCfg.enable ?? true,
@@ -266,9 +267,9 @@ export function supportGuoba () {
 
           fs.writeFileSync(BBS_TOOLS_TEMPLATE_PATH, YAML.stringify(bbsTemplate), 'utf8')
 
-          // 使 Cfg 缓存失效
-          delete Cfg.config.config
-          delete Cfg.defSet.config
+          // 清除 gsCfg 缓存
+          delete gsCfg.config.config
+          delete gsCfg.defSet.config
 
           return Result.ok({}, '保存成功~')
         } catch (err) {

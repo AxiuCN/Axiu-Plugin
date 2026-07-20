@@ -1,6 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import LoveMys from '../model/loveMys.js'
-import Cfg from '../model/Cfg.js'
+import gsCfg from '../model/gsCfg.js'
 
 const loveMys = new LoveMys()
 
@@ -36,7 +36,7 @@ export class CaptchaHandler extends plugin {
     }
 
     // 校验配置完整性
-    const apiCfg = Cfg.api
+    const apiCfg = gsCfg.api
     let apiCheck
     if (apiCfg.type == 0) {
       apiCheck = !apiCfg.api

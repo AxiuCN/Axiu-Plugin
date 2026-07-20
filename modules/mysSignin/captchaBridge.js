@@ -6,7 +6,7 @@
  *  本模块负责：
  *    轮询 .request.json → 复用 loveMys Geetest 求解链路 → 写入 .response.json
  *
- *  支持三种平台（由 Cfg.api.type 决定）：
+ *  支持三种平台（由 gsCfg.api.type 决定）：
  *    type 0: test_nine 本地 AI
  *    type 1: ttocr.com
  *    type 2: 2captcha.com
@@ -15,7 +15,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import fetch from 'node-fetch'
-import Cfg from '../../model/Cfg.js'
+import gsCfg from '../../model/gsCfg.js'
 import { SIGNIN_LOG_PREFIX } from '../../components/constants.js'
 
 /** 轮询间隔 (ms) */
@@ -116,7 +116,7 @@ export class CaptchaBridge {
       return { ok: false, challenge: '', validate: '' }
     }
 
-    const apiCfg = Cfg.api || {}
+    const apiCfg = gsCfg.api || {}
     const type = apiCfg.type
 
     try {

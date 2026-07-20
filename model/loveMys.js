@@ -2,7 +2,7 @@ import common from '../../../lib/common/common.js'
 import getDeviceFp from './getDeviceFp.js'
 import MysApi from './mys/mysApi.js'
 import fetch from 'node-fetch'
-import Cfg from './Cfg.js'
+import gsCfg from './gsCfg.js'
 
 export default class LoveMys {
   async getvali (e, mysApi, type, data = {}) {
@@ -56,8 +56,8 @@ export default class LoveMys {
         return { data: null, message: '未知错误，可能为cookie失效', retcode: 10103 }
       }
 
-      let type = Cfg.api.type
-      let GtestType = Cfg.api.GtestType
+      let type = gsCfg.api.type
+      let GtestType = gsCfg.api.GtestType
       let test_nine = res
       let retry = 0
       if (type == 0) {
@@ -129,7 +129,7 @@ export default class LoveMys {
    */
   async Manual_geetest (e, data) {
     if (!data.gt || !data.challenge || !e?.reply) return false
-    let apiCfg = Cfg.api
+    let apiCfg = gsCfg.api
     if (!apiCfg.verifyAddr || (!apiCfg.startApi && !(apiCfg.Port || apiCfg.Address))) {
       return { data: null, message: '未正确填写配置文件[api.yaml]', retcode: null }
     }

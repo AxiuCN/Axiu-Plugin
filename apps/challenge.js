@@ -87,6 +87,9 @@ export class ChallengeApp extends plugin {
 
   /** 获取用户认证（uid + ck），失败时已发送错误消息，调用方直接 return true */
   async _getUserAuth (e) {
+    // 确保 MysInfo.getUid 查询 sr 而非 gs
+    e.isSr = true
+
     // 获取 UID
     let uid = e.uid
     if (!uid || !/(18|[1-9])[0-9]{8}/.test(uid)) {
@@ -106,7 +109,7 @@ export class ChallengeApp extends plugin {
     }
 
     if (!uid) {
-      await e.reply('请先发送 #扫码登录 绑定账号后重试')
+      await e.reply('未绑定星铁UID，请发送 #扫码登录 绑定账号后重试')
       return null
     }
 
