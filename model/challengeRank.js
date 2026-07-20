@@ -9,10 +9,21 @@
  *   Axiu:challenge:rank:{groupId}:cfg                           String (JSON 群开关)
  */
 
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { LOG_PREFIX } from '../components/constants.js'
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const pluginRoot = path.resolve(__dirname, '..')
 const KEY = 'Axiu:challenge:rank'
+const TTL = 90 * 24 * 3600 // 90 天
 const TYPE_NAMES = ['末日幻影', '虚构叙事', '忘却之庭', '异相仲裁']
+
+// nanoka 图鉴数据目录（Atlas-Plugin 的子模块）
+const NANOKA_BASE = path.resolve(pluginRoot, '../../Atlas-Plugin/tool/nanoka-atlas-backend/nanoka-atlas-backend/data/items/简体中文/星铁')
+// 挑战类型 → nanoka 目录名
+const NANOKA_DIR = ['末日幻影', '虚构叙事', '混沌回忆', '异相仲裁']
 
 /** 起始日期 — 42 天/期 */
 const EPOCH_CONFIG = {
@@ -142,6 +153,30 @@ export default class ChallengeRank {
     } catch { return null }
   }
 
+  /**
+   * 从 nanoka 图鉴数据查找赛季名称
+   * 将 periodNumber 作为索引，在按 recordId 排序的记录中取对应位置
+   */
+  static _lookupSeasonName (challengeType, periodNumber) {
+    if (periodNumber == null || periodNumber < 1) return ''
+    const dir = path.join(NANOKA_BASE, NANOKA_DIR[challengeType], '未分类')
+    let files = []
+    try { files = fs.readdirSync(dir).filter(f => f.endsWith('.json')) } catch { return '' }
+
+    const records = []
+    for (const file of files) {
+      try {
+        const d = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'))
+        const id = d.meta?.recordId
+        if (id != null) records.push({ id: Number(id), zh: d.content?.list?.zh || '' })
+      } catch { /* skip */ }
+    }
+    records.sort((a, b) => a.id - b.id)
+
+    const idx = Math.min(periodNumber - 1, records.length - 1)
+    return records[idx]?.zh || ''
+  }
+
   // ==================== score 提取 ====================
 
   static extractScores (data, challengeType) {
@@ -180,7 +215,7 @@ export default class ChallengeRank {
 
   // ==================== 上报 ====================
 
-  static async report (uid, qq, groupId, challengeType, data, scheduleId, seasonName = '') {
+  static async report (uid, qq, groupId, challengeType, data, scheduleId) {
     const { scores, extra } = this.extractScores(data, challengeType)
 
     // 写 ZSET（每个维度一个 key）
@@ -188,18 +223,21 @@ export default class ChallengeRank {
       const val = scores[dim.key]
       if (val == null || val === 0) continue
       try {
-        await redis.zAdd(rankKey(groupId, challengeType, dim.key, scheduleId), { score: val, value: String(uid) })
+        const rk = rankKey(groupId, challengeType, dim.key, scheduleId)
+        await redis.zAdd(rk, { score: val, value: String(uid) })
+        await redis.expire(rk, TTL)
       } catch (err) {
         logger?.error(`${LOG_PREFIX}[排行] zAdd 失败`, err)
       }
     }
 
     // 当前赛季 scheduleId
-    try { await redis.set(currentKey(challengeType, groupId), scheduleId) } catch {}
+    try { await redis.setEx(currentKey(challengeType, groupId), TTL, scheduleId) } catch {}
 
     // 赛季元信息
     try {
-      // 时间：末日/虚构在 groups[0]，忘却/仲裁在顶层/peak_records.group
+      const periodNum = this.getPeriodNumber(data, challengeType)
+      const name = this._lookupSeasonName(challengeType, periodNum)
       const fmt = (t) => t ? `${t.year}.${String(t.month).padStart(2,'0')}.${String(t.day).padStart(2,'0')}` : ''
       const bt = data.beginTime
         || fmt(data.peak_records?.group?.begin_time)
@@ -209,11 +247,11 @@ export default class ChallengeRank {
         || fmt(data.peak_records?.group?.end_time)
         || fmt(data.groups?.[0]?.end_time)
         || ''
-      await redis.set(seasonKey(challengeType, scheduleId), JSON.stringify({
-        scheduleName: seasonName,
+      await redis.setEx(seasonKey(challengeType, scheduleId), TTL, JSON.stringify({
+        scheduleName: name,
         beginTime: bt,
         endTime: et,
-        periodNumber: this.getPeriodNumber(data, challengeType)
+        periodNumber: periodNum
       }))
     } catch {}
 

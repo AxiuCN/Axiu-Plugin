@@ -117,12 +117,12 @@ export class ChallengeApp extends plugin {
    * @param {string} scheduleType
    * @param {boolean} isDetailedSuccess - 详细 API 是否返回 0
    */
-  _reportRanking (data, uid, challengeType, scheduleType, isDetailedSuccess, seasonName = '') {
+  _reportRanking (data, uid, challengeType, scheduleType, isDetailedSuccess) {
     if (!this.e.isGroup || !isDetailedSuccess) return
     if (!this._isRankEnabled()) return
     const scheduleId = ChallengeRank.getScheduleId(data, challengeType, scheduleType)
     const qq = this.e.at || this.e.user_id
-    ChallengeRank.report(uid, qq, this.e.group_id, challengeType, data, scheduleId, seasonName).catch(
+    ChallengeRank.report(uid, qq, this.e.group_id, challengeType, data, scheduleId).catch(
       err => logger?.error(`${LOG_PREFIX}[排行] 上报失败`, err)
     )
   }
@@ -314,8 +314,7 @@ export class ChallengeApp extends plugin {
       })
     }
 
-    const seasonName = challengeData?.meta?.name || ''
-    this._reportRanking(data, uid, challengeType, scheduleType, !simple && res?.retcode === 0, seasonName)
+    this._reportRanking(data, uid, challengeType, scheduleType, !simple && res?.retcode === 0)
 
     return { data, uid, challengeType, type: scheduleType }
   }
