@@ -143,6 +143,20 @@ export default class ChallengeRank {
     return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
   }
 
+  /**
+   * 获取当前赛季 scheduleId（用于排名查询，保持与上报一致）
+   * @param {number} challengeType
+   * @param {number|string} groupId
+   * @returns {Promise<string|null>}
+   */
+  static async getCurrentScheduleId (challengeType, groupId) {
+    try {
+      return await redis.get(`${KEY_PREFIX}:current:${challengeType}:${groupId}`)
+    } catch {
+      return null
+    }
+  }
+
   // ==================== score 提取 ====================
 
   /**
@@ -239,6 +253,11 @@ export default class ChallengeRank {
         logger?.error(`${LOG_PREFIX}[排行] zAdd 失败: ${key}`, err)
       }
     }
+
+    // 更新当前赛季 scheduleId（排名查询用）
+    try {
+      await redis.set(`${KEY_PREFIX}:current:${challengeType}:${groupId}`, scheduleId)
+    } catch {}
 
     // 更新 UID 信息缓存（TTL 90 天）
     try {

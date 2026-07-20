@@ -486,9 +486,13 @@ export class ChallengeApp extends plugin {
     const cfg = getPluginConfig()
     const topN = cfg?.srChallengeRank?.rankNumber || 20
 
-    // 获取当前赛季 scheduleId
-    const scheduleId = String(Math.floor(Date.now() / (1000 * 60 * 60 * 24 * 14))) // 两周一个赛季
     const typeName = ChallengeRank.getTypeName(challengeType)
+    // 获取当前赛季 scheduleId（与上报时一致）
+    const scheduleId = await ChallengeRank.getCurrentScheduleId(challengeType, e.group_id)
+    if (!scheduleId) {
+      await e.reply(`本群暂无${typeName}排行数据，请先发送挑战查询命令（如 *${['末日', '虚构', '忘却', '仲裁'][challengeType]}）上报数据`)
+      return true
+    }
     const dims = ChallengeRank.getDimensions(challengeType)
     const dimDef = dims.find(d => d.key === dimension)
     const dimLabel = dimDef?.label || dimension
