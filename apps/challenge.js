@@ -121,7 +121,7 @@ export class ChallengeApp extends plugin {
     if (!this.e.isGroup || !isDetailedSuccess) return
     if (!this._isRankEnabled()) return
     const scheduleId = ChallengeRank.getScheduleId(data, challengeType, scheduleType)
-    const qq = this.e.user_id
+    const qq = this.e.at || this.e.user_id
     ChallengeRank.report(uid, qq, this.e.group_id, challengeType, data, scheduleId).catch(
       err => logger?.error(`${LOG_PREFIX}[排行] 上报失败`, err)
     )
