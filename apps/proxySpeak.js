@@ -1,5 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import loader from '../../../lib/plugins/loader.js'
+import { getPluginConfig } from '../components/config.js'
 
 export class ProxySpeak extends plugin {
   constructor() {
@@ -27,6 +28,9 @@ export class ProxySpeak extends plugin {
    * @param {object} e - Runtime 事件对象
    */
   async proxySpeak(e) {
+    const cfg = getPluginConfig()
+    if (cfg?.proxySpeak?.enabled === false) return false
+
     if (!e.isGroup) {
       await e.reply('代发言仅在群聊中可用')
       return true

@@ -10,11 +10,14 @@
  *    *最新深渊 / *当期深渊 — 当前最新一期
  *
  *  修饰符: 上期/本期 | 简易（跳过详细API）| 往期（仲裁三期历史）
+ *
+ *  配置: config.yaml → srChallenge.enabled: true/false
  */
 
 import MysSrApi from '../model/mys/mysSrApi.js'
 import { render } from '../components/render.js'
 import { LOG_PREFIX } from '../components/constants.js'
+import { getPluginConfig } from '../components/config.js'
 
 /** 挑战类型 → 中文名映射 */
 const TYPE_NAMES = ['末日幻影', '虚构叙事', '忘却之庭', '异相仲裁']
@@ -76,30 +79,66 @@ export class ChallengeApp extends plugin {
     })
   }
 
+  /** 检查功能是否开启 */
+  _isEnabled () {
+    const cfg = getPluginConfig()
+    return cfg?.srChallenge?.enabled !== false
+  }
+
+  /** 获取用户认证（uid + ck），失败时已发送错误消息，调用方直接 return true */
+  async _getUserAuth (e) {
+    // 获取 UID
+    let uid = e.uid
+    if (!uid || !/(18|[1-9])[0-9]{8}/.test(uid)) {
+      const msgMatch = e.msg.match(/\d{9,10}/)
+      if (msgMatch) {
+        uid = msgMatch[0]
+      } else {
+        // 设置 noTips 阻止 genshin MysInfo.getUid 发"请先#绑定uid"
+        const prevNoTips = e.noTips
+        e.noTips = true
+        try {
+          const MysInfo = (await import('../../genshin/model/mys/mysInfo.js')).default
+          uid = await MysInfo.getUid(e, true)
+        } catch {}
+        e.noTips = prevNoTips
+      }
+    }
+
+    if (!uid) {
+      await e.reply('请先发送 #扫码登录 绑定账号后重试')
+      return null
+    }
+
+    // 获取 Cookie
+    try {
+      const MysInfo = (await import('../../genshin/model/mys/mysInfo.js')).default
+      const result = await MysInfo.checkUidBing(uid, 'sr')
+      const ck = result?.ck
+      if (ck) return { uid, ck }
+    } catch {}
+
+    await e.reply('尚未绑定Cookie，请发送 #扫码登录 绑定账号后重试')
+    return null
+  }
+
   // ==================== 核心查询 ====================
 
   /**
    * 查询挑战数据
    * @param {object} e - 消息 event
    * @param {number} challengeType - 0=末日, 1=虚构, 2=忘却, 3=仲裁
-   * @param {boolean} [all] - 是否跳过 uid/ck 读取（批量查询时已提前获取）
-   * @param {string} [uid] - 预获取的 uid
-   * @param {string} [ck] - 预获取的 ck
+   * @param {object} auth - { uid, ck }，批量查询时外部传入
    */
-  async queryChallenge (e, challengeType, all, uid, ck) {
+  async queryChallenge (e, challengeType, auth) {
     this.e.isSr = true
     this.isSr = true
     const simple = this.e.msg.match('简易')
     const last = this.e.msg.match('上期')
     const recent = this.e.msg.match('往期')
 
-    // 获取 uid + cookie（批量查询时外部已提前获取）
-    if (all !== true) {
-      uid = await this._userUid(e)
-      if (!uid) return false
-      ck = await this._userCk(e, uid)
-      if (!ck) return false
-    }
+    const uid = auth.uid
+    const ck = auth.ck
 
     // schedule_type: 1=本期, 2=上期, 3=第三期（仲裁专用）
     let scheduleType = '1'
@@ -110,7 +149,7 @@ export class ChallengeApp extends plugin {
 
     // 获取设备指纹
     let deviceFp = await api.getData('getFp')
-    if (!deviceFp?.data?.device_fp) return false
+    if (!deviceFp?.data?.device_fp) return null
     deviceFp = deviceFp?.data?.device_fp
 
     let challengeData, res, simpleRes
@@ -127,7 +166,7 @@ export class ChallengeApp extends plugin {
       const simpleRequestType = CHALLENGE_API_SIMPLE_KEYS[challengeType]
       simpleRes = await api.getData(simpleRequestType, { deviceFp, schedule_type: scheduleType })
       simpleRes = await api.checkCode(this.e, simpleRes, simpleRequestType, { deviceFp, schedule_type: scheduleType })
-      if (simpleRes?.retcode !== 0) return false
+      if (simpleRes?.retcode !== 0) return null
     }
 
     if (!simple && res?.retcode === 0) {
@@ -255,37 +294,53 @@ export class ChallengeApp extends plugin {
   // ==================== 各模式命令 ====================
 
   async challengeForgottenHall (e) {
+    if (!this._isEnabled()) return false
+    const auth = await this._getUserAuth(e)
+    if (!auth) return true
+
     await e.reply('正在获取忘却之庭数据，请稍后……')
-    const res = await this.queryChallenge(e, 2)
-    if (!res) return false
+    const res = await this.queryChallenge(e, 2, auth)
+    if (!res) return true
     const img = await render('challenge/SR', 'index', res)
     if (img) await e.reply(img)
     return true
   }
 
   async challengeStory (e) {
+    if (!this._isEnabled()) return false
+    const auth = await this._getUserAuth(e)
+    if (!auth) return true
+
     await e.reply('正在获取虚构叙事数据，请稍后……')
-    const res = await this.queryChallenge(e, 1)
-    if (!res) return false
+    const res = await this.queryChallenge(e, 1, auth)
+    if (!res) return true
     const img = await render('challenge/SR', 'index', res)
     if (img) await e.reply(img)
     return true
   }
 
   async challengeBoss (e) {
+    if (!this._isEnabled()) return false
+    const auth = await this._getUserAuth(e)
+    if (!auth) return true
+
     await e.reply('正在获取末日幻影数据，请稍后……')
-    const res = await this.queryChallenge(e, 0)
-    if (!res) return false
+    const res = await this.queryChallenge(e, 0, auth)
+    if (!res) return true
     const img = await render('challenge/SR', 'index', res)
     if (img) await e.reply(img)
     return true
   }
 
   async challengePeak (e) {
+    if (!this._isEnabled()) return false
+    const auth = await this._getUserAuth(e)
+    if (!auth) return true
+
     await e.reply('正在获取异相仲裁数据，请稍后……')
     let tplFile = 'index_peak'
-    const res = await this.queryChallenge(e, 3)
-    if (!res) return false
+    const res = await this.queryChallenge(e, 3, auth)
+    if (!res) return true
 
     if (e.msg.match('往期')) {
       tplFile = 'peak_recent'
@@ -301,20 +356,19 @@ export class ChallengeApp extends plugin {
   }
 
   async challenge (e) {
+    if (!this._isEnabled()) return false
+    const auth = await this._getUserAuth(e)
+    if (!auth) return true
+
     await e.reply('正在获取全部深渊数据，请稍后……')
 
-    const uid = await this._userUid(e)
-    if (!uid) return false
-    const ck = await this._userCk(e, uid)
-    if (!ck) return false
-
     const results = await Promise.all([
-      this.queryChallenge(e, 2, true, uid, ck), // 忘却
-      this.queryChallenge(e, 1, true, uid, ck), // 虚构
-      this.queryChallenge(e, 0, true, uid, ck)  // 末日
+      this.queryChallenge(e, 2, auth), // 忘却
+      this.queryChallenge(e, 1, auth), // 虚构
+      this.queryChallenge(e, 0, auth)  // 末日
     ])
 
-    if (!results[0] || !results[1] || !results[2]) return false
+    if (!results[0] || !results[1] || !results[2]) return true
 
     const img = await render('challenge/SR', 'index_all', {
       hall: results[0],
@@ -326,9 +380,13 @@ export class ChallengeApp extends plugin {
   }
 
   async challengeCurrent (e) {
+    if (!this._isEnabled()) return false
+    const auth = await this._getUserAuth(e)
+    if (!auth) return true
+
     await e.reply('正在获取最新深渊数据，请稍后……')
-    const res = await this.queryChallenge(e, this._getCurrentChallengeType())
-    if (!res) return false
+    const res = await this.queryChallenge(e, this._getCurrentChallengeType(), auth)
+    if (!res) return true
     const img = await render('challenge/SR', 'index', res)
     if (img) await e.reply(img)
     return true
@@ -363,38 +421,5 @@ export class ChallengeApp extends plugin {
     const date = `${year}.${pad(month)}.${pad(day)}`
     if (includeTime) return `${date} ${pad(hour || 0)}:${pad(minute || 0)}`
     return date
-  }
-
-  /** 获取 SR UID */
-  async _userUid (e) {
-    // 直接使用已解析的 UID
-    if (e.uid && /(18|[1-9])[0-9]{8}/.test(e.uid)) return e.uid
-
-    // 从消息中提取
-    const msgMatch = e.msg.match(/\d{9,10}/)
-    if (msgMatch) return msgMatch[0]
-
-    // 通过 MysInfo 全链路获取
-    try {
-      const MysInfo = (await import('../../genshin/model/mys/mysInfo.js')).default
-      const uid = await MysInfo.getUid(e, true)
-      if (uid) return uid
-    } catch {}
-
-    await e.reply('找不到UID，请先 #绑定uid 绑定你的游戏UID，或使用 #扫码登录 绑定账号后重试')
-    return false
-  }
-
-  /** 获取 SR Cookie */
-  async _userCk (e, uid) {
-    try {
-      const MysInfo = (await import('../../genshin/model/mys/mysInfo.js')).default
-      const result = await MysInfo.checkUidBing(uid, 'sr')
-      const ck = result?.ck
-      if (ck) return ck
-    } catch {}
-
-    await e.reply(`UID:${uid} 当前尚未绑定Cookie，请发送 #扫码登录 绑定`)
-    return false
   }
 }

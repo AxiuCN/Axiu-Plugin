@@ -51,3 +51,13 @@ signin:
   captchaRetries: ${signin_captchaRetries}
   # 过码超时（秒）
   captchaTimeout: ${signin_captchaTimeout}
+
+# 星铁终局挑战查询
+srChallenge:
+  # 是否启用终局挑战查询（关闭后 *末日/*虚构/*混沌 等命令不响应）
+  enabled: ${srChallenge_enabled}
+
+# 代发言
+proxySpeak:
+  # 是否启用代发言功能（关闭后 #代 命令不响应）
+  enabled: ${proxySpeak_enabled}
