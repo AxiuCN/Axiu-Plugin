@@ -540,12 +540,11 @@ export class ChallengeApp extends plugin {
     // 为每个条目附加多列展示数据
     const buildCols = (extra) => {
       switch (challengeType) {
-        case 0: // 末日: 难度 | 分数 | ★ | 轮
+        case 0: // 末日: 难度 | ★ | 分
           return [
             { v: extra.max_floor || '-', l: '难度' },
-            { v: extra.total_score ?? '-', l: '分' },
             { v: extra.star_num != null ? extra.star_num + (extra.extra_star_num || 0) : '-', l: '★' },
-            { v: extra.round_num ?? '-', l: '轮' }
+            { v: extra.total_score ?? '-', l: '分' }
           ]
         case 1: // 虚构: 层 | ★ | 分 | 轮
           return [

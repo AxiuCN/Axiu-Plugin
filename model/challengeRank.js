@@ -231,11 +231,11 @@ export default class ChallengeRank {
       }
       if (rec.boss_record?.hard_mode != null) { scores.hard = rec.boss_record.hard_mode ? 1 : 0; extra.hard_mode = rec.boss_record.hard_mode }
     } else {
-      // 最深层（all_floor_detail 最后一项）的本层数据
+      // 楼层难→易排列，取最深层（第一项）的本层数据
       const floors = data.all_floor_detail || []
-      const lastFloor = floors[floors.length - 1] || {}
-      const floorStar = lastFloor.star_num != null ? Number(lastFloor.star_num) : 0
-      const floorRound = lastFloor.round_num != null ? Number(lastFloor.round_num) : 0
+      const deepFloor = floors[0] || {}
+      const floorStar = deepFloor.star_num != null ? Number(deepFloor.star_num) : 0
+      const floorRound = deepFloor.round_num != null ? Number(deepFloor.round_num) : 0
       const extraStar = Number(data.extra_star_num) || 0
 
       // 排行分 = 本层星数 + 星启星数
@@ -253,10 +253,10 @@ export default class ChallengeRank {
       if (data.battle_num != null) { scores.battle = -Number(data.battle_num); extra.battle_num = Number(data.battle_num) }
 
       // 轮数取最深层
-      if (lastFloor.round_num != null) { scores.round = -floorRound; extra.round_num = floorRound }
+      if (deepFloor.round_num != null) { scores.round = -floorRound; extra.round_num = floorRound }
       // 分数取最深层
-      if ([0, 1].includes(challengeType) && lastFloor.score != null) {
-        const fs = Number(lastFloor.score) || 0
+      if ([0, 1].includes(challengeType) && deepFloor.score != null) {
+        const fs = Number(deepFloor.score) || 0
         scores.score = fs
         extra.total_score = fs
       }
