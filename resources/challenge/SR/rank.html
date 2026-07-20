@@ -24,10 +24,6 @@
   <span>显示 Top {{topN}}</span>
 </div>
 
-{{if sortHint}}
-<div class="rank-sort">排序: {{sortHint}}</div>
-{{/if}}
-
 <div class="rank-list">
   {{each list ds idx}}
   <div class="rank-item tier-{{ds.rank <= 3 ? ds.rank : 0}}">
@@ -45,7 +41,14 @@
       {{/if}}
       <div class="user-uid">{{ds.uid}}</div>
     </div>
-    <div class="rank-val">{{ds.score}}</div>
+    <div class="rank-vals">
+      {{each ds.cols c}}
+      <div class="rv-col">
+        <span class="rv-val">{{c.v}}</span>
+        <span class="rv-lbl">{{c.l}}</span>
+      </div>
+      {{/each}}
+    </div>
   </div>
   {{/each}}
 </div>
@@ -62,7 +65,14 @@
   <div class="me-label">你的排名</div>
   <div class="me-rank">#{{selfRank.rank}}</div>
   <div class="me-uid">UID {{selfRank.uid}}</div>
-  <div class="me-score">{{selfRank.score}} {{dimLabel}}</div>
+  <div class="me-vals">
+    {{each selfRank.cols c}}
+    <div class="rv-col">
+      <span class="rv-val">{{c.v}}</span>
+      <span class="rv-lbl">{{c.l}}</span>
+    </div>
+    {{/each}}
+  </div>
 </div>
 {{/if}}
 

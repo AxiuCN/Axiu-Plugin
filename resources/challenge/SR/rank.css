@@ -39,14 +39,7 @@
   text-align: center;
   font-size: 13px;
   color: rgba(240,234,202,0.5);
-  margin-bottom: 4px;
-}
-
-.rank-sort {
-  text-align: center;
-  font-size: 12px;
-  color: rgba(240,234,202,0.35);
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .rank-info .sep {
@@ -153,20 +146,37 @@
   font-family: 'Number', monospace;
 }
 
-/* ===== 分数 ===== */
-.rank-val {
-  font-size: 18px;
-  font-weight: 800;
-  font-family: 'Number', monospace;
-  color: #ffd780;
-  min-width: 60px;
-  text-align: right;
+/* ===== 多列数值 ===== */
+.rank-vals {
+  display: flex;
+  gap: 14px;
   flex-shrink: 0;
 }
 
-.tier-1 .rank-val { color: #ffd700; font-size: 20px; text-shadow: 0 0 6px rgba(255,215,0,0.3); }
-.tier-2 .rank-val { color: #d0d0d0; }
-.tier-3 .rank-val { color: #e09145; }
+.rv-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 36px;
+}
+
+.rv-val {
+  font-size: 17px;
+  font-weight: 800;
+  font-family: 'Number', monospace;
+  color: #ffd780;
+  line-height: 1.2;
+}
+
+.rv-lbl {
+  font-size: 10px;
+  color: rgba(240,234,202,0.4);
+  line-height: 1;
+}
+
+.tier-1 .rv-val { color: #ffd700; }
+.tier-2 .rv-val { color: #d0d0d0; }
+.tier-3 .rv-val { color: #e09145; }
 
 /* ===== 我的排名 ===== */
 .rank-me {
@@ -192,9 +202,9 @@
 .me-label { font-size: 12px; color: rgba(240,234,202,0.5); }
 .me-rank { font-size: 20px; font-weight: 800; color: #ffd780; font-family: 'Number', monospace; }
 .me-uid { font-size: 13px; color: rgba(240,234,202,0.5); font-family: 'Number', monospace; }
-.me-score {
+.me-vals {
   margin-left: auto;
-  font-size: 16px;
-  font-weight: 700;
-  color: #ffd780;
 }
+.me-vals .rv-col { min-width: 32px; }
+.me-vals .rv-val { font-size: 15px; }
+.me-vals .rv-lbl { font-size: 9px; }

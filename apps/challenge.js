@@ -537,19 +537,44 @@ export class ChallengeApp extends plugin {
       }
     }
 
+    // 为每个条目附加多列展示数据
+    const buildCols = (extra) => {
+      switch (challengeType) {
+        case 0: // 末日: 难度 | 分数 | ★ | 轮
+          return [
+            { v: extra.max_floor || '-', l: '难度' },
+            { v: extra.total_score ?? '-', l: '分' },
+            { v: extra.star_num != null ? extra.star_num + (extra.extra_star_num || 0) : '-', l: '★' },
+            { v: extra.round_num ?? '-', l: '轮' }
+          ]
+        case 1: // 虚构: 层 | ★ | 分 | 轮
+          return [
+            { v: extra.max_floor || '-', l: '层' },
+            { v: extra.star_num != null ? extra.star_num + (extra.extra_star_num || 0) : '-', l: '★' },
+            { v: extra.total_score ?? '-', l: '分' },
+            { v: extra.round_num ?? '-', l: '轮' }
+          ]
+        case 2: // 忘却: 层 | ★ | 轮
+          return [
+            { v: extra.max_floor || '-', l: '层' },
+            { v: extra.star_num != null ? extra.star_num + (extra.extra_star_num || 0) : '-', l: '★' },
+            { v: extra.round_num ?? '-', l: '轮' }
+          ]
+        case 3: // 仲裁: 模式 | 王棋 | 骑士 | 轮
+          return [
+            { v: extra.hard_mode ? '绝境' : '普通', l: '' },
+            { v: extra.boss_stars ?? '-', l: '王棋' },
+            { v: extra.mob_stars ?? '-', l: '骑士' },
+            { v: extra.round_num ?? '-', l: '轮' }
+          ]
+        default: return []
+      }
+    }
+    for (const item of list) { item.cols = buildCols(item.extra) }
+    if (selfRank) { selfRank.cols = buildCols(selfRank.extra) }
+
     // 获取赛季元信息
     const seasonMeta = await ChallengeRank.getSeasonMeta(challengeType, e.group_id)
-
-    // 排序说明
-    const COMPOUND_HINT = {
-      0: '难度 → 总分',
-      1: '层数 → 星数 → 分数 → 轮数(少优先)',
-      2: '层数 → 星数 → 轮数(少优先)',
-      3: '绝境优先 → 王棋星数 → 骑士星数 → 轮数(少优先)'
-    }
-    const sortHint = dimension === '__'
-      ? COMPOUND_HINT[challengeType] || ''
-      : `${dimLabel}${dimDef?.higher !== false ? '（降序）' : '（升序）'}`
 
     // 渲染排行
     const renderData = {
@@ -565,8 +590,7 @@ export class ChallengeApp extends plugin {
       beginTime: seasonMeta?.beginTime || '',
       endTime: seasonMeta?.endTime || '',
       periodNumber: seasonMeta?.periodNumber || null,
-      scheduleName: seasonMeta?.scheduleName || '',
-      sortHint
+      scheduleName: seasonMeta?.scheduleName || ''
     }
     const img = await render('challenge/SR', 'rank', renderData)
     if (img) await e.reply(img)

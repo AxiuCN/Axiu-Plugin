@@ -219,6 +219,7 @@ export default class ChallengeRank {
       if (rec.boss_record?.hard_mode != null) { scores.hard = rec.boss_record.hard_mode ? 1 : 0; extra.hard_mode = rec.boss_record.hard_mode }
     } else {
       if (data.star_num != null) { scores.star = Number(data.star_num); extra.star_num = Number(data.star_num) }
+      if (data.extra_star_num != null) { extra.extra_star_num = Number(data.extra_star_num) }
       if (data.max_floor != null) { const f = parseInt(data.max_floor); if (!isNaN(f)) { scores.floor = f; extra.max_floor = data.max_floor } }
       if (data.battle_num != null) { scores.battle = -Number(data.battle_num); extra.battle_num = Number(data.battle_num) }
       if (data.all_floor_detail?.length) {
