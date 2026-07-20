@@ -1,9 +1,8 @@
 .rank-container {
-  padding: 30px 30px 20px;
-  width: 800px;
+  padding: 30px 20px 20px;
+  width: 720px;
   overflow: hidden;
-  background: url('./images/bg_2.8d088acd.png') center no-repeat;
-  background-size: cover;
+  background: url('./images/bg_2.8d088acd.png') center / cover no-repeat;
   color: #f0eaca;
   font-family: 'SR', 'YS', 'Number', sans-serif;
   box-sizing: border-box;
@@ -196,13 +195,14 @@
 /* ===== 分数列 ===== */
 
 .rank-score {
-  width: 60px;
+  min-width: 70px;
   text-align: right;
   font-size: 18px;
   font-weight: 800;
   font-family: 'Number', monospace;
   flex-shrink: 0;
   color: #ffd780;
+  overflow: hidden;
 }
 
 .rank-tier-1 .rank-score {

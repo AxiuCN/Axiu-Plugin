@@ -36,7 +36,9 @@
         {{/if}}
       </div>
       <div class="rank-info-col">
-        <div class="rank-nickname">{{ds.nickname || ds.uid}}</div>
+        {{if ds.nickname}}
+        <div class="rank-nickname">{{ds.nickname}}</div>
+        {{/if}}
         <div class="rank-uid">{{ds.uid}}</div>
       </div>
       <div class="rank-score">{{ds.score}}</div>
