@@ -14,6 +14,7 @@ import { render } from '../../components/render.js'
 import { LOG_PREFIX } from '../../components/constants.js'
 import { getPluginConfig } from '../../components/config.js'
 import MiaoCharacter from '../../../miao-plugin/models/Character.js'
+import { setNotifyGroup } from '../../apps/ckAutoRefresh.js'
 import path from 'node:path'
 import fs from 'node:fs'
 
@@ -352,6 +353,7 @@ export async function gsSpiralAbyssQuery (e) {
 
   const auth = await getGsUserAuth(e)
   if (!auth) return true
+  if (e.isGroup) setNotifyGroup(auth.uid, e.group_id)
 
   await e.reply('正在获取深境螺旋数据，请稍后……')
 
@@ -425,6 +427,7 @@ export async function gsRoleCombatQuery (e) {
 
   const auth = await getGsUserAuth(e)
   if (!auth) return true
+  if (e.isGroup) setNotifyGroup(auth.uid, e.group_id)
 
   await e.reply('正在获取幻想真境剧诗数据，请稍后……')
 
@@ -493,6 +496,7 @@ export async function gsHardChallengeQuery (e) {
 
   const auth = await getGsUserAuth(e)
   if (!auth) return true
+  if (e.isGroup) setNotifyGroup(auth.uid, e.group_id)
 
   await e.reply('正在获取幽境危战数据，请稍后……')
 

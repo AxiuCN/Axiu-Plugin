@@ -6,6 +6,7 @@
 
 import MysSrApi from '../../model/mys/mysSrApi.js'
 import { LOG_PREFIX } from '../../components/constants.js'
+import { setNotifyGroup } from '../../apps/ckAutoRefresh.js'
 
 export const TYPE_NAMES = ['末日幻影', '虚构叙事', '忘却之庭', '异相仲裁']
 
@@ -26,6 +27,7 @@ export const CHALLENGE_API_SIMPLE_KEYS = [
 export async function queryChallenge (ctx, challengeType, auth) {
   ctx.e.isSr = true
   ctx.isSr = true
+  if (ctx.e.isGroup) setNotifyGroup(auth.uid, ctx.e.group_id)
   const simple = ctx.e.msg.match('简易')
   const last = ctx.e.msg.match('上期')
   const recent = ctx.e.msg.match('往期')

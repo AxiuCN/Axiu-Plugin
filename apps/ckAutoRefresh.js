@@ -57,12 +57,36 @@ async function findStokenByLtuid (ltuid) {
 
 /** 通过 Bot 实例私聊通知用户 */
 async function notifyUser (userId, message) {
+  const uid = String(userId)
+  // 优先在群里 @ 通知（须事先通过 setNotifyGroup 注册群上下文）
+  const groupId = _lastGroupMap.get(uid)
+  if (groupId) {
+    try {
+      const group = Bot.pickGroup(groupId)
+      await group.sendMsg([segment.at(uid), ' ', message])
+      return
+    } catch (err) {
+      logger.debug(`${LOG_PREFIX} [CK自动刷新] 群内@通知失败:`, err?.message)
+    }
+  }
+  // 兜底：私聊
   try {
-    const bot = Bot
-    const friend = bot.pickFriend(userId)
-    await friend.sendMsg(message)
+    await Bot.pickFriend(userId).sendMsg(message)
   } catch (err) {
     logger.warn(`${LOG_PREFIX} [CK自动刷新] 发送通知失败:`, err)
+  }
+}
+
+/** 缓存用户最后活跃的群，用于 CK 失效时群内 @ 通知 */
+const _lastGroupMap = new Map()
+
+/**
+ * 注册用户所在群上下文（供 notifyUser 群内 @ 用）
+ * 由各查询 handler（gsQuery/srQuery）在 API 调用前调用
+ */
+export function setNotifyGroup (userId, groupId) {
+  if (userId != null && groupId != null) {
+    _lastGroupMap.set(String(userId), groupId)
   }
 }
 
