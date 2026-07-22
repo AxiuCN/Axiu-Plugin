@@ -1,0 +1,103 @@
+body,
+.container {
+  width: 970px;
+}
+.container {
+  padding: 5px 0 10px 5px;
+}
+.head-box {
+  display: flex;
+  width: 100%;
+}
+.head-box .title {
+  font-size: 45px;
+  padding-bottom: 10px;
+  width: 70%;
+}
+.head-box .title span {
+  font-size: 30px;
+  margin-left: 10px;
+  color: #d3bc8e;
+}
+.head-box .uid {
+  text-align: right;
+  width: 30%;
+  padding-top: 25px;
+  padding-right: 10px;
+  font-size: 25px;
+}
+.abyss-title {
+  margin: -3px 0 8px;
+}
+.abyss-title strong {
+  color: #d3bc8e;
+  font-size: 18px;
+  font-family: Number, "印品南征北战NZBZ体", NZBZ, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  font-weight: normal;
+  margin-right: 10px;
+}
+.abyss-title .abyss-star {
+  font-size: 15px;
+  color: #fff;
+}
+.abyss-title .abyss-star:before {
+  content: "";
+  vertical-align: bottom;
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  background: url("./star.png") center no-repeat;
+  background-size: contain;
+  margin-right: 5px;
+}
+.abyss-detail {
+  display: flex;
+  width: calc(100% + 40px);
+  margin: 10px -15px -10px;
+}
+.abyss-level {
+  padding: 5px 10px 7px;
+  width: 33%;
+  box-shadow: 0 0 1px 0 #fff;
+}
+.abyss-level:nth-child(even) {
+  background: rgba(255, 255, 255, 0.1);
+}
+.abyss-level .info {
+  margin-bottom: 5px;
+  display: flex;
+  padding-left: 8px;
+}
+.abyss-level .title {
+  font-size: 16px;
+  white-space: nowrap;
+  font-weight: bold;
+}
+.abyss-level .star {
+  height: 18px;
+  display: inline-block;
+  background: url(./star.png);
+  background-size: 18px 18px;
+  margin-left: 5px;
+}
+.abyss-level .star.star1 {
+  width: 18px;
+  margin-right: 36px;
+}
+.abyss-level .star.star2 {
+  width: 36px;
+  margin-right: 18px;
+}
+.abyss-level .star.star3 {
+  width: 54px;
+  margin-right: 0;
+}
+.abyss-level .time {
+  text-align: right;
+  width: 60%;
+  color: #aaa;
+  font-size: 14px;
+}
+.abyss-notice .cont-body {
+  font-size: 16px;
+}

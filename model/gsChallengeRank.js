@@ -311,7 +311,11 @@ export default class GsChallengeRank {
     }
 
     // 当前赛季 scheduleId（单人和多人共享）
-    try { await redis.setEx(currentKey(this._baseType(challengeType)), TTL, scheduleId) } catch {}
+    try {
+      await redis.setEx(currentKey(this._baseType(challengeType)), TTL, scheduleId)
+    } catch (err) {
+      logger?.error(`${LOG_PREFIX}[原神排行] 设置当前 scheduleId 失败`, err)
+    }
 
     // 赛季元信息（单人和多人共享 base type key）
     try {
@@ -333,7 +337,9 @@ export default class GsChallengeRank {
           periodNumber: periodNum
         }))
       }
-    } catch {}
+    } catch (err) {
+      logger?.error(`${LOG_PREFIX}[原神排行] 设置赛季元信息失败`, err)
+    }
 
     // UID 信息（QQ + extra + scores + scheduleId，全局共享）
     try {
@@ -344,13 +350,37 @@ export default class GsChallengeRank {
         info[challengeType] = { scores, extra, scheduleId: String(scheduleId), time: Date.now() }
       }
       await redis.setEx(uidKey(uid), 90 * 24 * 3600, JSON.stringify(info))
-    } catch {}
+    } catch (err) {
+      logger?.error(`${LOG_PREFIX}[原神排行] 设置 UID 信息失败`, err)
+    }
+
+    logger?.mark(`${LOG_PREFIX}[原神排行] ${TYPE_NAMES[challengeType] || challengeType} uid:${uid} 上报完成, scheduleId:${scheduleId}, compound:${compound}`)
   }
 
   // ==================== 查询 ====================
 
   static async getCurrentScheduleId (challengeType, groupId) {
-    try { return await redis.get(currentKey(this._baseType(challengeType))) } catch { return null }
+    try {
+      const sid = await redis.get(currentKey(this._baseType(challengeType)))
+      if (sid) return sid
+    } catch {}
+    // current key 不存在时尝试从 ZSET key 反查
+    return this._fallbackScheduleId(challengeType)
+  }
+
+  /**
+   * 兜底：若 current key 不存在，从 ZSET key 反查最新 scheduleId
+   */
+  static async _fallbackScheduleId (challengeType) {
+    try {
+      const pattern = `${KEY}:${challengeType}:__:*`
+      const keys = await redis.keys(pattern)
+      if (!keys?.length) return null
+      // 取最后一个 `:` 后的部分作为 scheduleId（按 key 名排序取最新的）
+      keys.sort()
+      const last = keys[keys.length - 1]
+      return last.split(':').pop() || null
+    } catch { return null }
   }
 
   static async getSeasonMeta (challengeType, groupId) {

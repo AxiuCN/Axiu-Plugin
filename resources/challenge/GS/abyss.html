@@ -1,0 +1,47 @@
+{{extend defaultLayout}}
+
+{{block 'css'}}
+<link rel="stylesheet" type="text/css" href="{{_res_path}}/challenge/GS/abyss.css"/>
+{{/block}}
+
+{{block 'main'}}
+<div class="head-box type">
+  <div class="title">#深境螺旋<span>{{abyss.schedule}} · {{abyss.total}}次战斗</span></div>
+  <div class="uid">UID:{{uid}}</div>
+</div>
+<div class="info_box">
+
+  {{each abyss.floors floor}}
+  <div class="cont">
+    <div class="cont-body">
+      <div class="abyss-title">
+        <strong>第{{floor.index}}层</strong>
+        <span class="abyss-star">{{floor.star}}/9</span>
+      </div>
+      <div class="abyss-detail">
+        {{each floor.levels level idx}}
+        <div class="abyss-level">
+          <div class="info">
+            <div class="title">第{{idx+1}}间</div>
+            <span class="star star{{level.star}}"></span>
+            {{if level.battles.length > 0}}
+            <div class="time">{{level.battles[0].time}}</div>
+            {{/if}}
+          </div>
+        </div>
+        {{/each}}
+      </div>
+    </div>
+  </div>
+  {{/each}}
+
+  <div class="cont abyss-notice">
+    <div class="cont-body">
+      <ul class="cont-msg">
+        <li>深渊排行为本期深渊排行，数据仅供娱乐~</li>
+        <li>排行榜数据仅在群聊查询时自动上报</li>
+      </ul>
+    </div>
+  </div>
+</div>
+{{/block}}

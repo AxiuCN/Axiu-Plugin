@@ -7,9 +7,9 @@
  *  星铁排行（modules/challenge/srRank.js）:
  *    *忘却排名 / *末日排名 分数 / *仲裁排行 …
  *
- *  原神排行（modules/challenge/gsRank.js）:
- *    #深渊排名 / #剧诗排名 / #幽境排名 …
- *    查询由 miao-plugin 处理，gsReport.js 自动采集数据
+ *  原神查询+排行（modules/challenge/gsQuery.js + gsRank.js）:
+ *    #深渊 / #剧诗 / #幽境 — 完整自实现，一次 API 调用完成采数+渲染+上报
+ *    #深渊排名 / #剧诗排名 / #幽境排名 — Redis ZSET 排行展示
  *
  *  配置: config.yaml → srChallenge.* / gsAbyss.* / gsAbyssRank.*
  */
@@ -20,7 +20,7 @@ import ChallengeRank from '../model/challengeRank.js'
 import { queryChallenge, recentPeak, getCurrentChallengeType } from '../modules/challenge/srQuery.js'
 import { handleSrRank, handleSrRankReset } from '../modules/challenge/srRank.js'
 import { handleGsRank, handleGsRankReset } from '../modules/challenge/gsRank.js'
-import { ensureGsAutoReport } from '../modules/challenge/gsReport.js'
+import { gsSpiralAbyssQuery, gsRoleCombatQuery, gsHardChallengeQuery } from '../modules/challenge/gsQuery.js'
 
 export class ChallengeApp extends plugin {
   constructor () {
@@ -70,6 +70,20 @@ export class ChallengeApp extends plugin {
           reg: '^(#?星铁|[*＊])?(开启|关闭)(挑战)(排名|排行)',
           fnc: 'challengeRankManage',
           permission: 'master'
+        },
+
+        // ===== 原神查询（数据采集 → 放行给 miao-plugin 渲染） =====
+        {
+          reg: '^#(原神)?(上期|本期)?(深境|深渊|深境螺旋)$',
+          fnc: 'gsSpiralAbyssQuery'
+        },
+        {
+          reg: '^#(原神)?(上期|本期)?(幻想|剧诗|幻想真境剧诗)$',
+          fnc: 'gsRoleCombatQuery'
+        },
+        {
+          reg: '^#(原神)?(上期|本期)?(幽境|危战|幽境危战)(单人|单挑|组队|多人|合作|最佳|数据)?$',
+          fnc: 'gsHardChallengeQuery'
         },
 
         // ===== 原神排行 =====
@@ -271,7 +285,10 @@ export class ChallengeApp extends plugin {
     await e.reply(`已${enable ? '开启' : '关闭'}本群深渊排行功能`)
     return true
   }
-}
 
-// 挂载原神终局挑战自动上报钩子（hook miao-plugin 的 MysApi.getData）
-ensureGsAutoReport()
+  // ==================== 原神查询（数据采集 → 放行） ====================
+
+  async gsSpiralAbyssQuery (e) { return gsSpiralAbyssQuery(e) }
+  async gsRoleCombatQuery (e) { return gsRoleCombatQuery(e) }
+  async gsHardChallengeQuery (e) { return gsHardChallengeQuery(e) }
+}

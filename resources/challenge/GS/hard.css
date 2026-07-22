@@ -1,0 +1,170 @@
+body,
+.container {
+  width: 970px;
+}
+.container {
+  padding: 5px 0 10px 5px;
+}
+.head-box {
+  display: flex;
+  width: 100%;
+}
+.head-box .title {
+  font-size: 45px;
+  padding-bottom: 10px;
+  width: 70%;
+}
+.head-box .title .difficulty {
+  font-size: 30px;
+  margin-left: 10px;
+  color: #d3bc8e;
+}
+.head-box .title .time {
+  font-size: 18px;
+  margin-left: 10px;
+  color: #ffffff;
+}
+.head-box .uid {
+  text-align: right;
+  width: 30%;
+  padding-top: 25px;
+  padding-right: 10px;
+  font-size: 25px;
+}
+.hard-stat-cont {
+  display: flex;
+  padding: 5px;
+}
+.hard-stat {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+.hard-stat .cont {
+  margin: 5px 10px 5px 5px;
+  width: 30%;
+  height: 82px;
+}
+.hard-stat .time {
+  text-align: right;
+}
+.hard-stat strong {
+  text-shadow: 0 0 3px #000;
+}
+.hard-stat .stat-title {
+  position: absolute;
+  top: 0;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 5px 10px;
+  width: 100%;
+  text-shadow: 0 0 1px #000;
+}
+.hard-stat .stat-title span {
+  display: block;
+  font-weight: normal;
+  font-family: Number, "印品南征北战NZBZ体", NZBZ, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  font-size: 20px;
+}
+.hard-stat .stat-title strong {
+  display: block;
+  font-size: 30px;
+}
+.hard-stat .stat-msg {
+  position: absolute;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  padding: 5px 10px;
+  width: 100%;
+  text-shadow: 0 0 1px #000;
+  font-size: 30px;
+  height: 45px;
+}
+.hard-title {
+  margin: -3px 0 8px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+.hard-title strong {
+  margin-left: 3px;
+  color: #d3bc8e;
+  font-size: 18px;
+  font-family: Number, "印品南征北战NZBZ体", NZBZ, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  font-weight: normal;
+  margin-right: 10px;
+}
+.hard-title span {
+  text-align: right;
+  font-size: 15px;
+}
+.hard-chall-team {
+  display: flex;
+}
+.hard-chall-team .line {
+  width: 1px;
+  background: rgba(255, 255, 255, 0.5);
+  height: 80px;
+  vertical-align: middle;
+  margin: 15px 8px 0;
+}
+.hard-chall-desc {
+  margin: 3px 0;
+}
+.hard-chall-desc ul {
+  list-style-position: inside;
+}
+.hard-chall-desc ul li {
+  font-size: 15px;
+}
+.hard-info {
+  display: flex;
+  margin-right: -5px;
+  margin-left: -5px;
+  flex-direction: column;
+  width: 100%;
+}
+.hard-info .hard-enemy-container {
+  width: 140px;
+  height: 100%;
+  background-color: #e7e5d9;
+  display: flex;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-direction: column;
+}
+.hard-info .hard-best-header {
+  width: 100%;
+  height: 30px;
+  background-color: #8b8b83;
+  padding: 5px;
+  font-size: 18px;
+}
+.hard-info .hard-best-content {
+  width: 100%;
+  padding: 5px;
+  display: flex;
+}
+.hard-info .hard-best-content .hard-content-container {
+  width: 100%;
+  display: flex;
+  margin-top: 5px;
+  flex-direction: column;
+  align-items: center;
+}
+.hard-info .hard-best-content .hard-content-icon {
+  width: 140px;
+  height: 140px;
+  background-size: 220px 220px;
+  background-position: center;
+  overflow: hidden;
+}
+.hard-info .hard-info-line {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: row;
+}
+.hard-notice .cont-body {
+  font-size: 16px;
+}
