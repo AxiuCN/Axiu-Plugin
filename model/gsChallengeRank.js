@@ -28,12 +28,24 @@ const TYPE_NAMES = ['深境螺旋', '真境幻想剧诗', '幽境危战·单人'
 
 /** nanoka 图鉴数据目录（Atlas-Plugin 的子模块） */
 const GS_NANOKA_BASE = path.resolve(pluginRoot, '../Atlas-Plugin/tool/nanoka-atlas-backend/nanoka-atlas-backend/data/items/简体中文/原神')
-const GS_NANOKA_DIR = ['深境螺旋', '幻想真境剧诗挑战']
+
+/**
+ * 各类型赛季名来源目录（nanoka 子目录名）
+ * 文件名（不含扩展名）即为赛季名
+ */
+const GS_SEASON_DIR = {
+  0: '深境螺旋',
+  1: null,          // 剧诗无赛季名
+  2: '地脉异常',
+  3: '地脉异常',
+}
 
 /** 各类型起始日期（用于计算期数） */
 const GS_EPOCH_CONFIG = {
   0: { start: new Date('2020-09-28T04:00:00'), cycleDays: 15 },  // 深境螺旋 v1.0 起 ~15天/期
   1: { start: new Date('2024-07-01T04:00:00'), cycleDays: 30 },  // 幻想真境剧诗 v4.7 起 ~30天/期
+  2: { start: new Date('2025-03-26T04:00:00'), cycleDays: 42 },  // 幽境危战 v5.5 起 ~42天/期
+  3: { start: new Date('2025-03-26T04:00:00'), cycleDays: 42 },  // 幽境危战·多人 同单人
 }
 
 /** 维度定义 */
@@ -188,7 +200,6 @@ export default class GsChallengeRank {
   }
 
   static getPeriodNumber (data, challengeType) {
-    if (challengeType >= 2) return null // 危战无期数
     const cfg = GS_EPOCH_CONFIG[challengeType]
     if (!cfg) return null
     const ts = data?.start_time || data?.schedule?.start_time
@@ -196,6 +207,28 @@ export default class GsChallengeRank {
     try {
       const d = new Date(ts * 1000)
       if (isNaN(d.getTime())) return null
+
+      // 深渊: 开服~4.6（2024-06-15前）半月一期, 4.7起（2024-06-16后）每月一期
+      if (challengeType === 0) {
+        if (d < new Date('2024-06-16T04:00:00')) {
+          // Phase 1: 半月一期（1号/16号刷新），2020年10月上半月=第1期
+          const monthDiff = (d.getFullYear() - 2020) * 12 + (d.getMonth() + 1 - 10)
+          if (monthDiff < 0) return 1
+          const half = d.getDate() <= 15 ? 0 : 1
+          return monthDiff * 2 + half + 1
+        } else {
+          // Phase 2: 每月一期（4.7起16号刷新，v5.7后1号刷新，按日历月计算即可）
+          const monthDiff = (d.getFullYear() - 2024) * 12 + (d.getMonth() + 1 - 6)
+          return Math.max(90, 90 + monthDiff)
+        }
+      }
+
+      // 剧诗: 每个月一期，按日历月计算
+      if (challengeType === 1) {
+        const monthDiff = (d.getFullYear() - 2024) * 12 + (d.getMonth() + 1 - 7) // 2024年7月=第1期
+        return Math.max(1, monthDiff + 1)
+      }
+
       const diffDays = (d.getTime() - cfg.start.getTime()) / (24 * 3600 * 1000)
       if (diffDays < 0) return 1
       return Math.floor(diffDays / cfg.cycleDays) + 1
@@ -204,17 +237,21 @@ export default class GsChallengeRank {
 
   /**
    * 从 nanoka 图鉴数据查找赛季名称
-   * 深境螺旋: 按 content.list 时间范围匹配 API start_time，返回 meta.name
-   * 幻想真境剧诗: 无命名赛季，返回空
+   * 各类型赛季名来源由 GS_SEASON_DIR 定义：
+   *   深境螺旋 — 文件名即为赛季名（如"攻辉之月.json"→"攻辉之月"）
+   *   地脉异常(危战) — 同上（如"星芒之役.json"→"星芒之役"）
+   *   剧诗 — 无命名赛季，返回空
+   * 匹配方式：按 content.list.begin/end 日期范围匹配 API start_time
    */
   static _lookupSeasonName (challengeType, data) {
-    if (challengeType !== 0) return '' // 仅深渊有命名赛季
+    const subDir = GS_SEASON_DIR[challengeType]
+    if (!subDir) return '' // 无赛季名来源
     const targetTs = data?.start_time || data?.schedule?.start_time
     if (!targetTs) return ''
     const targetDate = new Date(targetTs * 1000)
     if (isNaN(targetDate.getTime())) return ''
 
-    const dir = path.join(GS_NANOKA_BASE, GS_NANOKA_DIR[challengeType], '未分类')
+    const dir = path.join(GS_NANOKA_BASE, subDir, '未分类')
     let files = []
     try { files = fs.readdirSync(dir).filter(f => f.endsWith('.json')) } catch { return '' }
 
@@ -227,7 +264,8 @@ export default class GsChallengeRank {
         const b = new Date(begin.replace(' ', 'T'))
         const e = new Date(end.replace(' ', 'T'))
         if (!isNaN(b.getTime()) && !isNaN(e.getTime()) && targetDate >= b && targetDate <= e) {
-          return d.meta?.name || ''
+          // 文件名（不含扩展名）即为赛季名
+          return file.replace(/\.json$/i, '')
         }
       } catch { /* skip */ }
     }
