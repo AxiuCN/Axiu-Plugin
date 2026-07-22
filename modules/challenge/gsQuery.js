@@ -533,14 +533,14 @@ export async function gsHardChallengeQuery (e) {
       return true
     }
 
-    // 上报排行（单人和多人均上报）
+    // 上报排行（单人和多人均上报，串行避免 Redis 竞态覆盖）
     const scheduleId = GsChallengeRank.getScheduleId(rawData, 2)
     if (hasSingle) {
-      GsChallengeRank.report(auth.uid, e.at || e.user_id, e.group_id, 2, rawData, scheduleId)
+      await GsChallengeRank.report(auth.uid, e.at || e.user_id, e.group_id, 2, rawData, scheduleId)
         .catch(err => logger?.error(`${LOG_PREFIX}[原神] 危战单人上报失败:`, err?.message))
     }
     if (hasMp) {
-      GsChallengeRank.report(auth.uid, e.at || e.user_id, e.group_id, 3, rawData, scheduleId)
+      await GsChallengeRank.report(auth.uid, e.at || e.user_id, e.group_id, 3, rawData, scheduleId)
         .catch(err => logger?.error(`${LOG_PREFIX}[原神] 危战多人上报失败:`, err?.message))
     }
 
@@ -550,7 +550,9 @@ export async function gsHardChallengeQuery (e) {
     for (const modeKey of ['single', 'mp']) {
       const md = rawData[modeKey]
       if (!md?.has_data) continue
-      for (const c of md.best?.challenge || []) {
+      // 与 buildHardData 保持一致的访问路径：best.challenge → challenge 兜底
+      const challs = md.best?.challenge || md.challenge || []
+      for (const c of challs) {
         for (const t of c.teams || []) {
           if (t.avatar_id) {
             avatarIds.add(t.avatar_id)
@@ -567,7 +569,6 @@ export async function gsHardChallengeQuery (e) {
     // 数据变换 + 渲染
     const data = buildHardData(rawData, mode)
     data.uid = auth.uid
-    data.periodText = periodText
 
     const img = await render('challenge/GS', 'hard', { ...data, avatars })
     if (img) await e.reply(img)

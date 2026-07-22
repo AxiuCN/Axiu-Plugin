@@ -49,14 +49,14 @@ export function buildGsCols (extra, challengeType) {
           : '-', l: '用时' },
         { v: extra.borrow_num ?? '-', l: '借出' }
       ]
-    case 2: // 幽境危战·单人: 难度 | 用时 | 徽章
-    case 3: // 幽境危战·多人: 难度 | 用时 | 徽章
+    case 2: // 幽境危战·单人: 难度 | 用时(秒) | 徽章(图片)
+    case 3: // 幽境危战·多人: 难度 | 用时(秒) | 徽章(图片)
       return [
         { v: DIFF_NAMES[extra.difficulty] || extra.difficulty || '-', l: '难度' },
-        { v: extra.time_second != null
-          ? `${Math.floor(extra.time_second / 60)}'${String(extra.time_second % 60).padStart(2, '0')}"`
-          : '-', l: '用时' },
-        { v: BADGE_NAMES[extra.badge] || '-', l: '徽章' }
+        { v: extra.time_second != null ? `${extra.time_second}秒` : '-', l: '用时' },
+        extra.badge
+          ? { v: BADGE_NAMES[extra.badge] || '-', l: '', img: `medal_${extra.badge}.png` }
+          : { v: '-', l: '徽章' }
       ]
     default: return []
   }

@@ -40,8 +40,12 @@
     <div class="rank-vals">
       {{each ds.cols c}}
       <div class="rv-col">
+        {{if c.img}}
+        <img class="rv-img" src="{{_res_path}}challenge/GS/{{c.img}}" />
+        {{else}}
         <span class="rv-val">{{c.v}}</span>
-        <span class="rv-lbl">{{c.l}}</span>
+        {{if c.l}}<span class="rv-lbl">{{c.l}}</span>{{/if}}
+        {{/if}}
       </div>
       {{/each}}
     </div>
@@ -64,8 +68,12 @@
   <div class="me-vals">
     {{each selfRank.cols c}}
     <div class="rv-col">
+      {{if c.img}}
+      <img class="rv-img" src="{{_res_path}}challenge/GS/{{c.img}}" />
+      {{else}}
       <span class="rv-val">{{c.v}}</span>
-      <span class="rv-lbl">{{c.l}}</span>
+      {{if c.l}}<span class="rv-lbl">{{c.l}}</span>{{/if}}
+      {{/if}}
     </div>
     {{/each}}
   </div>

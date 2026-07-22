@@ -167,6 +167,12 @@
   line-height: 1;
 }
 
+.rv-img {
+  width: 40px;
+  height: 40px;
+  display: block;
+}
+
 .tier-1 .rv-val { color: #ffd700; }
 .tier-2 .rv-val { color: #d0d0d0; }
 .tier-3 .rv-val { color: #e09145; }

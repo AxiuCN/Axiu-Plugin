@@ -2,209 +2,138 @@
   padding: 30px 30px 20px 30px;
   width: 800px;
   overflow: hidden;
-  background: url('./images/bg_2.8d088acd.png') center / cover no-repeat;
+  background: url('./images/bg_2.8d088acd.png') center no-repeat;
+  background-size: cover;
   color: #f0eaca;
   font-family: 'SR', 'YS', 'Number', sans-serif;
   box-sizing: border-box;
 }
 
-.container * { box-sizing: border-box; }
+.container * {
+  box-sizing: border-box;
+}
 
-/* ===== 标题 ===== */
-.rank-head {
+.head-box {
   text-align: center;
+  margin-bottom: 20px;
+}
+
+.head-box .title {
   font-size: 28px;
   font-weight: bold;
   color: #ffd780;
-  text-shadow: 0 0 10px rgba(255,215,128,0.5);
-  margin-bottom: 4px;
+  text-shadow: 0 0 10px rgba(255, 215, 128, 0.5);
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(240, 234, 202, 0.2);
 }
 
-.rank-name {
-  text-align: center;
-  font-size: 22px;
-  color: rgba(240,234,202,0.85);
-  margin-bottom: 2px;
-}
-
-.rank-subhead {
-  text-align: center;
-  font-size: 14px;
-  color: rgba(240,234,202,0.5);
-  margin-bottom: 12px;
-}
-
-/* ===== 统计 ===== */
 .rank-info {
   text-align: center;
-  font-size: 13px;
-  color: rgba(240,234,202,0.5);
-  margin-bottom: 14px;
+  font-size: 14px;
+  color: rgba(240, 234, 202, 0.6);
+  margin-bottom: 15px;
 }
 
-.rank-info .sep {
-  margin: 0 10px;
-  color: rgba(240,234,202,0.2);
-}
-
-/* ===== 排行列表 ===== */
-.rank-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.rank-item {
-  display: flex;
-  align-items: center;
-  padding: 8px 14px;
-  border-radius: 8px;
-  background: rgba(0,0,0,0.2);
-}
-
-.tier-1 {
-  background: linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,215,0,0.04));
-  border: 1px solid rgba(255,215,0,0.25);
-}
-
-.tier-2 {
-  background: linear-gradient(135deg, rgba(192,192,192,0.10), rgba(192,192,192,0.03));
-  border: 1px solid rgba(192,192,192,0.20);
-}
-
-.tier-3 {
-  background: linear-gradient(135deg, rgba(205,127,50,0.10), rgba(205,127,50,0.03));
-  border: 1px solid rgba(205,127,50,0.20);
-}
-
-/* ===== 排名数字 ===== */
-.rank-no {
-  width: 36px;
-  text-align: center;
-  font-size: 18px;
-  font-weight: 800;
-  font-family: 'Number', monospace;
-  flex-shrink: 0;
-  color: rgba(240,234,202,0.55);
-}
-
-.no-1 { color: #ffd780; font-size: 22px; text-shadow: 0 0 8px rgba(255,215,128,0.5); }
-.no-2 { color: #c0c0c0; font-size: 20px; text-shadow: 0 0 6px rgba(192,192,192,0.3); }
-.no-3 { color: #cd7f32; font-size: 20px; text-shadow: 0 0 6px rgba(205,127,50,0.3); }
-
-/* ===== 头像 ===== */
-.rank-face {
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-  margin: 0 12px;
-}
-
-.face-img {
+.rank-table {
   width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid rgba(240,234,202,0.25);
+  border-collapse: collapse;
 }
 
-.tier-1 .face-img { border-color: rgba(255,215,0,0.5); }
-.tier-2 .face-img { border-color: rgba(192,192,192,0.4); }
-.tier-3 .face-img { border-color: rgba(205,127,50,0.4); }
-
-.face-no {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: rgba(240,234,202,0.08);
-  border: 2px solid rgba(240,234,202,0.18);
+.rank-header {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  color: rgba(240,234,202,0.3);
+  padding: 10px 15px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px 8px 0 0;
+  font-size: 14px;
+  color: rgba(240, 234, 202, 0.7);
+  font-weight: bold;
+  border-bottom: 1px solid rgba(240, 234, 202, 0.15);
 }
 
-/* ===== 用户信息 ===== */
-.rank-user {
+.rank-row {
+  display: flex;
+  padding: 10px 15px;
+  align-items: center;
+  border-bottom: 1px solid rgba(240, 234, 202, 0.08);
+  transition: background 0.2s;
+}
+
+.rank-row:last-child {
+  border-bottom: none;
+}
+
+.rank-row:hover {
+  background: rgba(255, 215, 128, 0.05);
+}
+
+.rank-row.rank-top {
+  background: rgba(255, 215, 128, 0.08);
+}
+
+.rank-col {
   flex: 1;
-  min-width: 0;
+  text-align: center;
 }
 
-.user-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: #f0eaca;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.user-uid {
-  font-size: 12px;
-  color: rgba(240,234,202,0.45);
-  font-family: 'Number', monospace;
-}
-
-/* ===== 多列数值 ===== */
-.rank-vals {
-  display: flex;
-  gap: 14px;
-  flex-shrink: 0;
-}
-
-.rv-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 36px;
-}
-
-.rv-val {
+.rank-num {
+  flex: 0 0 60px;
   font-size: 16px;
-  font-weight: 800;
-  font-family: 'SR', 'Number', monospace;
+  font-weight: bold;
+}
+
+.rank-uid {
+  flex: 1;
+  font-size: 15px;
+  font-family: 'Number', monospace;
+  color: rgba(240, 234, 202, 0.9);
+}
+
+.rank-score {
+  flex: 0 0 100px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.rank-score-val {
   color: #ffd780;
-  line-height: 1.2;
 }
 
-.rv-lbl {
-  font-size: 10px;
-  color: rgba(240,234,202,0.4);
-  line-height: 1;
+.rank-top .rank-score-val {
+  color: #ffb347;
+  font-size: 18px;
 }
 
-.tier-1 .rv-val { color: #ffd700; }
-.tier-2 .rv-val { color: #d0d0d0; }
-.tier-3 .rv-val { color: #e09145; }
-
-/* ===== 我的排名 ===== */
-.rank-me {
-  margin-top: 18px;
-  padding: 10px 18px;
-  background: rgba(255,215,128,0.10);
-  border: 1px solid rgba(255,215,128,0.25);
+.rank-self {
+  margin-top: 20px;
+  padding: 12px 20px;
+  background: rgba(255, 215, 128, 0.12);
+  border: 1px solid rgba(255, 215, 128, 0.3);
   border-radius: 10px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  gap: 15px;
 }
 
-.me-face {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
+.self-label {
+  font-size: 13px;
+  color: rgba(240, 234, 202, 0.6);
 }
 
-.me-face .face-img { border-color: rgba(255,215,128,0.4); }
-.me-face .face-no { border-color: rgba(255,215,128,0.25); }
-
-.me-label { font-size: 12px; color: rgba(240,234,202,0.5); }
-.me-rank { font-size: 20px; font-weight: 800; color: #ffd780; font-family: 'Number', monospace; }
-.me-uid { font-size: 13px; color: rgba(240,234,202,0.5); font-family: 'Number', monospace; }
-.me-vals {
-  margin-left: auto;
+.self-rank {
+  font-size: 20px;
+  font-weight: bold;
+  color: #ffb347;
 }
-.me-vals .rv-col { min-width: 32px; }
-.me-vals .rv-val { font-size: 15px; }
-.me-vals .rv-lbl { font-size: 9px; }
+
+.self-uid {
+  font-size: 14px;
+  color: rgba(240, 234, 202, 0.8);
+  font-family: 'Number', monospace;
+}
+
+.self-score {
+  font-size: 16px;
+  color: #ffd780;
+  font-weight: bold;
+}
