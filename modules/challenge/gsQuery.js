@@ -282,9 +282,11 @@ export async function gsRoleCombatQuery (e) {
       return true
     }
 
-    // role_combat / hard_challenge 返回数组 [当前期, 上期]
+    // role_combat 返回 { data: [{current}, {previous}] } 结构
     let rawData = res.data
-    if (Array.isArray(rawData)) {
+    if (rawData && Array.isArray(rawData.data)) {
+      rawData = isLast ? rawData.data[1] : rawData.data[0]
+    } else if (Array.isArray(rawData)) {
       rawData = isLast ? rawData[1] : rawData[0]
     }
     if (!rawData || !rawData.has_detail_data) {
@@ -340,9 +342,11 @@ export async function gsHardChallengeQuery (e) {
       return true
     }
 
-    // hard_challenge 返回数组 [当前期, 上期]
+    // hard_challenge 返回 { data: [{current}, {previous}] } 结构
     let rawData = res.data
-    if (Array.isArray(rawData)) {
+    if (rawData && Array.isArray(rawData.data)) {
+      rawData = isLast ? rawData.data[1] : rawData.data[0]
+    } else if (Array.isArray(rawData)) {
       rawData = isLast ? rawData[1] : rawData[0]
     }
     if (!rawData) {
