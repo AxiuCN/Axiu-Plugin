@@ -1,12 +1,11 @@
 /**
- * 终局挑战排行存储模型 — 基于 Redis ZSET
+ * 终局挑战排行存储模型 — 基于 Redis ZSET，全局排行
  *
  * Key 设计：
- *   Axiu:challenge:rank:{groupId}:{type}:{dim}:{scheduleId}    ZSET (member=uid)
- *   Axiu:challenge:rank:current:{type}:{groupId}                String (scheduleId)
- *   Axiu:challenge:rank:season:{type}:{scheduleId}              String (JSON 季节元信息)
- *   Axiu:challenge:rank:uid:{uid}                               String (JSON qq + extra)
- *   Axiu:challenge:rank:{groupId}:cfg                           String (JSON 群开关)
+ *   Axiu:challenge:rank:{type}:{dim}:{scheduleId}    ZSET (member=uid, 全局)
+ *   Axiu:challenge:rank:season:{type}:{scheduleId}    String (JSON 赛季元信息)
+ *   Axiu:challenge:rank:uid:{uid}                     String (JSON qq+scores+extra+scheduleId, 全局)
+ *   Axiu:challenge:rank:{groupId}:cfg                 String (JSON 群开关)
  */
 
 import fs from 'node:fs'
@@ -94,12 +93,12 @@ const DIM_ALIAS = {
 
 // ==================== Key 构造 ====================
 
-function rankKey (groupId, type, dim, scheduleId) {
-  return `${KEY}:${groupId}:${type}:${dim}:${scheduleId}`
+function rankKey (type, dim, scheduleId) {
+  return `${KEY}:${type}:${dim}:${scheduleId}`
 }
 
-function currentKey (type, groupId) {
-  return `${KEY}:current:${type}:${groupId}`
+function currentKey (type) {
+  return `${KEY}:current:${type}`
 }
 
 function seasonKey (type, scheduleId) {
@@ -272,7 +271,7 @@ export default class ChallengeRank {
     const compound = compoundScore(scores, extra, challengeType)
     if (compound > 0) {
       try {
-        const ck = rankKey(groupId, challengeType, '__', scheduleId)
+        const ck = rankKey(challengeType, '__', scheduleId)
         await redis.zAdd(ck, { score: compound, value: String(uid) })
         await redis.expire(ck, TTL)
       } catch (err) {
@@ -285,7 +284,7 @@ export default class ChallengeRank {
       const val = scores[dim.key]
       if (val == null) continue
       try {
-        const rk = rankKey(groupId, challengeType, dim.key, scheduleId)
+        const rk = rankKey(challengeType, dim.key, scheduleId)
         await redis.zAdd(rk, { score: val, value: String(uid) })
         await redis.expire(rk, TTL)
       } catch (err) {
@@ -294,7 +293,7 @@ export default class ChallengeRank {
     }
 
     // 当前赛季 scheduleId
-    try { await redis.setEx(currentKey(challengeType, groupId), TTL, scheduleId) } catch {}
+    try { await redis.setEx(currentKey(challengeType), TTL, scheduleId) } catch {}
 
     // 赛季元信息
     try {
@@ -317,13 +316,13 @@ export default class ChallengeRank {
       }))
     } catch {}
 
-    // UID 信息（QQ + extra）
+    // UID 信息（QQ + extra + scores + scheduleId，全局共享）
     try {
       const existing = await redis.get(uidKey(uid))
       const info = existing ? JSON.parse(existing) : {}
       info.qq = String(qq || '')
       if (!info[challengeType] || info[challengeType].time < Date.now()) {
-        info[challengeType] = { extra, time: Date.now() }
+        info[challengeType] = { scores, extra, scheduleId: String(scheduleId), time: Date.now() }
       }
       await redis.setEx(uidKey(uid), 90 * 24 * 3600, JSON.stringify(info))
     } catch {}
@@ -332,7 +331,7 @@ export default class ChallengeRank {
   // ==================== 查询 ====================
 
   static async getCurrentScheduleId (challengeType, groupId) {
-    try { return await redis.get(currentKey(challengeType, groupId)) } catch { return null }
+    try { return await redis.get(currentKey(challengeType)) } catch { return null }
   }
 
   static async getSeasonMeta (challengeType, groupId) {
@@ -358,7 +357,7 @@ export default class ChallengeRank {
 
   static async getRank (groupId, challengeType, dimension, scheduleId, topN = 20) {
     const isCompound = dimension === '__'
-    const key = rankKey(groupId, challengeType, dimension, scheduleId)
+    const key = rankKey(challengeType, dimension, scheduleId)
     let members
     try {
       members = await redis.zRangeWithScores(key, -topN, -1)
@@ -396,7 +395,7 @@ export default class ChallengeRank {
 
   static async getRankForUid (uid, groupId, challengeType, dimension, scheduleId) {
     const isCompound = dimension === '__'
-    const key = rankKey(groupId, challengeType, dimension, scheduleId)
+    const key = rankKey(challengeType, dimension, scheduleId)
     try {
       const rank = await redis.zRevRank(key, String(uid))
       if (rank == null) return null
@@ -420,23 +419,23 @@ export default class ChallengeRank {
   }
 
   static async getRankCount (groupId, challengeType, dimension, scheduleId) {
-    try { return await redis.zCard(rankKey(groupId, challengeType, dimension, scheduleId)) } catch { return 0 }
+    try { return await redis.zCard(rankKey(challengeType, dimension, scheduleId)) } catch { return 0 }
   }
 
   // ==================== 管理 ====================
 
   static async resetRank (groupId, challengeType = null) {
-    const pattern = challengeType != null
-      ? `${KEY}:${groupId}:${challengeType}:*`
-      : `${KEY}:${groupId}:*`
-    try {
-      const keys = await redis.keys(pattern)
-      if (keys?.length) await redis.del(...keys)
-    } catch (err) {
-      logger?.error(`${LOG_PREFIX}[排行] 重置失败`, err)
+    const types = challengeType != null ? [challengeType] : [0, 1, 2, 3]
+    for (const ct of types) {
+      const pattern = `${KEY}:${ct}:*`
+      try {
+        const keys = await redis.keys(pattern)
+        if (keys?.length) await redis.del(...keys)
+      } catch (err) {
+        logger?.error(`${LOG_PREFIX}[排行] 重置 ZSET 失败`, err)
+      }
     }
-    try { await redis.del(currentKey(challengeType ?? '*', groupId)) } catch {}
-    logger?.mark(`${LOG_PREFIX}[排行] 已重置群 ${groupId} 排行`)
+    logger?.mark(`${LOG_PREFIX}[排行] 已重置排行数据`)
   }
 
   // ==================== 群配置 ====================
