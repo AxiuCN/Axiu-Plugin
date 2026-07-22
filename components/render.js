@@ -38,8 +38,8 @@ export async function render (app, tpl, data = {}, imgType = 'jpeg') {
   data.elemLayout = path.join(pluginRoot, 'resources', 'common', 'layout', 'elem.html')
   data.defaultLayout = path.join(pluginRoot, 'resources', 'common', 'layout', 'default.html')
 
-  // include 模板搜索路径（avatar-card 等）
-  data._tpl_path = './plugins/Axiu-Plugin/resources/challenge/GS'
+  // include 模板搜索路径（avatar-card 等），必须用绝对路径
+  data._tpl_path = path.join(pluginRoot, 'resources', 'challenge', 'GS').replace(/\\/g, '/')
 
   // 注入系统版权信息
   data.sys = {

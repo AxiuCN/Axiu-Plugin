@@ -143,7 +143,11 @@ function buildAvatarsMap (ids, infoMap = {}) {
       let faceUrl = ''
       const iconName = getAtlasIconName(char)
       if (iconName) {
-        faceUrl = path.join(ATLAS_GALLERY, `${iconName}.webp`).replace(/\\/g, '/')
+        faceUrl = 'file:///' + path.join(ATLAS_GALLERY, `${iconName}.webp`).replace(/\\/g, '/')
+      }
+      // CDN 兜底
+      if (!faceUrl) {
+        faceUrl = `https://enka.network/ui/UI_AvatarIcon_${char.id}.png`
       }
       ret[id] = {
         id: char.id,
