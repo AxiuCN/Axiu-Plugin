@@ -32,6 +32,21 @@ export default class apiTool {
     }
 
     return {
+      /** 原神深渊 */
+      spiralAbyss: {
+        url: `${hostRecord}game_record/app/genshin/api/spiralAbyss`,
+        query: `role_id=${data.role_id}&schedule_type=${data.schedule_type || 1}&server=${this.server}`,
+      },
+      /** 原神幻想真境剧诗 */
+      role_combat: {
+        url: `${hostRecord}game_record/app/genshin/api/role_combat`,
+        query: `role_id=${data.role_id}&need_detail=true&server=${this.server}`,
+      },
+      /** 原神幽境危战 */
+      hard_challenge: {
+        url: `${hostRecord}game_record/app/genshin/api/hard_challenge`,
+        query: `role_id=${data.role_id}&need_detail=true&server=${this.server}`,
+      },
       createGeetest: {
         url: `${host}event/toolcomsrv/risk/createGeetest`,
         query: `is_high=true&app_key=${data.app_key}`

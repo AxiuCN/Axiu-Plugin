@@ -37,6 +37,7 @@ export default class MysApi {
   }
 
   getUrl (type, data = {}) {
+    if (!data.role_id) data.role_id = this.uid
     let urlMap = this.apiTool.getUrlMap({ ...data, deviceId: this.device_id.toUpperCase() })
     if (!urlMap[type]) return false
 

@@ -1,0 +1,75 @@
+{{extend defaultLayout}}
+
+{{block 'css'}}
+<link rel="stylesheet" href="{{ pluResPath }}challenge/GS/rank.css">
+{{/block}}
+
+{{block 'main'}}
+
+<h2 class="rank-head">
+  {{title}}{{if periodNumber}} — 第{{periodNumber}}期{{/if}}
+</h2>
+
+{{if beginTime}}
+<div class="rank-subhead">{{beginTime}}～{{endTime}}</div>
+{{/if}}
+
+<div class="rank-info">
+  <span>排行人数: {{totalCount}}</span>
+  <span class="sep">|</span>
+  <span>显示 Top {{topN}}</span>
+</div>
+
+<div class="rank-list">
+  {{each list ds idx}}
+  <div class="rank-item tier-{{ds.rank <= 3 ? ds.rank : 0}}">
+    <div class="rank-no no-{{ds.rank <= 3 ? ds.rank : ''}}">{{ds.rank}}</div>
+    <div class="rank-face">
+      {{if ds.qqFace}}
+      <img class="face-img" src="{{ds.qqFace}}" />
+      {{else}}
+      <div class="face-no">?</div>
+      {{/if}}
+    </div>
+    <div class="rank-user">
+      {{if ds.nickname}}
+      <div class="user-name">{{ds.nickname}}</div>
+      {{/if}}
+      <div class="user-uid">{{ds.uid}}</div>
+    </div>
+    <div class="rank-vals">
+      {{each ds.cols c}}
+      <div class="rv-col">
+        <span class="rv-val">{{c.v}}</span>
+        <span class="rv-lbl">{{c.l}}</span>
+      </div>
+      {{/each}}
+    </div>
+  </div>
+  {{/each}}
+</div>
+
+{{if selfRank}}
+<div class="rank-me">
+  <div class="me-face">
+    {{if selfRank.qqFace}}
+    <img class="face-img" src="{{selfRank.qqFace}}" />
+    {{else}}
+    <div class="face-no">?</div>
+    {{/if}}
+  </div>
+  <div class="me-label">你的排名</div>
+  <div class="me-rank">#{{selfRank.rank}}</div>
+  <div class="me-uid">UID {{selfRank.uid}}</div>
+  <div class="me-vals">
+    {{each selfRank.cols c}}
+    <div class="rv-col">
+      <span class="rv-val">{{c.v}}</span>
+      <span class="rv-lbl">{{c.l}}</span>
+    </div>
+    {{/each}}
+  </div>
+</div>
+{{/if}}
+
+{{/block}}

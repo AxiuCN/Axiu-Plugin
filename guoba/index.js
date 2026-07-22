@@ -6,7 +6,7 @@ import * as qrLoginMod from './qrLogin.js'
 import * as groupApproveMod from './groupApprove.js'
 import * as captchaMod from './captcha.js'
 import * as signinMod from './signin.js'
-import * as srChallengeMod from './srChallenge.js'
+import * as challengeMod from './challenge.js'
 import * as proxySpeakMod from './proxySpeak.js'
 import gsCfg from '../model/gsCfg.js'
 import { getPluginConfig } from '../components/config.js'
@@ -48,6 +48,9 @@ const TEMPLATE_VARS = {
   'srChallenge.enabled': 'srChallenge_enabled',
   'srChallengeRank.enabled': 'srChallengeRank_enabled',
   'srChallengeRank.rankNumber': 'srChallengeRank_rankNumber',
+  'gsAbyss.enabled': 'gsAbyss_enabled',
+  'gsAbyssRank.enabled': 'gsAbyssRank_enabled',
+  'gsAbyssRank.rankNumber': 'gsAbyssRank_rankNumber',
   'proxySpeak.enabled': 'proxySpeak_enabled'
 }
 
@@ -115,7 +118,7 @@ export function supportGuoba () {
         ...qrLoginMod.getSchema(),
         ...signinMod.getSchema(),
         ...captchaMod.getSchema(),
-        ...srChallengeMod.getSchema(),
+        ...challengeMod.getSchema(),
         ...groupApproveMod.getSchema(),
         ...proxySpeakMod.getSchema()
       ],
@@ -157,6 +160,13 @@ export function supportGuoba () {
           // srChallengeRank
           'srChallengeRank.enabled': getPluginConfig()?.srChallengeRank?.enabled ?? true,
           'srChallengeRank.rankNumber': getPluginConfig()?.srChallengeRank?.rankNumber ?? 20,
+
+          // gsAbyss
+          'gsAbyss.enabled': getPluginConfig()?.gsAbyss?.enabled ?? true,
+
+          // gsAbyssRank
+          'gsAbyssRank.enabled': getPluginConfig()?.gsAbyssRank?.enabled ?? true,
+          'gsAbyssRank.rankNumber': getPluginConfig()?.gsAbyssRank?.rankNumber ?? 20,
 
           // proxySpeak
           'proxySpeak.enabled': getPluginConfig()?.proxySpeak?.enabled ?? true,

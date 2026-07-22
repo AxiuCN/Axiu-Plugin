@@ -52,6 +52,18 @@ signin:
   # 过码超时（秒）
   captchaTimeout: 240
 
+# 原神深渊查询
+gsAbyss:
+  # 是否启用深渊查询（关闭后 #深渊/#剧诗/#幽境 等命令不响应）
+  enabled: true
+
+# 原神深渊排行
+gsAbyssRank:
+  # 是否启用深渊排行（关闭后不上报、不响应排行命令）
+  enabled: true
+  # 排行上榜人数上限（5-50）
+  rankNumber: 20
+
 # 星铁终局挑战查询
 srChallenge:
   # 是否启用终局挑战查询（关闭后 *末日/*虚构/*混沌 等命令不响应）
