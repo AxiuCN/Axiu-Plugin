@@ -28,7 +28,7 @@ export class ChallengeApp extends plugin {
       name: '终局挑战',
       dsc: '星铁终局挑战查询 + 星铁/原神终局挑战排行',
       event: 'message',
-      priority: 300,
+      priority: 1,
       rule: [
         // ===== 星铁查询 =====
         {
@@ -72,7 +72,7 @@ export class ChallengeApp extends plugin {
           permission: 'master'
         },
 
-        // ===== 原神查询（数据采集 → 放行给 miao-plugin 渲染） =====
+        // ===== 原神查询（完整自实现 → 阻断 miao-plugin） =====
         {
           reg: '^#(原神)?(上期|本期)?(深境|深渊|深境螺旋)$',
           fnc: 'gsSpiralAbyssQuery'
@@ -286,7 +286,7 @@ export class ChallengeApp extends plugin {
     return true
   }
 
-  // ==================== 原神查询（数据采集 → 放行） ====================
+  // ==================== 原神查询（完整自实现 → 阻断 miao-plugin） ====================
 
   async gsSpiralAbyssQuery (e) { return gsSpiralAbyssQuery(e) }
   async gsRoleCombatQuery (e) { return gsRoleCombatQuery(e) }
