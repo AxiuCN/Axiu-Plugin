@@ -88,40 +88,8 @@ async function getGsUserAuth (e) {
   return null
 }
 
-// ==================== 角色头像映射（Atlas-Plugin 本地图片） ====================
-
-/** Atlas-Plugin 根路径 */
-const ATLAS_ROOT = path.resolve('plugins/Atlas-Plugin/tool/nanoka-atlas-backend/nanoka-atlas-backend')
-const ATLAS_ITEMS = path.join(ATLAS_ROOT, 'data/items/简体中文/原神/角色')
-const ATLAS_GALLERY = path.join(ATLAS_ROOT, 'gallery/gi')
-
-/** avatar_id → UI_AvatarIcon 文件名缓存 */
-const iconNameCache = {}
-
-/**
- * 从 Atlas JSON 获取角色 UI_AvatarIcon 文件名
- * @param {object} char - miao Character 实例
- * @returns {string|null} 如 "UI_AvatarIcon_Zhongli"
- */
-function getAtlasIconName (char) {
-  const id = char.id
-  if (iconNameCache[id]) return iconNameCache[id]
-  // 构建 JSON 路径: {稀有度}/{中文名}.json
-  const rarity = char.star === 5 ? '五星' : '四星'
-  const jsonPath = path.join(ATLAS_ITEMS, rarity, `${char.name}.json`)
-  try {
-    if (!fs.existsSync(jsonPath)) return null
-    const data = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'))
-    const iconName = data.images?.[0]?.originalValue
-    if (iconName) {
-      iconNameCache[id] = iconName
-      return iconName
-    }
-  } catch (e) {
-    // JSON 解析失败
-  }
-  return null
-}
+// ==================== 角色头像映射（miao-plugin 本地图片） ====================
+const MIAO_RESOURCE = path.resolve('plugins/miao-plugin/resources')
 
 /**
  * 根据 avatar_id 列表构建 avatars 映射
@@ -140,18 +108,20 @@ function buildAvatarsMap (ids, infoMap = {}) {
       const char = MiaoCharacter.get(id)
       if (!char) continue
       const info = infoMap[id] || {}
-      const iconName = getAtlasIconName(char)
-      // 优先从 Atlas 本地图标文件读取（base64 嵌入，避免 Chromium file:// 限制）
-      let faceUrl = `https://enka.network/ui/${iconName || `UI_AvatarIcon_${char.id}`}.png`
-      if (iconName) {
-        const localPath = path.join(ATLAS_GALLERY, `${iconName}.webp`)
+      // 读 miao-plugin 本地头像文件 → base64 data URI（避免 Chromium file:// 限制）
+      let faceUrl = ''
+      const faceRel = char.face  // e.g. "/meta-gs/character/钟离/imgs/face.webp"
+      if (faceRel) {
         try {
-          const buf = fs.readFileSync(localPath)
+          const buf = fs.readFileSync(path.join(MIAO_RESOURCE, faceRel))
           faceUrl = `data:image/webp;base64,${buf.toString('base64')}`
-        } catch {
-          // 本地文件不存在则用 Enka CDN 兜底
-        }
+        } catch {}
       }
+      // 兜底 Enka CDN
+      if (!faceUrl) {
+        faceUrl = `https://enka.network/ui/UI_AvatarIcon_${char.id}.png`
+      }
+      logger?.info(`${LOG_PREFIX}[原神] 角色头像 ${char.name}(${char.id}) faceRel=${faceRel} len=${faceUrl.length}`)
       ret[id] = {
         id: char.id,
         name: char.name,
