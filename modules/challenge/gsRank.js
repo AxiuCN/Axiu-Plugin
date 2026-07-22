@@ -171,7 +171,8 @@ export async function handleGsRank (e) {
     topN,
     beginTime: seasonMeta?.beginTime || '',
     endTime: seasonMeta?.endTime || '',
-    periodNumber: seasonMeta?.periodNumber || null
+    periodNumber: seasonMeta?.periodNumber || null,
+    scheduleName: seasonMeta?.scheduleName || ''
   }
   const img = await render('challenge/GS', 'rank', renderData)
   if (img) await e.reply(img)

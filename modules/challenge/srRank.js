@@ -136,7 +136,7 @@ export async function handleSrRank (ctx, e) {
   const seasonMeta = await ChallengeRank.getSeasonMeta(challengeType, e.group_id)
 
   const renderData = {
-    title: `*${typeName}·${dimLabel}排行`,
+    title: `${typeName}·${dimLabel}排行`,
     challengeType, dimension, dimLabel, list, selfRank, totalCount,
     groupId: e.group_id, topN,
     beginTime: seasonMeta?.beginTime || '',

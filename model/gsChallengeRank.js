@@ -15,11 +15,26 @@
  *   3 = 幽境危战·多人 (hard_challenge.mp)
  */
 
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { LOG_PREFIX } from '../components/constants.js'
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const pluginRoot = path.resolve(__dirname, '..')
 const KEY = 'Axiu:gsAbyss:rank'
 const TTL = 90 * 24 * 3600 // 90 天
 const TYPE_NAMES = ['深境螺旋', '真境幻想剧诗', '幽境危战·单人', '幽境危战·多人']
+
+/** nanoka 图鉴数据目录（Atlas-Plugin 的子模块） */
+const GS_NANOKA_BASE = path.resolve(pluginRoot, '../Atlas-Plugin/tool/nanoka-atlas-backend/nanoka-atlas-backend/data/items/简体中文/原神')
+const GS_NANOKA_DIR = ['深境螺旋', '幻想真境剧诗挑战']
+
+/** 各类型起始日期（用于计算期数） */
+const GS_EPOCH_CONFIG = {
+  0: { start: new Date('2020-09-28T04:00:00'), cycleDays: 15 },  // 深境螺旋 v1.0 起 ~15天/期
+  1: { start: new Date('2024-07-01T04:00:00'), cycleDays: 30 },  // 幻想真境剧诗 v4.7 起 ~30天/期
+}
 
 /** 维度定义 */
 const DIMENSIONS = {
@@ -175,15 +190,50 @@ export default class GsChallengeRank {
   }
 
   static getPeriodNumber (data, challengeType) {
+    if (challengeType >= 2) return null // 危战无期数
+    const cfg = GS_EPOCH_CONFIG[challengeType]
+    if (!cfg) return null
     const ts = data?.start_time || data?.schedule?.start_time
     if (!ts) return null
     try {
       const d = new Date(ts * 1000)
       if (isNaN(d.getTime())) return null
-      const epoch = new Date('2022-09-01')
-      const diffMonths = (d.getFullYear() - epoch.getFullYear()) * 12 + (d.getMonth() - epoch.getMonth())
-      return Math.max(1, Math.round(diffMonths * 2 + (d.getDate() > 15 ? 1 : 0.5)))
+      const diffDays = (d.getTime() - cfg.start.getTime()) / (24 * 3600 * 1000)
+      if (diffDays < 0) return 1
+      return Math.floor(diffDays / cfg.cycleDays) + 1
     } catch { return null }
+  }
+
+  /**
+   * 从 nanoka 图鉴数据查找赛季名称
+   * 深境螺旋: 按 content.list 时间范围匹配 API start_time，返回 meta.name
+   * 幻想真境剧诗: 无命名赛季，返回空
+   */
+  static _lookupSeasonName (challengeType, data) {
+    if (challengeType !== 0) return '' // 仅深渊有命名赛季
+    const targetTs = data?.start_time || data?.schedule?.start_time
+    if (!targetTs) return ''
+    const targetDate = new Date(targetTs * 1000)
+    if (isNaN(targetDate.getTime())) return ''
+
+    const dir = path.join(GS_NANOKA_BASE, GS_NANOKA_DIR[challengeType], '未分类')
+    let files = []
+    try { files = fs.readdirSync(dir).filter(f => f.endsWith('.json')) } catch { return '' }
+
+    for (const file of files) {
+      try {
+        const d = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'))
+        const begin = d.content?.list?.begin
+        const end = d.content?.list?.end
+        if (!begin || !end) continue
+        const b = new Date(begin.replace(' ', 'T'))
+        const e = new Date(end.replace(' ', 'T'))
+        if (!isNaN(b.getTime()) && !isNaN(e.getTime()) && targetDate >= b && targetDate <= e) {
+          return d.meta?.name || ''
+        }
+      } catch { /* skip */ }
+    }
+    return ''
   }
 
   // ==================== score 提取 ====================
@@ -323,6 +373,7 @@ export default class GsChallengeRank {
       const existingSeason = await redis.get(seasonKey(baseT, scheduleId))
       if (!existingSeason) {
         const periodNum = this.getPeriodNumber(data, challengeType)
+        const seasonName = this._lookupSeasonName(challengeType, data)
         const fmtTs = (ts) => {
           if (!ts) return ''
           const d = new Date(ts * 1000)
@@ -332,6 +383,7 @@ export default class GsChallengeRank {
         const bt = fmtTs(data?.start_time || data?.schedule?.start_time)
         const et = fmtTs(data?.end_time || data?.schedule?.end_time)
         await redis.setEx(seasonKey(baseT, scheduleId), TTL, JSON.stringify({
+          scheduleName: seasonName,
           beginTime: bt,
           endTime: et,
           periodNumber: periodNum

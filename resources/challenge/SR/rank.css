@@ -3,6 +3,10 @@
   width: 800px;
   overflow: hidden;
   background: url('./images/bg_2.8d088acd.png') center / cover no-repeat;
+}
+
+.elem-bg.container {
+  background: url('./images/bg_2.8d088acd.png') center / cover no-repeat;
   color: #f0eaca;
   font-family: 'SR', 'YS', 'Number', sans-serif;
   box-sizing: border-box;

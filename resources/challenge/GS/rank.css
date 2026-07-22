@@ -20,6 +20,13 @@
   margin-bottom: 4px;
 }
 
+.rank-name {
+  text-align: center;
+  font-size: 22px;
+  color: rgba(240,234,202,0.85);
+  margin-bottom: 2px;
+}
+
 .rank-subhead {
   text-align: center;
   font-size: 14px;
