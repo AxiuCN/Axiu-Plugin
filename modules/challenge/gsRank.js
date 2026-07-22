@@ -17,11 +17,17 @@ export const DIFF_NAMES = { 1: '普通', 2: '进阶', 3: '困难', 4: '险恶', 
 /** 幽境危战徽章名称 */
 export const BADGE_NAMES = { 1: '普通', 2: '进阶', 3: '困难', 4: '险恶', 5: '无畏', 6: '绝境', 7: '虹彩' }
 
-/** 关键词 → challengeType */
+/**
+ * 关键词 → challengeType
+ * 幽境危战默认单人(2)，含多人/组队关键词 → 多人(3)
+ */
 export function resolveGsType (text) {
   if (/深境|深渊/.test(text)) return 0
   if (/幻想|剧诗/.test(text)) return 1
-  if (/幽境|危战/.test(text)) return 2
+  if (/幽境|危战/.test(text)) {
+    if (/多人|组队|合作/.test(text)) return 3
+    return 2 // 默认单人
+  }
   return -1
 }
 
@@ -43,7 +49,8 @@ export function buildGsCols (extra, challengeType) {
           : '-', l: '用时' },
         { v: extra.borrow_num ?? '-', l: '借出' }
       ]
-    case 2: // 幽境危战: 难度 | 用时 | 徽章
+    case 2: // 幽境危战·单人: 难度 | 用时 | 徽章
+    case 3: // 幽境危战·多人: 难度 | 用时 | 徽章
       return [
         { v: DIFF_NAMES[extra.difficulty] || extra.difficulty || '-', l: '难度' },
         { v: extra.time_second != null
@@ -55,7 +62,11 @@ export function buildGsCols (extra, challengeType) {
   }
 }
 
-const TYPE_KEYWORDS = ['深境', '深渊', '深境螺旋', '幻想', '剧诗', '幻想真境剧诗', '幽境', '危战', '幽境危战']
+const TYPE_KEYWORDS = ['深境', '深渊', '深境螺旋',
+  '幻想', '剧诗', '幻想真境剧诗',
+  '幽境', '危战', '幽境危战']
+
+const MODE_KEYWORDS = ['多人', '组队', '合作', '单人', '单挑']
 
 /**
  * Genshin 终局挑战排行 handler
@@ -74,9 +85,10 @@ export async function handleGsRank (e) {
   const challengeType = resolveGsType(e.msg)
   if (challengeType < 0) return true
 
-  // 解析维度
+  // 解析维度（剔除类型词+模式词+命令词）
   let rest = e.msg
   for (const kw of TYPE_KEYWORDS) rest = rest.replace(kw, '')
+  for (const kw of MODE_KEYWORDS) rest = rest.replace(kw, '')
   rest = rest.replace(/^(#?原神)/, '').replace(/^(排名|排行)/, '').trim()
   const dimension = GsChallengeRank.resolveDimensionAlias(rest) || GsChallengeRank.getDefaultDimension(challengeType)
 
@@ -92,21 +104,21 @@ export async function handleGsRank (e) {
   const typeName = GsChallengeRank.getTypeName(challengeType)
   const scheduleId = await GsChallengeRank.getCurrentScheduleId(challengeType, e.group_id)
   if (!scheduleId) {
-    const hints = ['深渊', '剧诗', '幽境']
-    await e.reply(`本群暂无${typeName}排行数据，请先发送 #${hints[challengeType]} 上报数据`)
+    const hints = { 0: '深渊', 1: '剧诗', 2: '幽境', 3: '幽境' }
+    await e.reply(`本群暂无${typeName}排行数据，请先发送 #${hints[challengeType] || '深渊'} 上报数据`)
     return true
   }
 
   const dims = GsChallengeRank.getDimensions(challengeType)
   const dimDef = dims.find(d => d.key === dimension)
   const dimLabel = dimDef?.label || (dimension === '__' ? (() => {
-    switch (challengeType) { case 0: return '星数'; case 1: return '模式'; case 2: return '难度'; default: return '综合' }
+    switch (challengeType) { case 0: return '星数'; case 1: return '模式'; case 2: case 3: return '难度'; default: return '综合' }
   })() : dimension)
 
   const list = await GsChallengeRank.getRank(e.group_id, challengeType, dimension, scheduleId, topN)
   if (!list.length) {
-    const hints = ['深渊', '剧诗', '幽境']
-    await e.reply(`本群暂无${typeName}排行数据，请先发送 #${hints[challengeType]} 上报数据`)
+    const hints = { 0: '深渊', 1: '剧诗', 2: '幽境', 3: '幽境' }
+    await e.reply(`本群暂无${typeName}排行数据，请先发送 #${hints[challengeType] || '深渊'} 上报数据`)
     return true
   }
 

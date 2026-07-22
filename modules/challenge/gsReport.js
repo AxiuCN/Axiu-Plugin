@@ -46,7 +46,6 @@ export async function ensureGsAutoReport () {
         const cfg = getPluginConfig()
         if (cfg?.gsAbyssRank?.enabled === false) return res
 
-        const challengeType = TYPE_MAP[type]
         const qq = e.at || e.user_id
 
         // role_combat / hard_challenge 返回数组 data[n]，取当前期
@@ -55,10 +54,24 @@ export async function ensureGsAutoReport () {
           reportData = reportData[0] || {}
         }
 
-        const scheduleId = GsChallengeRank.getScheduleId(reportData, challengeType)
-        GsChallengeRank.report(
-          this.uid, qq, e.group_id, challengeType, reportData, scheduleId
-        ).catch(err => logger?.debug(`${LOG_PREFIX}[原神排行] 上报忽略:`, err?.message))
+        // 幽境危战需同时上报单人和多人
+        if (type === 'hard_challenge') {
+          const scheduleId = GsChallengeRank.getScheduleId(reportData, 2)
+          if (reportData?.single?.has_data) {
+            GsChallengeRank.report(this.uid, qq, e.group_id, 2, reportData, scheduleId)
+              .catch(err => logger?.debug(`${LOG_PREFIX}[原神排行] 危战单人上报忽略:`, err?.message))
+          }
+          if (reportData?.mp?.has_data) {
+            GsChallengeRank.report(this.uid, qq, e.group_id, 3, reportData, scheduleId)
+              .catch(err => logger?.debug(`${LOG_PREFIX}[原神排行] 危战多人上报忽略:`, err?.message))
+          }
+        } else {
+          const challengeType = TYPE_MAP[type]
+          const scheduleId = GsChallengeRank.getScheduleId(reportData, challengeType)
+          GsChallengeRank.report(
+            this.uid, qq, e.group_id, challengeType, reportData, scheduleId
+          ).catch(err => logger?.debug(`${LOG_PREFIX}[原神排行] 上报忽略:`, err?.message))
+        }
       } catch {}
 
       return res

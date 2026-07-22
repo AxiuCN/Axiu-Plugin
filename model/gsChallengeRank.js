@@ -11,14 +11,15 @@
  * 类型：
  *   0 = 深境螺旋 (spiralAbyss)
  *   1 = 真境幻想剧诗 (role_combat)
- *   2 = 幽境危战 (hard_challenge)
+ *   2 = 幽境危战·单人 (hard_challenge.single)
+ *   3 = 幽境危战·多人 (hard_challenge.mp)
  */
 
 import { LOG_PREFIX } from '../components/constants.js'
 
 const KEY = 'Axiu:gsAbyss:rank'
 const TTL = 90 * 24 * 3600 // 90 天
-const TYPE_NAMES = ['深境螺旋', '真境幻想剧诗', '幽境危战']
+const TYPE_NAMES = ['深境螺旋', '真境幻想剧诗', '幽境危战·单人', '幽境危战·多人']
 
 /** 维度定义 */
 const DIMENSIONS = {
@@ -33,13 +34,17 @@ const DIMENSIONS = {
     { key: 'time', label: '用时', desc: '总用时(秒)', higher: false },
     { key: 'borrow', label: '借出', desc: '借出角色次数', higher: true }
   ],
-  2: [ // 幽境危战 — 难度 > 用时
+  2: [ // 幽境危战·单人 — 难度 > 用时
+    { key: 'difficulty', label: '难度', desc: '难度n', higher: true },
+    { key: 'time', label: '用时', desc: '用时(秒)', higher: false }
+  ],
+  3: [ // 幽境危战·多人 — 同单人维度
     { key: 'difficulty', label: '难度', desc: '难度n', higher: true },
     { key: 'time', label: '用时', desc: '用时(秒)', higher: false }
   ]
 }
 
-const DEFAULT_DIMENSION = { 0: '__', 1: '__', 2: '__' }
+const DEFAULT_DIMENSION = { 0: '__', 1: '__', 2: '__', 3: '__' }
 
 /**
  * 综合排序分数 — 多维度加权编码
@@ -56,7 +61,8 @@ function compoundScore (scores, extra, challengeType) {
         + (scores.floor || 0) * 1000000
         - (R(extra.total_time || 0, 999999))
         + (extra.borrow_num || 0) * 100
-    case 2: // 幽境危战: 难度 > 用时(少)
+    case 2:
+    case 3: // 幽境危战: 难度 > 用时(少)
       return (scores.difficulty || 0) * 1000000
         - (R(extra.time_second || 0, 999999))
     default: return 0
@@ -64,13 +70,18 @@ function compoundScore (scores, extra, challengeType) {
 }
 
 const DIM_ALIAS = {
-  '层数': 'floor', '最深': 'floor', '最深抵达': 'floor',
-  '星数': 'star', '星星': 'star', '总星数': 'star',
-  '战斗': 'battle', '次数': 'battle', '战斗次数': 'battle',
+  // 深境螺旋
+  '层数': 'floor', '层': 'floor', '最深': 'floor', '最深抵达': 'floor',
+  '星数': 'star', '星': 'star', '星星': 'star', '总星数': 'star',
+  '战斗': 'battle', '战': 'battle', '次数': 'battle', '战斗次数': 'battle',
+  // 真境幻想剧诗
   '模式': 'mode', '难度模式': 'mode',
-  '借出': 'borrow', '借出次数': 'borrow', '借出角色': 'borrow',
-  '难度': 'difficulty', '难度n': 'difficulty',
-  '星': 'star', '层': 'floor'
+  '用时': 'time', '时': 'time', '时间': 'time',
+  '借出': 'borrow', '借': 'borrow', '借出次数': 'borrow', '借出角色': 'borrow',
+  // 幽境危战
+  '难度': 'difficulty', '难': 'difficulty', '难度n': 'difficulty',
+  // 通用
+  '幕': 'floor', '幕数': 'floor',
 }
 
 // ==================== Key 构造 ====================
@@ -120,15 +131,18 @@ export default class GsChallengeRank {
     return TYPE_NAMES[challengeType] || '未知'
   }
 
+  /** 危战类型 → 基础 type（用于 season/scheduleId 共享） */
+  static _baseType (challengeType) {
+    return challengeType === 3 ? 2 : challengeType
+  }
+
   // ==================== 徽章计算 ====================
 
   /**
    * 幽境危战徽章（仅展示，不参与排序）
-   * 优先取 API 原始字段，否则按 difficulty + time 推算
    * @returns {number} 0=无, 1-6=基础徽章, 7=彩虹徽章(diff6≤180s)
    */
   static _calcBadge (data, difficulty, timeSecond) {
-    // 尝试从 API 原始字段提取
     if (data?.badge != null) return Number(data.badge)
     if (data?.medal != null) return Number(data.medal)
     if (data?.medal_type != null) return Number(data.medal_type)
@@ -137,47 +151,37 @@ export default class GsChallengeRank {
     const time = timeSecond != null ? Number(timeSecond) : (data?.second ?? data?.time ?? 999)
     if (!diff || diff < 1) return 0
 
-    // 难度 6 + ≤180s → 彩虹徽章
     if (diff >= 6 && time <= 180) return 7
-    // 基础徽章对应难度等级
     return diff
   }
 
   // ==================== scheduleId ====================
 
   static getScheduleId (data, challengeType) {
-    // 优先 schedule_id
     if (data?.schedule_id != null) return String(data.schedule_id)
-    // 真境幻想剧诗 / 幽境危战: schedule 对象
     if (data?.schedule?.id != null) return String(data.schedule.id)
     if (data?.schedule?.schedule_id != null) return String(data.schedule.schedule_id)
 
-    // fallback: start_time Unix 秒时间戳
     const ts = data?.start_time || data?.schedule?.start_time
     if (ts) {
       const d = new Date(ts * 1000)
       if (!isNaN(d.getTime())) return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
     }
 
-    // fallback: schedule.start_date_time 对象
     const sdt = data?.schedule?.start_date_time
     if (sdt) return `${sdt.year}${String(sdt.month).padStart(2, '0')}${String(sdt.day).padStart(2, '0')}`
 
     return 'unknown'
   }
 
-  /** 计算期数（基于 start_time） */
   static getPeriodNumber (data, challengeType) {
     const ts = data?.start_time || data?.schedule?.start_time
     if (!ts) return null
     try {
       const d = new Date(ts * 1000)
       if (isNaN(d.getTime())) return null
-      // 深境螺旋从 2022-09-01 开始（3.0版本），每月两期
-      // 简单用月份差计算
       const epoch = new Date('2022-09-01')
       const diffMonths = (d.getFullYear() - epoch.getFullYear()) * 12 + (d.getMonth() - epoch.getMonth())
-      // 每月约 2 期，取近似值
       return Math.max(1, Math.round(diffMonths * 2 + (d.getDate() > 15 ? 1 : 0.5)))
     } catch { return null }
   }
@@ -190,7 +194,6 @@ export default class GsChallengeRank {
 
     switch (challengeType) {
       case 0: { // 深境螺旋
-        // 层数 — 解析 max_floor："12-3" → 123
         const mf = data?.max_floor
         if (mf != null) {
           const parts = String(mf).split('-')
@@ -200,7 +203,6 @@ export default class GsChallengeRank {
           extra.max_floor = String(mf)
         }
 
-        // 星数 — 最深层 floor 的 star
         const floors = data?.floors || []
         let maxIdx = -1; let maxFloorObj = null
         for (const f of floors) {
@@ -212,7 +214,6 @@ export default class GsChallengeRank {
           extra.max_floor_star = scores.star
         }
 
-        // 战斗次数
         if (data?.total_battle_times != null) {
           const bt = Number(data.total_battle_times)
           scores.battle = -bt
@@ -226,20 +227,17 @@ export default class GsChallengeRank {
       case 1: { // 真境幻想剧诗
         const stat = data?.stat || {}
 
-        // 模式 — difficulty_id: 1=轻简, 2=普通, 3=困难, 4=卓越, 5=月谕
         if (stat.difficulty_id != null) {
           scores.mode = Number(stat.difficulty_id)
           extra.mode_id = scores.mode
         }
 
-        // 层数 — rounds_data 数组长度
         const rounds = data?.detail?.rounds_data
         if (rounds?.length) {
           scores.floor = rounds.length
           extra.round_count = rounds.length
         }
 
-        // 用时 — total_use_time (秒)
         if (stat.total_use_time != null) {
           const tt = Number(stat.total_use_time)
           scores.time = -tt
@@ -251,7 +249,6 @@ export default class GsChallengeRank {
           extra.total_time = tt
         }
 
-        // 借出角色次数
         if (stat.rent_cnt != null) {
           scores.borrow = Number(stat.rent_cnt)
           extra.borrow_num = scores.borrow
@@ -259,23 +256,25 @@ export default class GsChallengeRank {
         break
       }
 
-      case 2: { // 幽境危战
-        // 难度 n
-        const diff = data?.best?.difficulty ?? data?.difficulty
+      case 2: // 幽境危战·单人 — 取 single 子对象
+      case 3: { // 幽境危战·多人 — 取 mp 子对象
+        const modeData = challengeType === 2
+          ? (data?.single || data)
+          : (data?.mp || data)
+
+        const diff = modeData?.best?.difficulty ?? modeData?.difficulty
         if (diff != null) {
           scores.difficulty = Number(diff)
           extra.difficulty = scores.difficulty
         }
 
-        // 用时 (秒)
-        const sec = data?.best?.second ?? data?.second
+        const sec = modeData?.best?.second ?? modeData?.second
         if (sec != null) {
           scores.time = -Number(sec)
           extra.time_second = Number(sec)
         }
 
-        // 徽章 — 仅展示
-        extra.badge = this._calcBadge(data, diff, sec)
+        extra.badge = this._calcBadge(modeData, diff, sec)
         break
       }
     }
@@ -288,7 +287,6 @@ export default class GsChallengeRank {
   static async report (uid, qq, groupId, challengeType, data, scheduleId) {
     const { scores, extra } = this.extractScores(data, challengeType)
 
-    // 综合排序分
     const compound = compoundScore(scores, extra, challengeType)
     if (compound > 0) {
       try {
@@ -300,7 +298,6 @@ export default class GsChallengeRank {
       }
     }
 
-    // 写 ZSET（每个维度一个 key）
     for (const dim of this.getDimensions(challengeType)) {
       const val = scores[dim.key]
       if (val == null) continue
@@ -313,25 +310,29 @@ export default class GsChallengeRank {
       }
     }
 
-    // 当前赛季 scheduleId
-    try { await redis.setEx(currentKey(challengeType), TTL, scheduleId) } catch {}
+    // 当前赛季 scheduleId（单人和多人共享）
+    try { await redis.setEx(currentKey(this._baseType(challengeType)), TTL, scheduleId) } catch {}
 
-    // 赛季元信息
+    // 赛季元信息（单人和多人共享 base type key）
     try {
-      const periodNum = this.getPeriodNumber(data, challengeType)
-      const fmtTs = (ts) => {
-        if (!ts) return ''
-        const d = new Date(ts * 1000)
-        if (isNaN(d.getTime())) return ''
-        return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
+      const baseT = this._baseType(challengeType)
+      const existingSeason = await redis.get(seasonKey(baseT, scheduleId))
+      if (!existingSeason) {
+        const periodNum = this.getPeriodNumber(data, challengeType)
+        const fmtTs = (ts) => {
+          if (!ts) return ''
+          const d = new Date(ts * 1000)
+          if (isNaN(d.getTime())) return ''
+          return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
+        }
+        const bt = fmtTs(data?.start_time || data?.schedule?.start_time)
+        const et = fmtTs(data?.end_time || data?.schedule?.end_time)
+        await redis.setEx(seasonKey(baseT, scheduleId), TTL, JSON.stringify({
+          beginTime: bt,
+          endTime: et,
+          periodNumber: periodNum
+        }))
       }
-      const bt = fmtTs(data?.start_time || data?.schedule?.start_time)
-      const et = fmtTs(data?.end_time || data?.schedule?.end_time)
-      await redis.setEx(seasonKey(challengeType, scheduleId), TTL, JSON.stringify({
-        beginTime: bt,
-        endTime: et,
-        periodNumber: periodNum
-      }))
     } catch {}
 
     // UID 信息（QQ + extra + scores + scheduleId，全局共享）
@@ -349,19 +350,18 @@ export default class GsChallengeRank {
   // ==================== 查询 ====================
 
   static async getCurrentScheduleId (challengeType, groupId) {
-    try { return await redis.get(currentKey(challengeType)) } catch { return null }
+    try { return await redis.get(currentKey(this._baseType(challengeType))) } catch { return null }
   }
 
   static async getSeasonMeta (challengeType, groupId) {
     const sid = await this.getCurrentScheduleId(challengeType, groupId)
     if (!sid) return null
     try {
-      const raw = await redis.get(seasonKey(challengeType, sid))
+      const raw = await redis.get(seasonKey(this._baseType(challengeType), sid))
       return raw ? JSON.parse(raw) : null
     } catch { return null }
   }
 
-  /** 批量获取 uid-info，返回 { uid: {qq, extra, ...} } */
   static async _getUidInfoMap (uids) {
     const map = {}
     for (const uid of uids) {
@@ -386,12 +386,12 @@ export default class GsChallengeRank {
     const uids = members.map(m => String(m.value || m.member))
     const infoMap = await this._getUidInfoMap(uids)
 
-    // 综合排序时，展示分 = 主要维度的原始值
     const displayScore = (extra, ct) => {
       switch (ct) {
-        case 0: return extra.max_floor_star || extra.total_star || 0    // 深境: 深层星数
-        case 1: return extra.mode_id || 0                                 // 剧诗: 模式
-        case 2: return extra.difficulty || 0                              // 危战: 难度
+        case 0: return extra.max_floor_star || extra.total_star || 0
+        case 1: return extra.mode_id || 0
+        case 2:
+        case 3: return extra.difficulty || 0
         default: return 0
       }
     }
@@ -433,7 +433,8 @@ export default class GsChallengeRank {
           switch (challengeType) {
             case 0: return extra.max_floor_star || extra.total_star || 0
             case 1: return extra.mode_id || 0
-            case 2: return extra.difficulty || 0
+            case 2:
+            case 3: return extra.difficulty || 0
             default: return 0
           }
         })()
@@ -449,7 +450,7 @@ export default class GsChallengeRank {
   // ==================== 管理 ====================
 
   static async resetRank (groupId, challengeType = null) {
-    const types = challengeType != null ? [challengeType] : [0, 1, 2]
+    const types = challengeType != null ? [challengeType] : [0, 1, 2, 3]
     for (const ct of types) {
       const pattern = `${KEY}:${ct}:*`
       try {
