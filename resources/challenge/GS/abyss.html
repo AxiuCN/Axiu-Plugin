@@ -11,6 +11,26 @@
 </div>
 <div class="info_box">
 
+  {{if abyss.stat && abyss.stat.length > 0}}
+  <div class="abyss-stat-cont">
+    <div class="abyss-stat">
+      {{each abyss.stat ds}}
+      {{set avatar = avatars[ds.id]}}
+      <div class="cont">
+        {{if avatar}}
+        <div class="stat-title">
+          <span>{{ds.title}}</span>
+          <strong>{{ds.value}}</strong>
+        </div>
+        <div class="avatar-banner"
+             style="background-image:url({{avatar.face}})"></div>
+        {{/if}}
+      </div>
+      {{/each}}
+    </div>
+  </div>
+  {{/if}}
+
   {{each abyss.floors floor}}
   <div class="cont">
     <div class="cont-body">
@@ -28,6 +48,20 @@
             <div class="time">{{level.battles[0].time}}</div>
             {{/if}}
           </div>
+          {{if level.battles.length > 0}}
+          <div class="avatars">
+            {{each level.battles battle}}
+            <div class="avatar-list">
+              {{each battle.avatars avatar}}
+              {{set a = avatars[avatar.id] || {} }}
+              <div class="avatar-icon star{{a.star==4?4:5}}">
+                <span class="img" style="background-image:url({{a.face || avatar.icon}})"></span>
+              </div>
+              {{/each}}
+            </div>
+            {{/each}}
+          </div>
+          {{/if}}
         </div>
         {{/each}}
       </div>

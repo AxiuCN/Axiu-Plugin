@@ -1,0 +1,79 @@
+/**
+ * 简化角色头像卡片 — 无武器、无圣遗物
+ * 移植自 miao-plugin common/tpl/avatar-card.css
+ */
+
+.avatar-card {
+  margin: 4.5px;
+  box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.8);
+  font-size: 19.5px;
+  border-radius: 10.5px;
+  width: 114px;
+}
+.avatar-card .card {
+  border-radius: 10.5px;
+  box-shadow: 0 2px 9px 0 rgba(132, 93, 90, 0.3);
+  position: relative;
+  overflow: hidden;
+  background: #e7e5d9;
+  width: 114px;
+}
+.avatar-card .avatar-face {
+  width: 114px;
+  height: 114px;
+  border-radius: 10.5px 10.5px 22.5px 0;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  position: relative;
+  box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.5);
+}
+/* 星级背景 */
+.avatar-card .star4 { background-color: #a256e1; }
+.avatar-card .star5 { background-color: #bc7e44; }
+.avatar-card .avatar-face .img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background-position: center bottom;
+  background-size: 100% auto;
+}
+.avatar-card .avatar-face .avatar-level {
+  position: absolute;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  left: 0;
+  padding: 3px 7.5px 3px 4.5px;
+  border-radius: 0 6px 0 0;
+  color: #fff;
+  font-size: 16px;
+  text-shadow: 0 0 1px #000;
+  width: 100%;
+}
+.avatar-card .avatar-face .avatar-level span {
+  font-size: 12px;
+}
+.avatar-card .cons {
+  border-radius: 0 0 0 7.5px;
+  padding: 3px 7.5px;
+  position: absolute;
+  right: 0;
+  top: 0;
+  font-size: 16px;
+  text-shadow: 0 0 1px #000, 1px 1px 3px rgba(0, 0, 0, 0.8);
+}
+.avatar-card .cons.cons-0,
+.avatar-card .cons.cons-0 {
+  display: none;
+}
+.avatar-card .avatar-name {
+  padding: 6px 0 6px 7.5px;
+  color: #333;
+  text-align: center;
+}
+.avatar-card .avatar-name strong {
+  font-size: 24px;
+  display: block;
+  height: 30px;
+  line-height: 30px;
+}

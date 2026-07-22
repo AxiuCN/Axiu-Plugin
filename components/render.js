@@ -38,6 +38,9 @@ export async function render (app, tpl, data = {}, imgType = 'jpeg') {
   data.elemLayout = path.join(pluginRoot, 'resources', 'common', 'layout', 'elem.html')
   data.defaultLayout = path.join(pluginRoot, 'resources', 'common', 'layout', 'default.html')
 
+  // include 模板搜索路径（avatar-card 等）
+  data._tpl_path = './plugins/Axiu-Plugin/resources/challenge/GS'
+
   // 注入系统版权信息
   data.sys = {
     copyright: 'Created By TRSS-yunzai & Axiu-Plugin',

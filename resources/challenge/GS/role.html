@@ -2,6 +2,7 @@
 
 {{block 'css'}}
 <link rel="stylesheet" type="text/css" href="{{_res_path}}/challenge/GS/role.css"/>
+<link rel="stylesheet" type="text/css" href="{{_res_path}}/challenge/GS/avatar-card.css"/>
 {{/block}}
 
 {{block 'main'}}
@@ -80,6 +81,15 @@
         <span>{{round.finish_time}}</span>
       </div>
       <div class="role-floor-team">
+        {{if round.avatars && round.avatars.length > 0}}
+        <div class="role-team">
+          {{each round.avatars ra}}
+          {{set avatar = avatars[ra.avatar_id] || {} }}
+          <% include(_tpl_path+'/avatar-card.html', [avatar, {_res_path}]) %>
+        {{/each}}
+        </div>
+        <div class="line"></div>
+        {{/if}}
         <div class="role-buff">
           <div class="role-buff-line">
             {{set enemies = round.enemies || []}}

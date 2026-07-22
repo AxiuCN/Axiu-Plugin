@@ -1,0 +1,19 @@
+{{set avatar = $data[0] || false }}
+{{set {_res_path} = $data[1]}}
+
+<div class="avatar-card elem-{{avatar.elem}} card-mini">
+  <div class="card">
+    {{if avatar}}
+    <div class="avatar-face star{{avatar.star==4?4:5}}">
+      <div class="img" style="background-image:url({{avatar.face}})"></div>
+      <span class="cons cons-{{avatar.cons}}">{{avatar.cons}}</span>
+      <div class="avatar-level"><span>Lv</span>{{avatar.level}} {{avatar.abbr}}</div>
+    </div>
+    <div class="avatar-info">
+      <div class="avatar-name">
+        <strong>{{avatar.abbr}}</strong>
+      </div>
+    </div>
+    {{/if}}
+  </div>
+</div>

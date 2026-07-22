@@ -98,6 +98,15 @@ body,
   text-align: right;
   font-size: 15px;
 }
+
+/* ===== 危战阵容角色 ===== */
+.hard-team {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  width: 375px;
+}
+
 .hard-chall-team {
   display: flex;
 }
@@ -165,6 +174,41 @@ body,
   display: flex;
   flex-direction: row;
 }
+
+/* ===== 最强一击 / 最高总伤害 ===== */
+.hard-best-container {
+  display: flex;
+  flex-direction: column;
+  margin-left: 5px;
+  background-color: #e7e5d9;
+  border-radius: 10px;
+  overflow: hidden;
+  width: 120px;
+}
+.best-avatar-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 5px;
+}
+.best-avatar-container .avatar-banner {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  background-size: cover;
+  background-position: center;
+}
+.best-number-container {
+  text-align: center;
+  padding: 3px;
+}
+.best-number {
+  font-size: 14px;
+  color: #333;
+  margin: 0;
+  word-break: break-all;
+}
+
 .hard-notice .cont-body {
   font-size: 16px;
 }
