@@ -140,14 +140,17 @@ function buildAvatarsMap (ids, infoMap = {}) {
       const char = MiaoCharacter.get(id)
       if (!char) continue
       const info = infoMap[id] || {}
-      let faceUrl = ''
       const iconName = getAtlasIconName(char)
+      // 优先从 Atlas 本地图标文件读取（base64 嵌入，避免 Chromium file:// 限制）
+      let faceUrl = `https://enka.network/ui/${iconName || `UI_AvatarIcon_${char.id}`}.png`
       if (iconName) {
-        faceUrl = 'file:///' + path.join(ATLAS_GALLERY, `${iconName}.webp`).replace(/\\/g, '/')
-      }
-      // CDN 兜底
-      if (!faceUrl) {
-        faceUrl = `https://enka.network/ui/UI_AvatarIcon_${char.id}.png`
+        const localPath = path.join(ATLAS_GALLERY, `${iconName}.webp`)
+        try {
+          const buf = fs.readFileSync(localPath)
+          faceUrl = `data:image/webp;base64,${buf.toString('base64')}`
+        } catch {
+          // 本地文件不存在则用 Enka CDN 兜底
+        }
       }
       ret[id] = {
         id: char.id,
