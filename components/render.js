@@ -41,6 +41,11 @@ export async function render (app, tpl, data = {}, imgType = 'jpeg') {
   // include 模板搜索路径（avatar-card 等），必须用绝对路径
   data._tpl_path = path.join(pluginRoot, 'resources', 'challenge', 'GS').replace(/\\/g, '/')
 
+  // 星铁模板不使用原神元素背景（默认 elem-hydro），用 SR 自身背景图
+  if (app.startsWith('challenge/SR')) {
+    data.element = data.element || 'sr'
+  }
+
   // 注入系统版权信息
   data.sys = {
     copyright: 'Created By TRSS-yunzai & Axiu-Plugin',

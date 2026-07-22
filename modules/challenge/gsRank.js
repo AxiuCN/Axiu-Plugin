@@ -40,13 +40,10 @@ export function buildGsCols (extra, challengeType) {
         { v: extra.max_floor_star ?? extra.total_star ?? '-', l: '★' },
         { v: extra.battle_num ?? '-', l: '战斗' }
       ]
-    case 1: // 真境幻想剧诗: 模式 | 幕 | 用时 | 借出
+    case 1: // 真境幻想剧诗: 模式 | 幕 | 借出
       return [
         { v: MODE_NAMES[extra.mode_id] || extra.mode_id || '-', l: '模式' },
         { v: extra.round_count ?? '-', l: '幕' },
-        { v: extra.total_time != null
-          ? `${Math.floor(extra.total_time / 60)}'${String(extra.total_time % 60).padStart(2, '0')}"`
-          : '-', l: '用时' },
         { v: extra.borrow_num ?? '-', l: '借出' }
       ]
     case 2: // 幽境危战·单人: 难度 | 用时(秒) | 徽章(图片)
@@ -55,7 +52,7 @@ export function buildGsCols (extra, challengeType) {
         { v: DIFF_NAMES[extra.difficulty] || extra.difficulty || '-', l: '难度' },
         { v: extra.time_second != null ? `${extra.time_second}秒` : '-', l: '用时' },
         extra.badge
-          ? { v: BADGE_NAMES[extra.badge] || '-', l: '', img: `medal_${extra.badge}.png` }
+          ? { v: BADGE_NAMES[extra.badge] || '-', l: '', img: `medal_${extra.badge === 7 ? '6_plus' : extra.badge}.png` }
           : { v: '-', l: '徽章' }
       ]
     default: return []

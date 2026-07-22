@@ -43,10 +43,9 @@ const DIMENSIONS = {
     { key: 'star', label: '星数', desc: '最深楼层星数', higher: true },
     { key: 'battle', label: '战斗', desc: '战斗次数', higher: false }
   ],
-  1: [ // 真境幻想剧诗 — 模式 > 层数 > 用时 > 借出
+  1: [ // 真境幻想剧诗 — 模式 > 层数 > 借出
     { key: 'mode', label: '模式', desc: '难度模式', higher: true },
     { key: 'floor', label: '层数', desc: '完成幕数', higher: true },
-    { key: 'time', label: '用时', desc: '总用时(秒)', higher: false },
     { key: 'borrow', label: '借出', desc: '借出角色次数', higher: true }
   ],
   2: [ // 幽境危战·单人 — 难度 > 用时
@@ -71,10 +70,9 @@ function compoundScore (scores, extra, challengeType) {
       return (scores.floor || 0) * 1000000
         + (scores.star || 0) * 100000
         + (99 - R(extra.battle_num || 0, 99))
-    case 1: // 真境幻想剧诗: 模式 > 层数 > 用时(少) > 借出(多)
+    case 1: // 真境幻想剧诗: 模式 > 层数 > 借出(多)
       return (scores.mode || 0) * 100000000
         + (scores.floor || 0) * 1000000
-        - (R(extra.total_time || 0, 999999))
         + (extra.borrow_num || 0) * 100
     case 2:
     case 3: // 幽境危战: 难度 > 用时(少)
@@ -288,17 +286,6 @@ export default class GsChallengeRank {
           extra.round_count = rounds.length
         }
 
-        if (stat.total_use_time != null) {
-          const tt = Number(stat.total_use_time)
-          scores.time = -tt
-          extra.total_time = tt
-        } else if (data?.detail?.fight_statisic?.total_use_time) {
-          const ttObj = data.detail.fight_statisic.total_use_time
-          const tt = (ttObj.hour || 0) * 3600 + (ttObj.minute || 0) * 60 + (ttObj.second || 0)
-          scores.time = -tt
-          extra.total_time = tt
-        }
-
         if (stat.rent_cnt != null) {
           scores.borrow = Number(stat.rent_cnt)
           extra.borrow_num = scores.borrow
@@ -367,28 +354,25 @@ export default class GsChallengeRank {
       logger?.error(`${LOG_PREFIX}[原神排行] 设置当前 scheduleId 失败`, err)
     }
 
-    // 赛季元信息（单人和多人共享 base type key）
+    // 赛季元信息（单人和多人共享 base type key，始终更新期数/赛季名）
     try {
       const baseT = this._baseType(challengeType)
-      const existingSeason = await redis.get(seasonKey(baseT, scheduleId))
-      if (!existingSeason) {
-        const periodNum = this.getPeriodNumber(data, challengeType)
-        const seasonName = this._lookupSeasonName(challengeType, data)
-        const fmtTs = (ts) => {
-          if (!ts) return ''
-          const d = new Date(ts * 1000)
-          if (isNaN(d.getTime())) return ''
-          return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
-        }
-        const bt = fmtTs(data?.start_time || data?.schedule?.start_time)
-        const et = fmtTs(data?.end_time || data?.schedule?.end_time)
-        await redis.setEx(seasonKey(baseT, scheduleId), TTL, JSON.stringify({
-          scheduleName: seasonName,
-          beginTime: bt,
-          endTime: et,
-          periodNumber: periodNum
-        }))
+      const periodNum = this.getPeriodNumber(data, challengeType)
+      const seasonName = this._lookupSeasonName(challengeType, data)
+      const fmtTs = (ts) => {
+        if (!ts) return ''
+        const d = new Date(ts * 1000)
+        if (isNaN(d.getTime())) return ''
+        return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
       }
+      const bt = fmtTs(data?.start_time || data?.schedule?.start_time)
+      const et = fmtTs(data?.end_time || data?.schedule?.end_time)
+      await redis.setEx(seasonKey(baseT, scheduleId), TTL, JSON.stringify({
+        scheduleName: seasonName,
+        beginTime: bt,
+        endTime: et,
+        periodNumber: periodNum
+      }))
     } catch (err) {
       logger?.error(`${LOG_PREFIX}[原神排行] 设置赛季元信息失败`, err)
     }
