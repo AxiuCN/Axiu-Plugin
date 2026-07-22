@@ -26,8 +26,6 @@ body,
   padding-right: 10px;
   font-size: 25px;
 }
-
-/* ===== 深渊统计（最强一击/最高承伤等） ===== */
 .abyss-stat-cont {
   display: flex;
   padding: 5px;
@@ -37,11 +35,6 @@ body,
 }
 .abyss-stat .cont {
   margin: 5px 10px 5px 5px;
-  width: 170px;
-  height: 200px;
-  position: relative;
-  overflow: hidden;
-  border-radius: 10px;
 }
 .abyss-stat strong {
   text-shadow: 0 0 3px #000;
@@ -53,7 +46,6 @@ body,
   padding: 5px 10px;
   width: 100%;
   text-shadow: 0 0 1px #000;
-  z-index: 2;
 }
 .abyss-stat .stat-title span {
   display: block;
@@ -65,21 +57,15 @@ body,
   display: block;
   font-size: 30px;
 }
-.abyss-stat .avatar-banner {
-  height: 200px;
-  width: 170px;
+.avatar-banner {
+  height: 300px;
+  width: 175px;
   background-repeat: no-repeat;
-  background-size: cover;
-  background-position: center 0%;
-  border-radius: 10px;
+  background-size: 100% auto;
+  background-position: 0 10%;
 }
-
-/* ===== 深渊楼层 ===== */
 .abyss-title {
   margin: -3px 0 8px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
 }
 .abyss-title strong {
   color: #d3bc8e;
@@ -101,6 +87,21 @@ body,
   background: url("./star.png") center no-repeat;
   background-size: contain;
   margin-right: 5px;
+}
+.abyss-floor-team {
+  display: flex;
+}
+.abyss-floor-team .line {
+  width: 1px;
+  background: rgba(255, 255, 255, 0.5);
+  height: 80px;
+  vertical-align: middle;
+  margin: 15px 8px 0;
+}
+.abyss-team {
+  display: flex;
+  margin-right: -5px;
+  margin-left: -5px;
 }
 .abyss-detail {
   display: flex;
@@ -150,33 +151,41 @@ body,
   color: #aaa;
   font-size: 14px;
 }
-
-/* ===== 深渊各间角色头像 ===== */
 .abyss-level .avatars {
   display: flex;
-  gap: 3px;
-  margin-top: 3px;
-}
-.abyss-level .avatar-list {
-  display: flex;
-  gap: 2px;
-  flex-wrap: wrap;
-}
-.abyss-level .avatar-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 4px;
-  overflow: hidden;
-  display: inline-block;
-}
-.abyss-level .avatar-icon .img {
   width: 100%;
-  height: 100%;
-  display: block;
-  background-size: 100% auto;
-  background-position: center top;
 }
-
+.abyss-level .avatars .avatar-list {
+  display: flex;
+  position: relative;
+}
+.abyss-level .avatars .avatar-list.up {
+  padding-right: 15px;
+}
+.abyss-level .avatars .avatar-list.up:after {
+  content: "";
+  display: block;
+  position: absolute;
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.3);
+  right: 8px;
+  top: 50%;
+  margin-top: -8px;
+}
+.abyss-level .avatars .avatar-icon {
+  width: 33px;
+  height: 33px;
+  border-radius: 50%;
+  margin-right: 2px;
+}
+.abyss-level .avatars .avatar-icon .img {
+  background-size: auto 100%;
+  background-position: center;
+  width: 29px;
+  height: 29px;
+  margin: 2px;
+}
 .abyss-notice .cont-body {
   font-size: 16px;
 }

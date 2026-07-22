@@ -65,6 +65,10 @@ body,
   font-family: Number, "印品南征北战NZBZ体", NZBZ, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
   font-size: 20px;
 }
+.role-stat .stat-title strong {
+  display: block;
+  font-size: 30px;
+}
 .role-stat .stat-msg {
   position: absolute;
   bottom: 0;
@@ -115,20 +119,17 @@ body,
   vertical-align: middle;
   margin: 15px 8px 0;
 }
+.role-team {
+  display: flex;
+  margin-right: -5px;
+  margin-left: -5px;
+}
 .role-buff {
   display: flex;
   margin-right: -5px;
   margin-left: -5px;
   flex-direction: column;
-  width: 100%;
-}
-
-/* ===== 剧诗阵容角色 ===== */
-.role-team {
-  display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
-  width: 375px;
+  width: 50%;
 }
 .role-buff .role-choice-cards-container {
   width: 100%;
@@ -202,4 +203,7 @@ body,
 }
 .role-buff .role-buff-line + .role-buff-line {
   margin-top: 4%;
+}
+.role-notice .cont-body {
+  font-size: 16px;
 }

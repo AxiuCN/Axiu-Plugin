@@ -1,14 +1,8 @@
-/**
- * 简化角色头像卡片 — 无武器、无圣遗物
- * 移植自 miao-plugin common/tpl/avatar-card.css
- */
-
 .avatar-card {
   margin: 4.5px;
   box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.8);
   font-size: 19.5px;
   border-radius: 10.5px;
-  width: 114px;
 }
 .avatar-card .card {
   border-radius: 10.5px;
@@ -16,27 +10,22 @@
   position: relative;
   overflow: hidden;
   background: #e7e5d9;
-  width: 114px;
+  width: 105px;
 }
 .avatar-card .avatar-face {
-  width: 114px;
-  height: 114px;
+  width: 105px;
+  height: 105px;
   border-radius: 10.5px 10.5px 22.5px 0;
-  background-size: cover;
+  background-size: 100% 100%;
   background-repeat: no-repeat;
-  background-position: center;
   position: relative;
   box-shadow: 0 0 2px 0 rgba(0, 0, 0, 0.5);
 }
-/* 星级背景 */
-.avatar-card .star4 { background-color: #a256e1; }
-.avatar-card .star5 { background-color: #bc7e44; }
 .avatar-card .avatar-face .img {
   width: 100%;
   height: 100%;
-  display: block;
-  background-position: center bottom;
   background-size: 100% auto;
+  background-position: center bottom;
 }
 .avatar-card .avatar-face .avatar-level {
   position: absolute;
@@ -48,7 +37,6 @@
   color: #fff;
   font-size: 16px;
   text-shadow: 0 0 1px #000;
-  width: 100%;
 }
 .avatar-card .avatar-face .avatar-level span {
   font-size: 12px;
@@ -62,18 +50,61 @@
   font-size: 16px;
   text-shadow: 0 0 1px #000, 1px 1px 3px rgba(0, 0, 0, 0.8);
 }
-.avatar-card .cons.cons-0,
 .avatar-card .cons.cons-0 {
   display: none;
 }
-.avatar-card .avatar-name {
-  padding: 6px 0 6px 7.5px;
-  color: #333;
-  text-align: center;
+.avatar-card .cons.cons-试用 {
+  background-color: #d9767c;
 }
-.avatar-card .avatar-name strong {
-  font-size: 24px;
+.avatar-card .cons.cons-助演 {
+  background-color: #4889bf;
+}
+/* mini mode: hide wide-only elements */
+.avatar-card.card-mini .wide,
+.avatar-card.card-mini .line {
+  display: none;
+}
+/* wide mode */
+.avatar-card.card-wide .mini {
+  display: none;
+}
+.avatar-card.card-wide .card {
+  width: 219px;
+  display: flex;
+}
+.avatar-card.card-wide .avatar-face {
+  height: 189px;
+  width: 114px;
+  border-radius: 10.5px 0 0 10.5px;
+}
+.avatar-card.card-wide .avatar-face .img {
+  background-size: 100% auto;
+  background-position: 0 10%;
+  height: 202.5px;
+  margin-top: -13.5px;
+}
+.avatar-card.card-wide .avatar-info {
+  width: 105px;
+  padding: 12px 0 0 7.5px;
+  color: #333;
+}
+.avatar-card.card-wide .avatar-info strong {
   display: block;
-  height: 30px;
-  line-height: 30px;
+  height: 45px;
+  line-height: 45px;
+  font-size: 30px;
+}
+.avatar-card.wide2 .card {
+  width: 447px;
+}
+.avatar-card.wide2 .avatar-face {
+  width: 219px;
+}
+.avatar-card.wide2 .avatar-face .img {
+  margin-top: -75px;
+  height: 264px;
+}
+.avatar-card.wide2 .avatar-info {
+  width: 219px;
+  padding-left: 7.5px;
 }

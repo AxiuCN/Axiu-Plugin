@@ -8,7 +8,7 @@
 {{block 'main'}}
 {{ set difficultyName = {1:'普通', 2:'进阶', 3:'困难', 4:'险恶', 5: '无畏', 6: '绝境'} }}
 <div class="head-box type">
-  <div class="title">#幽境危战<span class="time">{{hard.start_time}} - {{hard.end_time}}</span></div>
+  <div class="title">#幽境危战<span>{{hard.start_time}} - {{hard.end_time}}</span></div>
   <div class="uid">UID:{{uid}}</div>
 </div>
 <div class="info_box">
@@ -33,24 +33,22 @@
     </div>
   </div>
 
-  {{each hard.challs chall}}
+  {{each hard?.challs chall chall_index}}
   <div class="cont">
     <div class="cont-body">
       <div class="hard-title">
         <strong>{{chall.name}}</strong>
         <span>用时 {{chall.second}} 秒</span>
       </div>
-      {{set monster = chall.monster || {} }}
+      {{set monster=chall?.monster }}
       <div class="hard-chall-team">
-        {{if chall.avatars && chall.avatars.length > 0}}
         <div class="hard-team">
-          {{each chall.avatars ca}}
-          {{set avatar = avatars[ca.avatar_id] || {} }}
-          <% include(_tpl_path+'/avatar-card.html', [avatar, {_res_path}]) %>
+          {{set current_avatars=chall?.avatars||[] }}
+          {{each current_avatars avatar idx}}
+          <% include(_tpl_path+'/avatar-card.html', [avatars[avatar.avatar_id],{_res_path, cardType:'mini'}]) %>
           {{/each}}
         </div>
         <div class="line"></div>
-        {{/if}}
         <div class="hard-info">
           <div class="hard-info-line">
             <div class="hard-enemy-container">
@@ -61,42 +59,37 @@
                 </div>
               </div>
             </div>
-            {{if chall.best_avatars && chall.best_avatars.length > 0}}
-            {{set greatest_onehit = chall.best_avatars[0]}}
+            {{set greatest_onehit=chall?.best_avatars[0]}}
             <div class="hard-best-container">
               <div class="hard-best-header">最强一击</div>
               <div class="hard-best-content" style="flex-direction: column">
-                <div class="best-avatar-container">
-                  {{set avatar = avatars[greatest_onehit.avatar_id] || {} }}
-                  <div class="avatar-banner"
-                       style="background-image:url({{avatar.face}})"></div>
-                </div>
-                <div class="best-number-container">
-                  <p class="best-number">{{greatest_onehit.dps}}</p>
-                </div>
+                  <div class="best-avatar-container">
+                    {{set avatar=avatars[greatest_onehit.avatar_id]}}
+                    <div class="avatar-banner avatar-{{avatar.name}}"
+                          style="background-image:url({{avatar.face}})"></div>
+                  </div>
+                  <div class="best-number-container">
+                    <p class="best-number">{{greatest_onehit.dps}}</p>
+                  </div>
               </div>
             </div>
-            {{if chall.best_avatars.length > 1}}
-            {{set greatest_total = chall.best_avatars[1]}}
+            {{set greatest_total=chall?.best_avatars[1]}}
             <div class="hard-best-container">
               <div class="hard-best-header">最高总伤害</div>
               <div class="hard-best-content" style="flex-direction: column">
-                <div class="best-avatar-container">
-                  {{set avatar = avatars[greatest_total.avatar_id] || {} }}
-                  <div class="avatar-banner"
-                       style="background-image:url({{avatar.face}})"></div>
-                </div>
-                <div class="best-number-container">
-                  <p class="best-number">{{greatest_total.dps}}</p>
-                </div>
+                  <div class="best-avatar-container">
+                    {{set avatar=avatars[greatest_total.avatar_id]}}
+                    <div class="avatar-banner avatar-{{avatar.name}}"
+                          style="background-image:url({{avatar.face}})"></div>
+                  </div>
+                  <div class="best-number-container">
+                    <p class="best-number">{{greatest_total.dps}}</p>
+                  </div>
               </div>
             </div>
-            {{/if}}
-            {{/if}}
           </div>
         </div>
       </div>
-      {{if monster.desc && monster.desc.length > 0}}
       <div class="hard-chall-desc">
         <ul>
           {{each monster.desc desc}}
@@ -104,7 +97,6 @@
           {{/each}}
         </ul>
       </div>
-      {{/if}}
     </div>
   </div>
   {{/each}}
@@ -112,7 +104,7 @@
   <div class="cont hard-notice">
     <div class="cont-body">
       <ul class="cont-msg">
-        <li>排行榜数据仅在群聊查询时自动上报</li>
+        <li>角色装备与圣遗物为当前最新状态</li>
       </ul>
     </div>
   </div>

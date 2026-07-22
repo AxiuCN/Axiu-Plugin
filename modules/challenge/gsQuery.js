@@ -92,10 +92,25 @@ async function getGsUserAuth (e) {
 const MIAO_RESOURCE = path.resolve('plugins/miao-plugin/resources')
 
 /**
+ * 从 miao-plugin 本地读取角色图片并转为 base64 data URI
+ * @param {string} relPath - char.face 或 char.gacha 返回的相对路径
+ * @returns {string} data URI 或空字符串（兜底时用 Enka CDN）
+ */
+function readCharImg (relPath) {
+  if (!relPath) return ''
+  try {
+    const buf = fs.readFileSync(path.join(MIAO_RESOURCE, relPath))
+    return `data:image/webp;base64,${buf.toString('base64')}`
+  } catch {
+    return ''
+  }
+}
+
+/**
  * 根据 avatar_id 列表构建 avatars 映射
  * @param {number[]} ids - 角色 ID 数组
  * @param {object} infoMap - { [id]: { level?, cons? } } 从 API 数据中提取的等级/命座
- * @returns {object} { [id]: { id, name, abbr, face, star, elem, level, cons } }
+ * @returns {object} { [id]: { id, name, abbr, face, gacha, star, elem, level, cons } }
  */
 function buildAvatarsMap (ids, infoMap = {}) {
   const ret = {}
@@ -108,25 +123,20 @@ function buildAvatarsMap (ids, infoMap = {}) {
       const char = MiaoCharacter.get(id)
       if (!char) continue
       const info = infoMap[id] || {}
-      // 读 miao-plugin 本地头像文件 → base64 data URI（避免 Chromium file:// 限制）
-      let faceUrl = ''
-      const faceRel = char.face  // e.g. "/meta-gs/character/钟离/imgs/face.webp"
-      if (faceRel) {
-        try {
-          const buf = fs.readFileSync(path.join(MIAO_RESOURCE, faceRel))
-          faceUrl = `data:image/webp;base64,${buf.toString('base64')}`
-        } catch {}
-      }
+      const faceRel = char.face
+      const gachaRel = char.gacha
+      let faceUrl = readCharImg(faceRel)
+      let gachaUrl = readCharImg(gachaRel)
       // 兜底 Enka CDN
       if (!faceUrl) {
         faceUrl = `https://enka.network/ui/UI_AvatarIcon_${char.id}.png`
       }
-      logger?.info(`${LOG_PREFIX}[原神] 角色头像 ${char.name}(${char.id}) faceRel=${faceRel} len=${faceUrl.length}`)
       ret[id] = {
         id: char.id,
         name: char.name,
         abbr: char.abbr,
         face: faceUrl,
+        gacha: gachaUrl || faceUrl,
         star: char.star || 4,
         elem: char.elem || 'anemo',
         level: info.level || 0,
@@ -142,48 +152,76 @@ function buildAvatarsMap (ids, infoMap = {}) {
 // ==================== 数据变换 ====================
 
 /**
- * 深境螺旋 API → 模板数据
- * 保留: 角色统计(最强一击/最高承伤等)、各间头像、楼层星数、用时
+ * 深境螺旋 API → 模板数据（匹配 miao-plugin Abyss 模型格式）
+ * 保留: 角色统计(最强一击/最高承伤等)、楼层队伍卡、各间头像、楼层星数、用时
  * 去掉: 武器、圣遗物
  */
 function buildAbyssData (raw) {
-  const abyss = { schedule: '', total: 0, floors: [], stat: [] }
-
-  if (raw.start_time) abyss.schedule = fmtMonth(raw.start_time)
-  abyss.total = raw.total_battle_times || 0
-
-  // 深渊统计段（damage_rank / defeat_rank / take_damage_rank / normal_skill_rank / energy_skill_rank）
-  const rankLabels = {
-    damage_rank: '最强一击',
-    take_damage_rank: '最高承伤',
-    defeat_rank: '最多击破',
-    normal_skill_rank: '元素战技',
-    energy_skill_rank: '元素爆发'
+  // 统计段（stat 顶级变量）
+  const stat = []
+  const addMsg = (title, ds) => {
+    if (!ds || !ds.avatar_id) return
+    const char = MiaoCharacter.get(ds.avatar_id)
+    if (!char) { stat.push({ title, id: ds.avatar_id, value: `${(ds.value / 10000).toFixed(1)} W` }); return }
+    stat.push({ title, id: char.id, value: `${(ds.value / 10000).toFixed(1)} W` })
   }
-  for (const [key, label] of Object.entries(rankLabels)) {
+  addMsg('最强一击', raw.damage_rank?.[0])
+  addMsg('最高承伤', raw.take_damage_rank?.[0])
+  for (const [key, title] of Object.entries({ defeat_rank: '最多击破', normal_skill_rank: '元素战技', energy_skill_rank: '元素爆发' })) {
     const entry = raw[key]?.[0]
-    if (entry) {
-      const val = key === 'damage_rank' || key === 'take_damage_rank'
-        ? `${(entry.value / 10000).toFixed(1)} W`
-        : `${entry.value} 次`
-      abyss.stat.push({ id: entry.avatar_id, title: label, value: val })
+    if (entry) stat.push({ title, id: entry.avatar_id || 0, value: `${entry.value} 次` })
+    else stat.push({})
+  }
+
+  // abyss 对象（匹配 Abyss 模型）
+  const floors = {}
+  for (const f of raw.floors || []) {
+    const levels = {}
+    for (const l of f.levels || []) {
+      const ds = { star: l.star || 0 }
+      for (const b of l.battles || []) {
+        const key = b.index === 1 ? 'up' : 'down'
+        const time = new Date((b.timestamp || 0) * 1000)
+        const pad = (n) => String(n).padStart(2, '0')
+        ds[key] = {
+          timestamp: b.timestamp || 0,
+          time: time.getTime() ? `${pad(time.getMonth() + 1)}-${pad(time.getDate())} ${pad(time.getHours())}:${pad(time.getMinutes())}:${pad(time.getSeconds())}` : '--',
+          avatars: (b.avatars || []).map(a => a.id)
+        }
+      }
+      levels[l.index] = ds
+    }
+    const lastIdx = Math.max(...Object.keys(levels).map(Number))
+    floors[f.index] = {
+      star: f.star || 0,
+      index: f.index || 0,
+      display: levels[lastIdx] || {},
+      levels
     }
   }
 
-  const rawFloors = raw.floors || []
-  for (const f of rawFloors) {
-    const levels = (f.levels || []).map(l => ({
-      star: l.star || 0,
-      battles: (l.battles || []).map(b => ({
-        index: b.index,
-        time: fmtTime(b.timestamp),
-        avatars: (b.avatars || []).map(a => ({ id: a.id, level: a.level || 0, rarity: a.rarity || 4 }))
-      }))
-    }))
-    abyss.floors.push({ index: f.index || 0, star: f.star || 0, levels })
-  }
+  const st = new Date((raw.start_time || 0) * 1000)
+  const now = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
 
-  return { uid: '', abyss }
+  return {
+    uid: '',
+    stat,
+    abyss: {
+      floors,
+      schedule: st.getTime() ? `${st.getMonth() + 1}月` : '',
+      total: raw.total_battle_times || 0,
+      maxFloor: raw.max_floor || '',
+      time: `${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
+      stat: {
+        dmg: raw.damage_rank?.[0] ? { id: raw.damage_rank[0].avatar_id, value: raw.damage_rank[0].value } : {},
+        takeDmg: raw.take_damage_rank?.[0] ? { id: raw.take_damage_rank[0].avatar_id, value: raw.take_damage_rank[0].value } : {},
+        defeat: raw.defeat_rank?.[0] ? { id: raw.defeat_rank[0].avatar_id, value: raw.defeat_rank[0].value } : {},
+        e: raw.normal_skill_rank?.[0] ? { id: raw.normal_skill_rank[0].avatar_id, value: raw.normal_skill_rank[0].value } : {},
+        q: raw.energy_skill_rank?.[0] ? { id: raw.energy_skill_rank[0].avatar_id, value: raw.energy_skill_rank[0].value } : {}
+      }
+    }
+  }
 }
 
 /**
@@ -368,11 +406,8 @@ export async function gsSpiralAbyssQuery (e) {
     const avatars = buildAvatarsMap([...avatarIds], charLevels)
 
     // 数据变换 + 渲染
-    const data = buildAbyssData(rawData)
-    data.uid = auth.uid
-    data.periodText = periodText
-
-    const img = await render('challenge/GS', 'abyss', { ...data, avatars })
+    const { abyss, stat } = buildAbyssData(rawData)
+    const img = await render('challenge/GS', 'abyss', { uid: auth.uid, abyss, stat, avatars })
     if (img) await e.reply(img)
   } catch (err) {
     logger?.error(`${LOG_PREFIX}[原神] 深境螺旋查询异常:`, err?.message)

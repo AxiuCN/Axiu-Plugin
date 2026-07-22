@@ -68,7 +68,7 @@
     </div>
   </div>
 
-  {{each role.rounds round}}
+  {{each role?.rounds round}}
   <div class="cont">
     <div class="cont-body">
       <div class="role-title">
@@ -78,46 +78,42 @@
         <div class="role-star" style="background-image:url({{_res_path}}challenge/GS/nomedal.png)"></div>
         {{/if}}
         <strong>{{round.title}}</strong>
-        <span>{{round.finish_time}}</span>
+        <span>{{round?.finish_time}}</span>
       </div>
       <div class="role-floor-team">
-        {{if round.avatars && round.avatars.length > 0}}
         <div class="role-team">
-          {{each round.avatars ra}}
-          {{set avatar = avatars[ra.avatar_id] || {} }}
-          <% include(_tpl_path+'/avatar-card.html', [avatar, {_res_path}]) %>
-        {{/each}}
+          {{set current_avatars=round?.avatars||[] }}
+          {{each current_avatars avatar idx}}
+          <% include(_tpl_path+'/avatar-card.html', [avatars[avatar.avatar_id],{_res_path, cardType:'mini'}]) %>
+          {{/each}}
         </div>
         <div class="line"></div>
-        {{/if}}
         <div class="role-buff">
           <div class="role-buff-line">
-            {{set enemies = round.enemies || []}}
+            {{set enemies=round?.enemies }}
             <div class="role-enemy-container">
               <div class="role-choice-cards-header">选择敌人</div>
               <div class="role-choice-cards-content">
-                {{if enemies.length > 0}}
-                {{set display_enemy = enemies[0]}}
+                {{set display_enemy = enemies?.[0]}}
                 <div class="role-content-container">
                   <div class="role-content-icon" style="background-image:url({{display_enemy.icon}})"></div>
                 </div>
-                {{/if}}
               </div>
             </div>
-            {{set splendour_summary = round.splendour_buff.summary || {} }}
+            {{set splendour_summary=round?.splendour_buff?.summary}}
             <div class="role-splendour-container">
               <div class="role-choice-cards-header">辉彩祝福</div>
               <div class="role-choice-cards-content" style="flex-direction: column">
-                  <div style="color: #0D0D0D">等级 {{splendour_summary.total_level}}</div>
-                  <div style="color: #0D0DFF">生命值 +{{splendour_summary.hp_increase}}
-                    <span style="color: #FD0D0D">攻击力 +{{splendour_summary.atk_increase}}</span>
+                  <div style="color: #0D0D0D">等级 {{splendour_summary?.total_level}}</div>
+                  <div style="color: #0D0DFF">生命值 +{{splendour_summary?.hp_increase}}
+                    <span style="color: #FD0D0D">攻击力 +{{splendour_summary?.atk_increase}}</span>
                   </div>
-                  <div style="color: #A0A00D">防御力 +{{splendour_summary.def_increase}}
-                    <span style="color: #00A000">元素精通 +{{splendour_summary.em_increase}}</span>
+                  <div style="color: #A0A00D">防御力 +{{splendour_summary?.def_increase}}
+                    <span style="color: #00A000">元素精通 +{{splendour_summary?.em_increase}}</span>
                   </div>
               </div>
             </div>
-            {{set buffs = round.splendour_buff.buffs || []}}
+            {{set buffs=round?.splendour_buff?.buffs}}
             <div class="role-splendour-buff-container">
               <div class="role-choice-cards-header">辉彩祝福 buff</div>
               <div class="role-choice-cards-content">
@@ -131,7 +127,7 @@
             </div>
           </div>
           <div class="role-buff-line">
-            {{set choice_cards = round.choice_cards || []}}
+            {{set choice_cards=round?.choice_cards }}
             <div class="role-choice-cards-container">
               <div class="role-choice-cards-header">神秘收获 x {{choice_cards.length}}</div>
               <div class="role-choice-cards-content">
@@ -152,7 +148,6 @@
   <div class="cont role-notice">
     <div class="cont-body">
       <ul class="cont-msg">
-        <li><strong>明星挑战星章</strong>不仅作为展示用，<strong>也会</strong>影响挑战的奖励领取~</li>
         <li>各关卡按照<strong>挑战时间顺序</strong>展示</li>
         <li>仅展示<strong>已挑战成功</strong>的<strong>圣牌挑战</strong>，未挑战成功的<strong>圣牌挑战</strong>不会被展示</li>
       </ul>

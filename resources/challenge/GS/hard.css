@@ -98,15 +98,6 @@ body,
   text-align: right;
   font-size: 15px;
 }
-
-/* ===== 危战阵容角色 ===== */
-.hard-team {
-  display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
-  width: 375px;
-}
-
 .hard-chall-team {
   display: flex;
 }
@@ -126,21 +117,52 @@ body,
 .hard-chall-desc ul li {
   font-size: 15px;
 }
+.hard-team {
+  display: flex;
+  margin-right: -5px;
+  margin-left: -5px;
+}
 .hard-info {
   display: flex;
   margin-right: -5px;
   margin-left: -5px;
   flex-direction: column;
-  width: 100%;
+  width: 50%;
 }
 .hard-info .hard-enemy-container {
-  width: 140px;
+  width: 40%;
   height: 100%;
   background-color: #e7e5d9;
   display: flex;
   border-radius: 10px;
   overflow: hidden;
   flex-direction: column;
+}
+.hard-info .hard-best-container {
+  width: 30%;
+  height: 100%;
+  background-color: #e7e5d9;
+  display: flex;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-direction: column;
+}
+.hard-info .hard-best-container .avatar-banner {
+  width: 130px;
+  height: 130px;
+  background-size: 150px 150px;
+  background-position: center;
+  overflow: hidden;
+}
+.hard-info .hard-best-container .best-number-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 24px;
+}
+.hard-info .hard-best-container .best-number-container .best-number {
+  font-size: 20px;
+  color: #0D0D0D;
 }
 .hard-info .hard-best-header {
   width: 100%;
@@ -174,41 +196,9 @@ body,
   display: flex;
   flex-direction: row;
 }
-
-/* ===== 最强一击 / 最高总伤害 ===== */
-.hard-best-container {
-  display: flex;
-  flex-direction: column;
-  margin-left: 5px;
-  background-color: #e7e5d9;
-  border-radius: 10px;
-  overflow: hidden;
-  width: 120px;
+.hard-info .hard-info-line + .hard-info-line {
+  margin-top: 4%;
 }
-.best-avatar-container {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  padding: 5px;
-}
-.best-avatar-container .avatar-banner {
-  width: 60px;
-  height: 60px;
-  border-radius: 8px;
-  background-size: cover;
-  background-position: center;
-}
-.best-number-container {
-  text-align: center;
-  padding: 3px;
-}
-.best-number {
-  font-size: 14px;
-  color: #333;
-  margin: 0;
-  word-break: break-all;
-}
-
 .hard-notice .cont-body {
   font-size: 16px;
 }
