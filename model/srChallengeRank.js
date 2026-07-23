@@ -113,7 +113,7 @@ function cfgKey (groupId) {
   return `${KEY}:${groupId}:cfg`
 }
 
-export default class ChallengeRank {
+export default class SrChallengeRank {
   // ==================== 维度工具 ====================
 
   static getDimensions (challengeType) {

@@ -2,7 +2,7 @@
  * 星铁终局挑战排行 — 业务逻辑模块
  */
 
-import ChallengeRank from '../../model/challengeRank.js'
+import SrChallengeRank from '../../model/srChallengeRank.js'
 import { getPluginConfig } from '../../components/config.js'
 import { render } from '../../components/render.js'
 
@@ -69,9 +69,9 @@ export async function handleSrRank (ctx, e) {
   let rest = e.msg
   for (const kw of SR_TYPE_KEYWORDS) rest = rest.replace(kw, '')
   rest = rest.replace(/^(#?星铁|[*＊])/, '').replace(/^(排名|排行)/, '').trim()
-  const dimension = ChallengeRank.resolveDimensionAlias(rest) || ChallengeRank.getDefaultDimension(challengeType)
+  const dimension = SrChallengeRank.resolveDimensionAlias(rest) || SrChallengeRank.getDefaultDimension(challengeType)
 
-  const groupCfg = await ChallengeRank.getGroupCfg(e.group_id)
+  const groupCfg = await SrChallengeRank.getGroupCfg(e.group_id)
   if (groupCfg.status === 0) {
     await e.reply('本群挑战排行已关闭')
     return true
@@ -79,29 +79,29 @@ export async function handleSrRank (ctx, e) {
 
   const cfg = getPluginConfig()
   const topN = cfg?.srChallengeRank?.rankNumber || 20
-  const typeName = ChallengeRank.getTypeName(challengeType)
-  const scheduleId = await ChallengeRank.getCurrentScheduleId(challengeType, e.group_id)
+  const typeName = SrChallengeRank.getTypeName(challengeType)
+  const scheduleId = await SrChallengeRank.getCurrentScheduleId(challengeType, e.group_id)
   if (!scheduleId) {
     await e.reply(`本群暂无${typeName}排行数据，请先发送挑战查询命令（如 *${['末日', '虚构', '忘却', '仲裁'][challengeType]}）上报数据`)
     return true
   }
 
-  const dims = ChallengeRank.getDimensions(challengeType)
+  const dims = SrChallengeRank.getDimensions(challengeType)
   const dimDef = dims.find(d => d.key === dimension)
   const dimLabel = dimDef?.label || (dimension === '__' ? (() => {
     switch (challengeType) { case 0: return '分数'; case 1: return '星数'; case 2: return '星数'; case 3: return '王棋星数'; default: return '综合' }
   })() : dimension)
 
-  const list = await ChallengeRank.getRank(e.group_id, challengeType, dimension, scheduleId, topN)
+  const list = await SrChallengeRank.getRank(e.group_id, challengeType, dimension, scheduleId, topN)
   if (!list.length) {
     await e.reply(`本群暂无${typeName}排行数据，请先发送挑战查询命令（如 *${['末日', '虚构', '忘却', '仲裁'][challengeType]}）上报数据`)
     return true
   }
 
   const selfRank = e.uid
-    ? await ChallengeRank.getRankForUid(e.uid, e.group_id, challengeType, dimension, scheduleId)
+    ? await SrChallengeRank.getRankForUid(e.uid, e.group_id, challengeType, dimension, scheduleId)
     : null
-  const totalCount = await ChallengeRank.getRankCount(e.group_id, challengeType, dimension, scheduleId)
+  const totalCount = await SrChallengeRank.getRankCount(e.group_id, challengeType, dimension, scheduleId)
 
   const pickMember = (qq) => {
     if (!qq) return null
@@ -133,7 +133,7 @@ export async function handleSrRank (ctx, e) {
   for (const item of list) { item.cols = buildSrCols(item.extra, challengeType) }
   if (selfRank) { selfRank.cols = buildSrCols(selfRank.extra, challengeType) }
 
-  const seasonMeta = await ChallengeRank.getSeasonMeta(challengeType, e.group_id)
+  const seasonMeta = await SrChallengeRank.getSeasonMeta(challengeType, e.group_id)
 
   const renderData = {
     title: `${typeName}·${dimLabel}排行`,
@@ -153,8 +153,8 @@ export async function handleSrRank (ctx, e) {
 export async function handleSrRankReset (ctx, e) {
   const challengeType = resolveSrAlias(e.msg)
   if (challengeType < 0) return true
-  const typeName = ChallengeRank.getTypeName(challengeType)
-  await ChallengeRank.resetRank(e.group_id, challengeType)
+  const typeName = SrChallengeRank.getTypeName(challengeType)
+  await SrChallengeRank.resetRank(e.group_id, challengeType)
   await e.reply(`已重置本群${typeName}排行数据`)
   return true
 }
