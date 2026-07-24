@@ -17,21 +17,21 @@
   font-weight: bold;
   color: #ffd780;
   text-shadow: 0 0 10px rgba(255,215,128,0.5);
-  margin-bottom: 4px;
+  margin-bottom: 10px;
 }
 
 .rank-name {
   text-align: center;
   font-size: 22px;
   color: rgba(240,234,202,0.85);
-  margin-bottom: 2px;
+  margin-bottom: 8px;
 }
 
 .rank-subhead {
   text-align: center;
   font-size: 14px;
   color: rgba(240,234,202,0.5);
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 /* ===== 统计 ===== */
@@ -39,7 +39,7 @@
   text-align: center;
   font-size: 13px;
   color: rgba(240,234,202,0.5);
-  margin-bottom: 14px;
+  margin-bottom: 20px;
 }
 
 .rank-info .sep {
