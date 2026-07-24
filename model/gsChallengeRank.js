@@ -55,9 +55,11 @@ const DIMENSIONS = {
     { key: 'star', label: '星数', desc: '最深楼层星数', higher: true },
     { key: 'battle', label: '战斗', desc: '战斗次数', higher: false }
   ],
-  1: [ // 真境幻想剧诗 — 模式 > 层数 > 借出
+  1: [ // 真境幻想剧诗 — 模式 > 幕数 > 花 > 用时(少) > 借出
     { key: 'mode', label: '模式', desc: '难度模式', higher: true },
-    { key: 'floor', label: '层数', desc: '完成幕数', higher: true },
+    { key: 'floor', label: '幕数', desc: '完成幕数', higher: true },
+    { key: 'flower', label: '花', desc: '明星挑战星章', higher: true },
+    { key: 'time', label: '用时', desc: '总耗时(秒)', higher: false },
     { key: 'borrow', label: '借出', desc: '借出角色次数', higher: true }
   ],
   2: [ // 幽境危战·单人 — 难度 > 用时
@@ -82,10 +84,12 @@ function compoundScore (scores, extra, challengeType) {
       return (scores.floor || 0) * 1000000
         + (scores.star || 0) * 100000
         + (99 - R(extra.battle_num || 0, 99))
-    case 1: // 真境幻想剧诗: 模式 > 层数 > 借出(多)
-      return (scores.mode || 0) * 100000000
-        + (scores.floor || 0) * 1000000
-        + (extra.borrow_num || 0) * 100
+    case 1: // 真境幻想剧诗: 模式 > 幕 > 花 > 用时(少) > 借出(多)
+      return (scores.mode || 0) * 10000000000
+        + (scores.floor || 0) * 100000000
+        + (extra.coin_num || 0) * 1000000
+        + (999999 - R(extra.time_second || 0, 999999))
+        + R(extra.borrow_num || 0, 99)
     case 2:
     case 3: // 幽境危战: 难度 > 用时(少)
       return (scores.difficulty || 0) * 1000000
@@ -101,6 +105,7 @@ const DIM_ALIAS = {
   '战斗': 'battle', '战': 'battle', '次数': 'battle', '战斗次数': 'battle',
   // 真境幻想剧诗
   '模式': 'mode', '难度模式': 'mode',
+  '花': 'flower', '星章': 'flower', '明星挑战': 'flower', '明星挑战星章': 'flower',
   '用时': 'time', '时': 'time', '时间': 'time',
   '借出': 'borrow', '借': 'borrow', '借出次数': 'borrow', '借出角色': 'borrow',
   // 幽境危战
@@ -217,9 +222,11 @@ export default class GsChallengeRank {
           const half = d.getDate() <= 15 ? 0 : 1
           return monthDiff * 2 + half + 1
         } else {
-          // Phase 2: 每月一期（4.7起16号刷新，v5.7后1号刷新，按日历月计算即可）
+          // Phase 2: 每月一期，16号刷新，第96期=2024.06.16起
           const monthDiff = (d.getFullYear() - 2024) * 12 + (d.getMonth() + 1 - 6)
-          return Math.max(90, 90 + monthDiff)
+          let period = 96 + monthDiff
+          if (d.getDate() < 16) period-- // 1-15号属于上一周期
+          return Math.max(96, period)
         }
       }
 
@@ -312,22 +319,29 @@ export default class GsChallengeRank {
 
       case 1: { // 真境幻想剧诗
         const stat = data?.stat || {}
+        const detail = data?.detail || {}
 
-        if (stat.difficulty_id != null) {
-          scores.mode = Number(stat.difficulty_id)
-          extra.mode_id = scores.mode
-        }
+        scores.mode = Number(stat.difficulty_id) || 0
+        extra.mode_id = scores.mode
 
-        const rounds = data?.detail?.rounds_data
-        if (rounds?.length) {
-          scores.floor = rounds.length
-          extra.round_count = rounds.length
-        }
+        const rounds = detail.rounds_data || []
+        scores.floor = rounds.length
+        extra.round_count = rounds.length
 
-        if (stat.rent_cnt != null) {
-          scores.borrow = Number(stat.rent_cnt)
-          extra.borrow_num = scores.borrow
-        }
+        // 花（明星挑战星章）
+        const coin = Number(stat.coin_num) || 0
+        extra.coin_num = coin
+        scores.flower = coin
+
+        // 总耗时（秒）
+        const sec = Number(stat.total_use_time || detail.fight_statisic?.total_use_time) || 0
+        extra.time_second = sec
+        scores.time = -sec // 负值：用时越少分数越高
+
+        // 借出
+        const rent = Number(stat.rent_cnt) || 0
+        scores.borrow = rent
+        extra.borrow_num = rent
         break
       }
 

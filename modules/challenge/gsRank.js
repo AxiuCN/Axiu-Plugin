@@ -17,6 +17,14 @@ export const DIFF_NAMES = { 1: '普通', 2: '进阶', 3: '困难', 4: '险恶', 
 /** 幽境危战徽章名称 */
 export const BADGE_NAMES = { 1: '普通', 2: '进阶', 3: '困难', 4: '险恶', 5: '无畏', 6: '绝境', 7: '虹彩' }
 
+/** 秒 → 分:秒 */
+function fmtDuration (sec) {
+  if (sec == null) return '-'
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
 /**
  * 关键词 → challengeType
  * 幽境危战默认单人(2)，含多人/组队关键词 → 多人(3)
@@ -40,10 +48,12 @@ export function buildGsCols (extra, challengeType) {
         { v: extra.max_floor_star ?? extra.total_star ?? '-', l: '★' },
         { v: extra.battle_num ?? '-', l: '战斗' }
       ]
-    case 1: // 真境幻想剧诗: 模式 | 幕 | 借出
+    case 1: // 真境幻想剧诗: 模式 | 幕 | 花 | 用时 | 借出
       return [
         { v: MODE_NAMES[extra.mode_id] || extra.mode_id || '-', l: '模式' },
         { v: extra.round_count ?? '-', l: '幕' },
+        { v: extra.coin_num != null ? extra.coin_num : '-', l: '花' },
+        { v: fmtDuration(extra.time_second), l: '用时' },
         { v: extra.borrow_num ?? '-', l: '借出' }
       ]
     case 2: // 幽境危战·单人: 难度 | 用时(秒) | 徽章(图片)
