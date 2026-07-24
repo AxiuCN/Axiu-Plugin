@@ -42,10 +42,10 @@ const GS_SEASON_DIR = {
 
 /** 各类型起始日期（用于计算期数） */
 const GS_EPOCH_CONFIG = {
-  0: { start: new Date('2020-09-28T04:00:00'), cycleDays: 15 },  // 深境螺旋 v1.0 起 ~15天/期
+  0: { start: new Date('2020-07-01T04:00:00'), cycleDays: 15 },  // 深境螺旋 三测 起 ~15天/期
   1: { start: new Date('2024-07-01T04:00:00'), cycleDays: 30 },  // 幻想真境剧诗 v4.7 起 ~30天/期
-  2: { start: new Date('2025-03-26T04:00:00'), cycleDays: 42 },  // 幽境危战 v5.5 起 ~42天/期
-  3: { start: new Date('2025-03-26T04:00:00'), cycleDays: 42 },  // 幽境危战·多人 同单人
+  2: { start: new Date('2025-06-25T04:00:00'), cycleDays: 42 },  // 幽境危战 v5.7 起 ~42天/期
+  3: { start: new Date('2025-06-25T04:00:00'), cycleDays: 42 },  // 幽境危战·多人 同单人
 }
 
 /** 维度定义 */
