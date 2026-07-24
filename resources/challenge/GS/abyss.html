@@ -2,92 +2,78 @@
 
 {{block 'css'}}
 <link rel="stylesheet" type="text/css" href="{{_res_path}}/challenge/GS/abyss.css"/>
-<link rel="stylesheet" type="text/css" href="{{_res_path}}/challenge/GS/avatar-card.css"/>
 {{/block}}
 
 {{block 'main'}}
-{{ set upDown = {up:'上半', down:'下半'} }}
-<div class="head-box type">
-  <div class="title">#深境螺旋<span>{{abyss.schedule}} · {{abyss.total}}次战斗</span></div>
-  <div class="uid">UID:{{uid}}</div>
-</div>
-<div class="info_box">
+<div class="abyss">
 
-  <div class="abyss-stat-cont">
-    <div class="abyss-stat">
-      {{each stat ds}}
-      {{set avatar = avatars[ds.id]}}
-      <div class="cont">
-        {{if avatar}}
-        <div class="stat-title">
-          <span>{{ds.title}}</span>
-          <strong>{{ds.value}}</strong>
-        </div>
-        <div class="avatar-banner avatar-{{avatar.name}}"
-             style="background-image:url({{avatar.gacha || avatar.face}})"></div>
-        {{/if}}
-      </div>
-      {{/each}}
+  <!-- ===== 顶部 ===== -->
+  <section class="header">
+    <div class="header-title">深境螺旋<span>{{abyss.schedule}} · {{abyss.total}}次战斗 · {{abyss.total_star}}星/36星</span></div>
+    <div class="header-uid">UID:{{uid}}</div>
+  </section>
+
+  <!-- ===== 五项统计 ===== -->
+  {{if stat && stat.length}}
+  <section class="stats">
+    {{each stat item}}
+    {{if item && item.id && avatars[item.id]}}
+    <div class="stat-card">
+      <div class="stat-bg-face" style="background-image:url({{avatars[item.id].face}})"></div>
+      <div class="stat-title">{{item.title}}</div>
+      <div class="stat-value">{{item.value}}</div>
     </div>
-  </div>
+    {{/if}}
+    {{/each}}
+  </section>
+  {{/if}}
 
-  {{set cardTypes={1:['wide wide2'],2:['wide','wide'],3:['wide','mini','mini'],4:['mini','mini','mini','mini']} }}
+  <!-- ===== 最高层 ===== -->
   {{each abyss?.floors floor}}
-  <div class="cont">
-    <div class="cont-body">
-      <div class="abyss-title">
-        <strong>第{{floor.index}}层</strong>
-        <span class="abyss-star">{{floor.star}}/9</span>
+  <section class="floor">
+    <div class="floor-title">
+      第{{floor.index}}层
+      <span>★ {{floor.star}}/9</span>
+    </div>
+
+    {{each floor.levels level key}}
+    <div class="room">
+      <div class="room-header">
+        <span class="room-name">第{{key}}间</span>
+        <span class="room-star">★ {{level.star}}/3</span>
       </div>
-      <div class="abyss-floor-team">
-        <div class="abyss-team">
-          {{set ds=floor?.display?.up?.avatars||[] }}
-          {{each ds id idx}}
-          <% include(_tpl_path+'/avatar-card.html', [avatars[id],{_res_path, cardType:'mini'}]) %>
-          {{/each}}
-        </div>
-        <div class="line"></div>
-        <div class="abyss-team">
-          {{set ds=floor?.display?.down?.avatars||[] }}
-          {{each ds id idx}}
-          <% include(_tpl_path+'/avatar-card.html', [avatars[id],{_res_path, cardType:'mini'}]) %>
-          {{/each}}
-        </div>
-      </div>
-      <div class="abyss-detail">
-        {{each floor.levels level idx}}
-        <div class="abyss-level">
-          <div class="info">
-            <div class="title">第{{idx}}间</div>
-            <span class="star star{{level.star}}"></span>
-            <div class="time">{{level?.up?.time}}</div>
+      <div class="teams">
+        {{if level.up}}
+        <div class="team">
+          <div class="team-bar">
+            <span class="team-label">上半</span>
+            <span class="team-time">{{level.up.time}}</span>
           </div>
-          <div class="avatars">
-            {{each upDown v k}}
-            <div class="avatar-list {{k}}">
-              {{each level[k]?.avatars||[] id}}
-              {{set avatar = avatars[id] || {} }}
-              <div class="avatar-icon item-icon star{{avatar.star==4?4:5}}">
-                <span class="img" style="background-image:url({{avatar.face}})"></span>
-              </div>
-              {{/each}}
-            </div>
+          <div class="team-avatars">
+            {{each level.up.avatars id}}
+            <img class="team-avatar" src="{{(avatars[id]||{}).face}}">
             {{/each}}
           </div>
         </div>
-        {{/each}}
+        {{/if}}
+        {{if level.down}}
+        <div class="team">
+          <div class="team-bar">
+            <span class="team-label">下半</span>
+            <span class="team-time">{{level.down.time}}</span>
+          </div>
+          <div class="team-avatars">
+            {{each level.down.avatars id}}
+            <img class="team-avatar" src="{{(avatars[id]||{}).face}}">
+            {{/each}}
+          </div>
+        </div>
+        {{/if}}
       </div>
     </div>
-  </div>
+    {{/each}}
+  </section>
   {{/each}}
 
-  <div class="cont abyss-notice">
-    <div class="cont-body">
-      <ul class="cont-msg">
-        <li>深渊排行为本期深渊排行，数据仅供娱乐~</li>
-        <li>排行榜数据仅在群聊查询时自动上报</li>
-      </ul>
-    </div>
-  </div>
 </div>
 {{/block}}

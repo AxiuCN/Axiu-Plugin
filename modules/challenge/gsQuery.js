@@ -174,9 +174,12 @@ function buildAbyssData (raw) {
     else stat.push({})
   }
 
-  // abyss 对象（匹配 Abyss 模型）
+  // abyss 对象（仅最高层）
   const floors = {}
-  for (const f of raw.floors || []) {
+  const rawFloors = raw.floors || []
+  const maxFloorIdx = Math.max(...rawFloors.map(f => f.index))
+  for (const f of rawFloors) {
+    if (f.index !== maxFloorIdx) continue
     const levels = {}
     for (const l of f.levels || []) {
       const ds = { star: l.star || 0 }
@@ -213,6 +216,7 @@ function buildAbyssData (raw) {
       schedule: st.getTime() ? `${st.getMonth() + 1}月` : '',
       total: raw.total_battle_times || 0,
       maxFloor: raw.max_floor || '',
+      total_star: raw.total_star || 0,
       time: `${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
       stat: {
         dmg: raw.damage_rank?.[0] ? { id: raw.damage_rank[0].avatar_id, value: raw.damage_rank[0].value } : {},

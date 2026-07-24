@@ -46,6 +46,11 @@ export async function render (app, tpl, data = {}, imgType = 'jpeg') {
     data.element = data.element || 'sr'
   }
 
+  // 原神终局挑战模板同样覆盖背景
+  if (app.startsWith('challenge/GS')) {
+    data.element = data.element || 'sr'
+  }
+
   // 注入系统版权信息
   data.sys = {
     copyright: 'Created By TRSS-yunzai & Axiu-Plugin',

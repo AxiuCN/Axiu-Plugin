@@ -1,191 +1,205 @@
-body,
-.container {
-  width: 970px;
+body {
+  width: 900px;
+  margin: 0;
 }
 .container {
-  padding: 5px 0 10px 5px;
-}
-.head-box {
-  display: flex;
-  width: 100%;
-}
-.head-box .title {
-  font-size: 45px;
-  padding-bottom: 10px;
-  width: 70%;
-}
-.head-box .title span {
-  font-size: 30px;
-  margin-left: 10px;
-  color: #d3bc8e;
-}
-.head-box .uid {
-  text-align: right;
-  width: 30%;
-  padding-top: 25px;
-  padding-right: 10px;
-  font-size: 25px;
-}
-.abyss-stat-cont {
-  display: flex;
-  padding: 5px;
-}
-.abyss-stat {
-  display: flex;
-}
-.abyss-stat .cont {
-  margin: 5px 10px 5px 5px;
-}
-.abyss-stat strong {
-  text-shadow: 0 0 3px #000;
-}
-.abyss-stat .stat-title {
-  position: absolute;
-  top: 0;
-  background: rgba(0, 0, 0, 0.5);
-  padding: 5px 10px;
-  width: 100%;
-  text-shadow: 0 0 1px #000;
-}
-.abyss-stat .stat-title span {
-  display: block;
-  font-weight: normal;
-  font-family: Number, "印品南征北战NZBZ体", NZBZ, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
-  font-size: 24px;
-}
-.abyss-stat .stat-title strong {
-  display: block;
-  font-size: 30px;
-}
-.avatar-banner {
-  height: 300px;
-  width: 175px;
-  background-repeat: no-repeat;
-  background-size: 100% auto;
-  background-position: 0 10%;
-}
-.abyss-title {
-  margin: -3px 0 8px;
-}
-.abyss-title strong {
-  color: #d3bc8e;
-  font-size: 18px;
-  font-family: Number, "印品南征北战NZBZ体", NZBZ, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
-  font-weight: normal;
-  margin-right: 10px;
-}
-.abyss-title .abyss-star {
-  font-size: 15px;
-  color: #fff;
-}
-.abyss-title .abyss-star:before {
-  content: "";
-  vertical-align: bottom;
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  background: url("./star.png") center no-repeat;
-  background-size: contain;
-  margin-right: 5px;
-}
-.abyss-floor-team {
-  display: flex;
-}
-.abyss-floor-team .line {
-  width: 1px;
-  background: rgba(255, 255, 255, 0.5);
-  height: 80px;
-  vertical-align: middle;
-  margin: 15px 8px 0;
-}
-.abyss-team {
-  display: flex;
-  margin-right: -5px;
-  margin-left: -5px;
-}
-.abyss-detail {
-  display: flex;
-  width: calc(100% + 40px);
-  margin: 10px -15px -10px;
-}
-.abyss-level {
-  padding: 5px 10px 7px;
-  width: 33%;
-  box-shadow: 0 0 1px 0 #fff;
-}
-.abyss-level:nth-child(even) {
-  background: rgba(255, 255, 255, 0.1);
-}
-.abyss-level .info {
-  margin-bottom: 5px;
-  display: flex;
-  padding-left: 8px;
-}
-.abyss-level .title {
-  font-size: 16px;
-  white-space: nowrap;
-  font-weight: bold;
-}
-.abyss-level .star {
-  height: 18px;
-  display: inline-block;
-  background: url(./star.png);
-  background-size: 18px 18px;
-  margin-left: 5px;
-}
-.abyss-level .star.star1 {
-  width: 18px;
-  margin-right: 36px;
-}
-.abyss-level .star.star2 {
-  width: 36px;
-  margin-right: 18px;
-}
-.abyss-level .star.star3 {
-  width: 54px;
-  margin-right: 0;
-}
-.abyss-level .time {
-  text-align: right;
-  width: 60%;
-  color: #aaa;
-  font-size: 14px;
-}
-.abyss-level .avatars {
-  display: flex;
-  width: 100%;
-}
-.abyss-level .avatars .avatar-list {
-  display: flex;
+  width: 900px;
+  padding: 0;
   position: relative;
+  background: url("./images/bg.jpg") center top / cover no-repeat;
 }
-.abyss-level .avatars .avatar-list.up {
-  padding-right: 15px;
-}
-.abyss-level .avatars .avatar-list.up:after {
+.container::before {
   content: "";
-  display: block;
   position: absolute;
-  width: 1px;
-  height: 16px;
-  background: rgba(255, 255, 255, 0.3);
-  right: 8px;
-  top: 50%;
-  margin-top: -8px;
+  inset: 0;
+  background: rgba(5, 10, 16, 0.5);
+  z-index: 0;
+  pointer-events: none;
 }
-.abyss-level .avatars .avatar-icon {
-  width: 33px;
-  height: 33px;
-  border-radius: 50%;
-  margin-right: 2px;
+.abyss {
+  width: 900px;
+  padding: 0 12px 0;
+  margin: auto;
+  color: #e8e0d0;
+  position: relative;
+  z-index: 1;
 }
-.abyss-level .avatars .avatar-icon .img {
-  background-size: auto 100%;
+
+/* ===== 顶部 ===== */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 30px 12px 20px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+.header-title {
+  font-size: 44px;
+  font-weight: bold;
+  font-family: Number, "印品南征北战NZBZ体", NZBZ, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  letter-spacing: 2px;
+}
+.header-title span {
+  font-size: 24px;
+  margin-left: 12px;
+  color: #d3bc8e;
+  font-weight: normal;
+  font-family: Number, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  letter-spacing: 0;
+}
+.header-uid {
+  font-size: 22px;
+  font-family: Number, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+/* ===== 五项统计 ===== */
+.stats {
+  display: flex;
+  gap: 10px;
+  margin: 18px 0;
+}
+.stat-card {
+  flex: 1;
+  height: 120px;
+  background: rgba(16, 24, 34, 0.85);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.stat-bg-face {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 100px;
+  height: 100px;
+  background-size: cover;
   background-position: center;
-  width: 29px;
-  height: 29px;
-  margin: 2px;
+  opacity: 0.3;
+  pointer-events: none;
 }
-.abyss-notice .cont-body {
-  font-size: 16px;
+.stat-title {
+  position: relative;
+  padding: 12px 14px 2px;
+  font-size: 13px;
+  color: #a09880;
+  font-family: YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  z-index: 1;
+}
+.stat-value {
+  position: relative;
+  padding: 0 14px;
+  font-size: 28px;
+  font-weight: bold;
+  color: #d3bc8e;
+  font-family: Number, "印品南征北战NZBZ体", NZBZ, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  z-index: 1;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* ===== 楼层 ===== */
+.floor {
+  background: rgba(14, 22, 32, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 14px;
+}
+.floor-title {
+  font-size: 26px;
+  font-weight: bold;
+  font-family: Number, "印品南征北战NZBZ体", NZBZ, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 12px;
+  margin-bottom: 0;
+}
+.floor-title span {
+  font-size: 17px;
+  opacity: 0.7;
+  margin-left: 10px;
+  font-weight: normal;
+  font-family: Number, YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+}
+
+/* ===== 房间 ===== */
+.room {
+  margin-top: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 14px 18px;
+}
+.room + .room {
+  margin-top: 8px;
+}
+.room-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.room-name {
+  font-size: 17px;
+  font-weight: bold;
+  font-family: YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+}
+.room-star {
+  font-size: 14px;
+  opacity: 0.55;
+  font-weight: normal;
+  font-family: Number, YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+}
+
+/* ===== 队伍 ===== */
+.teams {
+  display: flex;
+  gap: 10px;
+}
+.team {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.team-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.team-label {
+  font-size: 14px;
+  font-weight: bold;
+  color: #d3bc8e;
+  font-family: YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+}
+.team-time {
+  font-size: 13px;
+  color: #888;
+  font-family: Number, YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+}
+.team-avatars {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+.team-avatar {
+  width: 82px;
+  height: 82px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  object-fit: cover;
+}
+
+/* ===== copyright ===== */
+.copyright {
+  color: #fff;
+  text-shadow: none;
+  font-family: Number, YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  padding: 8px 12px 20px;
+  position: relative;
+  z-index: 1;
 }
