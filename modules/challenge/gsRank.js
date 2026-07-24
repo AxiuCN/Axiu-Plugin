@@ -48,11 +48,11 @@ export function buildGsCols (extra, challengeType) {
         { v: extra.max_floor_star ?? extra.total_star ?? '-', l: '★' },
         { v: extra.battle_num ?? '-', l: '战斗' }
       ]
-    case 1: // 真境幻想剧诗: 模式 | 幕 | 花 | 用时 | 借出
+    case 1: // 真境幻想剧诗: 模式 | 幕 | 星章 | 用时 | 借出
       return [
         { v: MODE_NAMES[extra.mode_id] || extra.mode_id || '-', l: '模式' },
         { v: extra.round_count ?? '-', l: '幕' },
-        { v: extra.coin_num != null ? extra.coin_num : '-', l: '花' },
+        { v: extra.star_medal != null ? extra.star_medal : '-', l: '星章' },
         { v: fmtDuration(extra.time_second), l: '用时' },
         { v: extra.borrow_num ?? '-', l: '借出' }
       ]

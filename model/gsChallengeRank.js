@@ -55,10 +55,10 @@ const DIMENSIONS = {
     { key: 'star', label: '星数', desc: '最深楼层星数', higher: true },
     { key: 'battle', label: '战斗', desc: '战斗次数', higher: false }
   ],
-  1: [ // 真境幻想剧诗 — 模式 > 幕数 > 花 > 用时(少) > 借出
+  1: [ // 真境幻想剧诗 — 模式 > 幕数 > 星章 > 用时 > 借出
     { key: 'mode', label: '模式', desc: '难度模式', higher: true },
     { key: 'floor', label: '幕数', desc: '完成幕数', higher: true },
-    { key: 'flower', label: '花', desc: '明星挑战星章', higher: true },
+    { key: 'flower', label: '星章', desc: '明星挑战星章', higher: true },
     { key: 'time', label: '用时', desc: '总耗时(秒)', higher: false },
     { key: 'borrow', label: '借出', desc: '借出角色次数', higher: true }
   ],
@@ -91,7 +91,7 @@ function compoundScore (scores, extra, challengeType) {
         + (999999 - R(extra.time_second || 0, 999999))
         + R(extra.borrow_num || 0, 99)
     case 2:
-    case 3: // 幽境危战: 难度 > 用时(少)
+    case 3: // 幽境危战: 难度 > 用时
       return (scores.difficulty || 0) * 1000000
         - (R(extra.time_second || 0, 999999))
     default: return 0
@@ -328,10 +328,10 @@ export default class GsChallengeRank {
         scores.floor = rounds.length
         extra.round_count = rounds.length
 
-        // 花（明星挑战星章）
-        const coin = Number(stat.coin_num) || 0
-        extra.coin_num = coin
-        scores.flower = coin
+        // 明星挑战星章（get_medal_round_list 中 1 的个数）
+        const medals = (stat.get_medal_round_list || []).filter(v => v === 1).length
+        extra.star_medal = medals
+        scores.flower = medals
 
         // 总耗时（秒）
         const sec = Number(stat.total_use_time || detail.fight_statisic?.total_use_time) || 0
