@@ -10,7 +10,7 @@
  *
  * 类型：
  *   0 = 深境螺旋 (spiralAbyss)
- *   1 = 真境幻想剧诗 (role_combat)
+ *   1 = 幻想真境剧诗 (role_combat)
  *   2 = 幽境危战·单人 (hard_challenge.single)
  *   3 = 幽境危战·多人 (hard_challenge.mp)
  */
@@ -24,7 +24,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const pluginRoot = path.resolve(__dirname, '..')
 const KEY = 'Axiu:gsAbyss:rank'
 const TTL = 90 * 24 * 3600 // 90 天
-const TYPE_NAMES = ['深境螺旋', '真境幻想剧诗', '幽境危战·单人', '幽境危战·多人']
+const TYPE_NAMES = ['深境螺旋', '幻想真境剧诗', '幽境危战·单人', '幽境危战·多人']
 
 /** nanoka 图鉴数据目录（Atlas-Plugin 的子模块） */
 const GS_NANOKA_BASE = path.resolve(pluginRoot, '../Atlas-Plugin/tool/nanoka-atlas-backend/nanoka-atlas-backend/data/items/简体中文/原神')
@@ -55,7 +55,7 @@ const DIMENSIONS = {
     { key: 'star', label: '星数', desc: '最深楼层星数', higher: true },
     { key: 'battle', label: '战斗', desc: '战斗次数', higher: false }
   ],
-  1: [ // 真境幻想剧诗 — 模式 > 幕数 > 星章 > 用时 > 借出
+  1: [ // 幻想真境剧诗 — 模式 > 幕数 > 星章 > 用时(少) > 借出
     { key: 'mode', label: '模式', desc: '难度模式', higher: true },
     { key: 'floor', label: '幕数', desc: '完成幕数', higher: true },
     { key: 'flower', label: '星章', desc: '明星挑战星章', higher: true },
@@ -84,14 +84,14 @@ function compoundScore (scores, extra, challengeType) {
       return (scores.floor || 0) * 1000000
         + (scores.star || 0) * 100000
         + (99 - R(extra.battle_num || 0, 99))
-    case 1: // 真境幻想剧诗: 模式 > 幕 > 花 > 用时(少) > 借出(多)
+    case 1: // 幻想真境剧诗: 模式 > 幕 > 花 > 用时(少) > 借出(多)
       return (scores.mode || 0) * 10000000000
         + (scores.floor || 0) * 100000000
-        + (extra.coin_num || 0) * 1000000
+        + (scores.flower || 0) * 1000000
         + (999999 - R(extra.time_second || 0, 999999))
         + R(extra.borrow_num || 0, 99)
     case 2:
-    case 3: // 幽境危战: 难度 > 用时
+    case 3: // 幽境危战: 难度 > 用时(少)
       return (scores.difficulty || 0) * 1000000
         - (R(extra.time_second || 0, 999999))
     default: return 0
@@ -103,7 +103,7 @@ const DIM_ALIAS = {
   '层数': 'floor', '层': 'floor', '最深': 'floor', '最深抵达': 'floor',
   '星数': 'star', '星': 'star', '星星': 'star', '总星数': 'star',
   '战斗': 'battle', '战': 'battle', '次数': 'battle', '战斗次数': 'battle',
-  // 真境幻想剧诗
+  // 幻想真境剧诗
   '模式': 'mode', '难度模式': 'mode',
   '花': 'flower', '星章': 'flower', '明星挑战': 'flower', '明星挑战星章': 'flower',
   '用时': 'time', '时': 'time', '时间': 'time',
@@ -317,7 +317,7 @@ export default class GsChallengeRank {
         break
       }
 
-      case 1: { // 真境幻想剧诗
+      case 1: { // 幻想真境剧诗
         const stat = data?.stat || {}
         const detail = data?.detail || {}
 

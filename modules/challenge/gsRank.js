@@ -8,7 +8,7 @@ import GsChallengeRank from '../../model/gsChallengeRank.js'
 import { getPluginConfig } from '../../components/config.js'
 import { render } from '../../components/render.js'
 
-/** 真境幻想剧诗模式名称 */
+/** 幻想真境剧诗模式名称 */
 export const MODE_NAMES = { 1: '轻简', 2: '普通', 3: '困难', 4: '卓越', 5: '月谕' }
 
 /** 幽境危战难度名称 */
@@ -48,7 +48,7 @@ export function buildGsCols (extra, challengeType) {
         { v: extra.max_floor_star ?? extra.total_star ?? '-', l: '★' },
         { v: extra.battle_num ?? '-', l: '战斗' }
       ]
-    case 1: // 真境幻想剧诗: 模式 | 幕 | 星章 | 用时 | 借出
+    case 1: // 幻想真境剧诗: 模式 | 幕 | 星章 | 用时 | 借出
       return [
         { v: MODE_NAMES[extra.mode_id] || extra.mode_id || '-', l: '模式' },
         { v: extra.round_count ?? '-', l: '幕' },
