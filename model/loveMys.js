@@ -61,11 +61,31 @@ export default class LoveMys {
       let test_nine = res
       let retry = 0
       if (type == 0) {
-        if ([2, 1].includes(GtestType)) res = await vali.getData('test_nine', res?.data)
-        if (res?.data?.validate) res = {
-          data: {
-            challenge: test_nine?.data?.challenge,
-            validate: res?.data?.validate
+        if ([2, 1].includes(GtestType)) {
+          for (let tnAttempt = 0; tnAttempt < 3; tnAttempt++) {
+            if (tnAttempt > 0) {
+              logger.mark(`[loveMys] test_nine 过码失败，第 ${tnAttempt + 1}/3 次尝试`)
+              // 重新创建挑战（旧挑战可能已过期）
+              res = await vali.getData(retcode === 10035 ? 'createGeetest' : 'createVerification', { headers, app_key })
+              if (!res || res?.retcode !== 0) break
+              test_nine = res
+            }
+            res = await vali.getData('test_nine', res?.data)
+            if (res?.data?.validate) {
+              res = {
+                data: {
+                  challenge: test_nine?.data?.challenge,
+                  validate: res?.data?.validate
+                }
+              }
+              // 验证求解结果
+              res = await vali.getData(retcode === 10035 ? 'verifyGeetest' : 'verifyVerification', {
+                ...res.data,
+                headers,
+                app_key
+              })
+              if (res?.data?.challenge) break
+            }
           }
         }
       } else if (type == 1) {

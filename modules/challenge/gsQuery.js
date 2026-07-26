@@ -347,6 +347,62 @@ function buildHardData (raw, mode) {
   }
 }
 
+// ==================== 过码处理 ====================
+
+/**
+ * 校验 API 返回码，遇到验证码时委托 mys.req.err handler 过码
+ * 参考 miao-plugin MysApi.getData() → mysInfo.checkCode() 链路
+ * @returns {Promise<object|false>} 处理后的 res，false 表示已回复错误消息
+ */
+async function checkGsCode (e, res, type, mys, data = {}) {
+  if (!res) {
+    await e.reply('米游社接口请求失败，暂时无法查询')
+    return false
+  }
+
+  res.retcode = Number(res.retcode)
+
+  switch (res.retcode) {
+    case 0:
+      break
+    case 10102:
+      if (res.message === 'Data is not public for the user') {
+        await e.reply('米游社数据未公开，请前往米游社/原神设置中公开数据')
+      } else {
+        await e.reply('请先去米游社绑定角色')
+      }
+      break
+    case 10041:
+    case 5003:
+      await e.reply('米游社账号异常，暂时无法查询')
+      break
+    case 1034:
+    case 10035: {
+      const handler = e.runtime?.handler || {}
+      if (handler.has('mys.req.err')) {
+        logger.mark(`[Axiu-Plugin][原神] 遇到验证码，调用过码 handler`)
+        res = await handler.call('mys.req.err', e, { mysApi: mys, type, res, data }) || res
+      }
+      if (!res || res?.retcode === 1034 || res?.retcode === 10035) {
+        await e.reply('米游社查询遇到验证码，请稍后再试')
+      }
+      break
+    }
+    default:
+      if (/(登录|login)/i.test(res.message)) {
+        await e.reply('米游社cookie已失效，请发送 #扫码登录 重新绑定')
+      } else {
+        await e.reply(`米游社接口报错，暂时无法查询：${res.message || 'error'}`)
+      }
+      break
+  }
+
+  if (res && res.retcode !== 0) {
+    logger.mark(`[Axiu-Plugin][原神] 接口报错 — ${JSON.stringify(res)}，UID：${mys.uid}`)
+  }
+  return res
+}
+
 // ==================== 主查询函数 ====================
 
 /**
@@ -366,13 +422,10 @@ export async function gsSpiralAbyssQuery (e) {
   const periodText = isLast ? '上期' : '本期'
 
   try {
-    const mys = new GenshinMysApi(auth.uid, auth.ck, 'gs')
-    const res = await mys.getData('spiralAbyss', { schedule_type: scheduleType })
-
-    if (!res || res.retcode !== 0) {
-      await e.reply(`暂未获得${periodText}深境螺旋数据`)
-      return true
-    }
+    const mys = new GenshinMysApi(auth.uid, auth.ck, { game: 'gs' })
+    let res = await mys.getData('spiralAbyss', { schedule_type: scheduleType })
+    res = await checkGsCode(e, res, 'spiralAbyss', mys, { schedule_type: scheduleType })
+    if (!res || res.retcode !== 0) return true
 
     const rawData = res.data
     if (!rawData?.floors?.length) {
@@ -439,13 +492,10 @@ export async function gsRoleCombatQuery (e) {
   const periodText = isLast ? '上期' : '本期'
 
   try {
-    const mys = new GenshinMysApi(auth.uid, auth.ck, 'gs')
-    const res = await mys.getData('role_combat', { need_detail: true })
-
-    if (!res || res.retcode !== 0) {
-      await e.reply(`暂未获得${periodText}幻想真境剧诗数据`)
-      return true
-    }
+    const mys = new GenshinMysApi(auth.uid, auth.ck, { game: 'gs' })
+    let res = await mys.getData('role_combat', { need_detail: true })
+    res = await checkGsCode(e, res, 'role_combat', mys, { need_detail: true })
+    if (!res || res.retcode !== 0) return true
 
     // role_combat 返回 { data: [{current}, {previous}] } 结构
     let rawData = res.data
@@ -513,13 +563,10 @@ export async function gsHardChallengeQuery (e) {
   else if (isMp) mode = 'mp'
 
   try {
-    const mys = new GenshinMysApi(auth.uid, auth.ck, 'gs')
-    const res = await mys.getData('hard_challenge', {})
-
-    if (!res || res.retcode !== 0) {
-      await e.reply(`暂未获得${periodText}幽境危战数据`)
-      return true
-    }
+    const mys = new GenshinMysApi(auth.uid, auth.ck, { game: 'gs' })
+    let res = await mys.getData('hard_challenge', {})
+    res = await checkGsCode(e, res, 'hard_challenge', mys, {})
+    if (!res || res.retcode !== 0) return true
 
     // hard_challenge 返回 { data: [{current}, {previous}] } 结构
     let rawData = res.data
