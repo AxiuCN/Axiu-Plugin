@@ -235,6 +235,7 @@ function buildAbyssData (raw) {
 function buildRoleData (raw) {
   const stat = raw.stat || {}
   const detail = raw.detail || {}
+  const fightStat = detail.fight_statisic || {}
 
   // splendour buff summary
   function splSummary (level) {
@@ -268,6 +269,26 @@ function buildRoleData (raw) {
 
   const month = raw.schedule?.start_date_time?.month || raw.schedule?.month || new Date().getMonth() + 1
 
+  // 角色统计卡（最高伤害输出/击败最多敌人/最高承受伤害）
+  const fightStatCards = []
+  const addFightCard = (title, data, fmt) => {
+    if (!data || !data.avatar_id) return
+    fightStatCards.push({
+      title,
+      avatarIcon: data.avatar_icon || '',
+      value: fmt ? fmt(data.value) : (data.value || '')
+    })
+  }
+  if (fightStat.is_show_battle_stats) {
+    addFightCard('最高伤害输出', fightStat.max_damage_avatar, v => {
+      const n = Number(v); return isNaN(n) ? v : `${(n / 10000).toFixed(1)} W`
+    })
+    addFightCard('击败最多敌人', fightStat.max_defeat_avatar, v => `${v} 次`)
+    addFightCard('最高承受伤害', fightStat.max_take_damage_avatar, v => {
+      const n = Number(v); return isNaN(n) ? v : `${(n / 10000).toFixed(1)} W`
+    })
+  }
+
   return {
     uid: '',
     role: {
@@ -280,6 +301,8 @@ function buildRoleData (raw) {
         rent_cnt: stat.rent_cnt || 0,
         get_medal_round_list: stat.get_medal_round_list || []
       },
+      fightStatCards,
+      shortestTeam: fightStat.shortest_avatar_list || [],
       rounds
     }
   }

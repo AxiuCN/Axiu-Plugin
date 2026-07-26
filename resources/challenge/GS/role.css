@@ -70,7 +70,10 @@ body {
 .stats {
   display: flex;
   gap: 10px;
-  margin: 18px 0;
+  margin: 0 0 10px;
+}
+.stats.medal-row {
+  margin-bottom: 10px;
 }
 .stat-card {
   flex: 1;
@@ -82,7 +85,8 @@ body {
   padding: 12px 14px;
 }
 .stat-card.medal-bar {
-  flex: 2;
+  flex: 1;
+  padding: 12px 20px;
 }
 .stat-title {
   font-size: 15px;
@@ -93,9 +97,68 @@ body {
   font-size: 24px;
   font-weight: bold;
   color: #d3bc8e;
-  font-family: Number, "印品南征北战NZBZ体", NZBZ, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  font-family: Number, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
   margin-top: 8px;
+}
+
+/* ===== 角色统计卡 ===== */
+.char-stats-row {
+  margin-bottom: 18px;
+}
+.char-stat {
+  height: 100px;
+}
+.char-stat .stat-bg-face {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 90px;
+  height: 90px;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.3;
+  pointer-events: none;
+}
+.char-stat .stat-title {
+  position: relative;
+  z-index: 1;
+}
+.char-stat .stat-value {
+  position: relative;
+  z-index: 1;
+  margin-top: 8px;
+}
+
+/* ===== 最快完成演出队伍 ===== */
+.team-stat {
+  height: 100px;
+}
+.team-stat .stat-bg-face {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 90px;
+  height: 90px;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.25;
+  pointer-events: none;
+}
+.team-avatars {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  position: relative;
+  z-index: 1;
+}
+.team-avatar-sm {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* ===== 勋章 ===== */
