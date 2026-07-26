@@ -84,7 +84,7 @@ export default class LoveMys {
                 headers,
                 app_key
               })
-              if (res?.data?.challenge) break
+              if (res?.data?.challenge) return res
             }
           }
         }
