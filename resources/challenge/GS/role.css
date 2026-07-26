@@ -72,9 +72,6 @@ body {
   gap: 10px;
   margin: 0 0 10px;
 }
-.stats.medal-row {
-  margin-bottom: 10px;
-}
 .stat-card {
   flex: 1;
   background: rgba(16, 24, 34, 0.85);
@@ -85,8 +82,8 @@ body {
   padding: 12px 14px;
 }
 .stat-card.medal-bar {
-  flex: 1;
-  padding: 12px 20px;
+  flex: 0 1 auto;
+  padding: 12px 14px;
 }
 .stat-title {
   font-size: 15px;
@@ -164,11 +161,11 @@ body {
 /* ===== 勋章 ===== */
 .medal-icons {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   gap: 4px;
   margin-top: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 .medal-icon {
   width: 22px;
@@ -352,9 +349,14 @@ body {
 
 /* ===== 提示 ===== */
 .notice {
-  color: #888;
-  font-size: 13px;
-  padding: 8px 12px 20px;
+  background: rgba(14, 22, 32, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  color: #aaa;
+  font-size: 14px;
+  padding: 12px 16px;
+  margin: 0 0 18px;
+  text-align: left;
 }
 .notice ul {
   padding-left: 18px;

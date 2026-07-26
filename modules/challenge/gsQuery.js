@@ -275,6 +275,7 @@ function buildRoleData (raw) {
     if (!data || !data.avatar_id) return
     fightStatCards.push({
       title,
+      avatarId: data.avatar_id,
       avatarIcon: data.avatar_icon || '',
       value: fmt ? fmt(data.value) : (data.value || '')
     })
@@ -537,7 +538,7 @@ export async function gsRoleCombatQuery (e) {
     GsChallengeRank.report(auth.uid, e.at || e.user_id, e.group_id, 1, rawData, scheduleId)
       .catch(err => logger?.error(`${LOG_PREFIX}[原神] 剧诗上报失败:`, err?.message))
 
-    // 收集角色 ID
+    // 收集角色 ID（含 fight_statisic 中的统计角色）
     const avatarIds = new Set()
     const charLevels = {}
     for (const r of rawData.detail?.rounds_data || []) {
@@ -547,6 +548,15 @@ export async function gsRoleCombatQuery (e) {
           charLevels[a.avatar_id] = { level: a.level || 0, cons: 0 }
         }
       }
+    }
+    const fs = rawData.detail?.fight_statisic || {}
+    for (const key of ['max_damage_avatar', 'max_defeat_avatar', 'max_take_damage_avatar']) {
+      const aid = fs[key]?.avatar_id
+      if (aid) { avatarIds.add(aid); if (!charLevels[aid]) charLevels[aid] = { level: 0, cons: 0 } }
+    }
+    for (const a of (fs.shortest_avatar_list || [])) {
+      const aid = a.avatar_id
+      if (aid) { avatarIds.add(aid); if (!charLevels[aid]) charLevels[aid] = { level: 0, cons: 0 } }
     }
     const avatars = buildAvatarsMap([...avatarIds], charLevels)
 

@@ -15,8 +15,7 @@
   </section>
 
   <!-- ===== 统计 ===== -->
-  <!-- 勋章行 -->
-  <section class="stats medal-row">
+  <section class="stats">
     <div class="stat-card medal-bar">
       <div class="stat-title">明星挑战星章</div>
       <div class="medal-icons">
@@ -29,7 +28,6 @@
       </div>
     </div>
   </section>
-  <!-- 数值统计行 -->
   <section class="stats">
     <div class="stat-card">
       <div class="stat-title">总耗时</div>
@@ -53,7 +51,7 @@
   <section class="stats char-stats-row">
     {{each role.fightStatCards card}}
     <div class="stat-card char-stat">
-      <div class="stat-bg-face" style="background-image:url({{card.avatarIcon}})"></div>
+      <div class="stat-bg-face" style="background-image:url({{(avatars[card.avatarId]||{}).face || card.avatarIcon}})"></div>
       <div class="stat-title">{{card.title}}</div>
       <div class="stat-value">{{card.value}}</div>
     </div>
