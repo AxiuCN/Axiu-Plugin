@@ -62,7 +62,7 @@ export function buildGsCols (extra, challengeType) {
         { v: DIFF_NAMES[extra.difficulty] || extra.difficulty || '-', l: '难度' },
         { v: extra.time_second != null ? `${extra.time_second}秒` : '-', l: '用时' },
         extra.badge
-          ? { v: BADGE_NAMES[extra.badge] || '-', l: '', img: `medal_${extra.badge === 7 ? '6_plus' : extra.badge}.png` }
+          ? { v: BADGE_NAMES[extra.badge] || '-', l: '', img: `images/medal_${extra.badge === 7 ? '6_plus' : extra.badge}.png` }
           : { v: '-', l: '徽章' }
       ]
     default: return []

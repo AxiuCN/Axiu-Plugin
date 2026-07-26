@@ -25,9 +25,9 @@
           {{/if}}
           <div class="stat-star-container">
             {{if star == 1}}
-            <div class="stat-star" style="background-image:url({{_res_path}}challenge/GS/medal.png)"></div>
+            <div class="stat-star" style="background-image:url({{_res_path}}challenge/GS/images/medal.png)"></div>
             {{else}}
-            <div class="stat-star" style="background-image:url({{_res_path}}challenge/GS/nomedal.png)"></div>
+            <div class="stat-star" style="background-image:url({{_res_path}}challenge/GS/images/nomedal.png)"></div>
             {{/if}}
           </div>
           {{/each}}
@@ -73,9 +73,9 @@
     <div class="cont-body">
       <div class="role-title">
         {{if round.is_get_medal}}
-        <div class="role-star" style="background-image:url({{_res_path}}challenge/GS/medal.png)"></div>
+        <div class="role-star" style="background-image:url({{_res_path}}challenge/GS/images/medal.png)"></div>
         {{else}}
-        <div class="role-star" style="background-image:url({{_res_path}}challenge/GS/nomedal.png)"></div>
+        <div class="role-star" style="background-image:url({{_res_path}}challenge/GS/images/nomedal.png)"></div>
         {{/if}}
         <strong>{{round.title}}</strong>
         <span>{{round?.finish_time}}</span>

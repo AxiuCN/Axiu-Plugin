@@ -25,6 +25,18 @@ body {
   z-index: 1;
 }
 
+/* ===== star-icon ===== */
+.star-icon {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
 /* ===== 顶部 ===== */
 .header {
   display: flex;
@@ -150,6 +162,11 @@ body {
   opacity: 0.55;
   font-weight: normal;
   font-family: Number, YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+}
+.room-star .star-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 3px;
 }
 
 /* ===== 队伍 ===== */

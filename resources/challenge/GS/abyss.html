@@ -9,7 +9,7 @@
 
   <!-- ===== 顶部 ===== -->
   <section class="header">
-    <div class="header-title">深境螺旋<span>{{abyss.schedule}} · {{abyss.total}}次战斗 · {{abyss.total_star}}星/36星</span></div>
+    <div class="header-title">深境螺旋<span>{{abyss.schedule}} · {{abyss.total}}次战斗 · <span class="star-icon" style="background-image:url({{_res_path}}challenge/GS/images/star.png)"></span>{{abyss.total_star}}/36</span></div>
     <div class="header-uid">UID:{{uid}}</div>
   </section>
 
@@ -33,14 +33,14 @@
   <section class="floor">
     <div class="floor-title">
       第{{floor.index}}层
-      <span>★ {{floor.star}}/9</span>
+      <span><span class="star-icon" style="background-image:url({{_res_path}}challenge/GS/images/star.png)"></span>{{floor.star}}/9</span>
     </div>
 
     {{each floor.levels level key}}
     <div class="room">
       <div class="room-header">
         <span class="room-name">第{{key}}间</span>
-        <span class="room-star">★ {{level.star}}/3</span>
+        <span class="room-star"><span class="star-icon" style="background-image:url({{_res_path}}challenge/GS/images/star.png)"></span>{{level.star}}/3</span>
       </div>
       <div class="teams">
         {{if level.up}}
