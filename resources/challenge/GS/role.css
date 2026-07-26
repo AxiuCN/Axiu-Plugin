@@ -128,34 +128,23 @@ body {
 }
 
 /* ===== 最快完成演出队伍 ===== */
+/* ===== 最快完成演出队伍 ===== */
 .team-stat {
-  height: 100px;
-}
-.team-stat .stat-bg-face {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 90px;
-  height: 90px;
-  background-size: cover;
-  background-position: center;
-  opacity: 0.25;
-  pointer-events: none;
+  padding-bottom: 14px;
 }
 .team-avatars {
   display: flex;
-  gap: 6px;
+  gap: 0;
   margin-top: 8px;
   position: relative;
   z-index: 1;
+  justify-content: center;
 }
-.team-avatar-sm {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.35);
+.team-avatar {
+  width: 48px;
+  height: 48px;
   object-fit: cover;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: block;
 }
 
 /* ===== 勋章 ===== */

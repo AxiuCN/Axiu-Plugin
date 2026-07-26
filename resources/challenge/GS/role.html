@@ -58,11 +58,10 @@
     {{/each}}
     {{if role.shortestTeam && role.shortestTeam.length}}
     <div class="stat-card team-stat">
-      <div class="stat-bg-face" style="background-image:url({{role.shortestTeam[0].avatar_icon}})"></div>
       <div class="stat-title">最快完成演出队伍</div>
       <div class="team-avatars">
         {{each role.shortestTeam ava}}
-        <img class="team-avatar-sm" src="{{ava.avatar_icon}}">
+        <img class="team-avatar" src="{{ava.avatar_icon}}">
         {{/each}}
       </div>
     </div>
