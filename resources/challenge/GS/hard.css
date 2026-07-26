@@ -1,213 +1,140 @@
-body,
-.container {
-  width: 970px;
+body {
+  width: 900px;
+  margin: 0;
 }
 .container {
-  padding: 5px 0 10px 5px;
+  width: 900px;
+  padding: 0;
+  position: relative;
+  background: url("./images/bg.jpg") center top / cover no-repeat;
 }
-.head-box {
-  display: flex;
-  width: 100%;
-}
-.head-box .title {
-  font-size: 45px;
-  padding-bottom: 10px;
-  width: 70%;
-}
-.head-box .title .difficulty {
-  font-size: 30px;
-  margin-left: 10px;
-  color: #d3bc8e;
-}
-.head-box .title .time {
-  font-size: 18px;
-  margin-left: 10px;
-  color: #ffffff;
-}
-.head-box .uid {
-  text-align: right;
-  width: 30%;
-  padding-top: 25px;
-  padding-right: 10px;
-  font-size: 25px;
-}
-.hard-stat-cont {
-  display: flex;
-  padding: 5px;
-}
-.hard-stat {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-}
-.hard-stat .cont {
-  margin: 5px 10px 5px 5px;
-  width: 30%;
-  height: 82px;
-}
-.hard-stat .time {
-  text-align: right;
-}
-.hard-stat strong {
-  text-shadow: 0 0 3px #000;
-}
-.hard-stat .stat-title {
+.container::before {
+  content: "";
   position: absolute;
-  top: 0;
-  background: rgba(0, 0, 0, 0.5);
-  padding: 5px 10px;
-  width: 100%;
-  text-shadow: 0 0 1px #000;
+  inset: 0;
+  background: rgba(5, 10, 16, 0.5);
+  z-index: 0;
+  pointer-events: none;
 }
-.hard-stat .stat-title span {
-  display: block;
-  font-weight: normal;
-  font-family: Number, "印品南征北战NZBZ体", NZBZ, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
-  font-size: 20px;
-}
-.hard-stat .stat-title strong {
-  display: block;
-  font-size: 30px;
-}
-.hard-stat .stat-msg {
-  position: absolute;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(2px);
-  padding: 5px 10px;
-  width: 100%;
-  text-shadow: 0 0 1px #000;
-  font-size: 30px;
-  height: 45px;
-}
-.hard-title {
-  margin: -3px 0 8px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-}
-.hard-title strong {
-  margin-left: 3px;
-  color: #d3bc8e;
-  font-size: 18px;
-  font-family: Number, "印品南征北战NZBZ体", NZBZ, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
-  font-weight: normal;
-  margin-right: 10px;
-}
-.hard-title span {
-  text-align: right;
-  font-size: 15px;
-}
-.hard-chall-team {
-  display: flex;
-}
-.hard-chall-team .line {
-  width: 1px;
-  background: rgba(255, 255, 255, 0.5);
-  height: 80px;
-  vertical-align: middle;
-  margin: 15px 8px 0;
-}
-.hard-chall-desc {
-  margin: 3px 0;
-}
-.hard-chall-desc ul {
-  list-style-position: inside;
-}
-.hard-chall-desc ul li {
-  font-size: 15px;
-}
-.hard-team {
-  display: flex;
-  margin-right: -5px;
-  margin-left: -5px;
-}
-.hard-info {
-  display: flex;
-  margin-right: -5px;
-  margin-left: -5px;
-  flex-direction: column;
-  width: 50%;
-}
-.hard-info .hard-enemy-container {
-  width: 40%;
-  height: 100%;
-  background-color: #e7e5d9;
-  display: flex;
-  border-radius: 10px;
-  overflow: hidden;
-  flex-direction: column;
-}
-.hard-info .hard-best-container {
-  width: 30%;
-  height: 100%;
-  background-color: #e7e5d9;
-  display: flex;
-  border-radius: 10px;
-  overflow: hidden;
-  flex-direction: column;
-}
-.hard-info .hard-best-container .avatar-banner {
-  width: 130px;
-  height: 130px;
-  background-size: 150px 150px;
-  background-position: center;
-  overflow: hidden;
-}
-.hard-info .hard-best-container .best-number-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 24px;
-}
-.hard-info .hard-best-container .best-number-container .best-number {
-  font-size: 20px;
-  color: #0D0D0D;
-}
-.hard-info .hard-best-header {
-  width: 100%;
-  height: 30px;
-  background-color: #8b8b83;
-  padding: 5px;
-  font-size: 18px;
-}
-.hard-info .hard-best-content {
-  width: 100%;
-  padding: 5px;
-  display: flex;
-}
-.hard-info .hard-best-content .hard-content-container {
-  width: 100%;
-  display: flex;
-  margin-top: 5px;
-  flex-direction: column;
-  align-items: center;
-}
-.hard-info .hard-best-content .hard-content-icon {
-  width: 140px;
-  height: 140px;
-  background-size: 220px 220px;
-  background-position: center;
-  overflow: hidden;
-}
-.hard-info .hard-info-line {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: row;
-}
-.hard-info .hard-info-line + .hard-info-line {
-  margin-top: 4%;
-}
-.hard-notice .cont-body {
-  font-size: 16px;
+.hard {
+  width: 900px;
+  padding: 0 12px 0;
+  margin: auto;
+  color: #e8e0d0;
+  position: relative;
+  z-index: 1;
 }
 
-/* ===== 角色头像 + 等级/命座叠层 ===== */
+/* ===== 顶部 ===== */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 30px 12px 20px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+.header-title {
+  font-size: 44px;
+  font-weight: bold;
+  font-family: Number, "印品南征北战NZBZ体", NZBZ, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  letter-spacing: 2px;
+}
+.header-title span {
+  font-size: 18px;
+  margin-left: 12px;
+  color: #d3bc8e;
+  font-weight: normal;
+  font-family: Number, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  letter-spacing: 0;
+}
+.header-uid {
+  font-size: 22px;
+  font-family: Number, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+/* ===== 全局统计 ===== */
+.stats {
+  display: flex;
+  gap: 10px;
+  margin: 0 0 10px;
+}
+.stat-card {
+  flex: 1;
+  background: rgba(16, 24, 34, 0.85);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 12px 14px;
+}
+.stat-title {
+  font-size: 15px;
+  color: #a09880;
+  font-family: YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+}
+.stat-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #d3bc8e;
+  font-family: Number, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  margin-top: 8px;
+}
+
+/* ===== 房间卡片 ===== */
+.chall {
+  background: rgba(14, 22, 32, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 14px;
+}
+.chall-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 22px;
+  font-weight: bold;
+  font-family: Number, "印品南征北战NZBZ体", NZBZ, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+.chall-title strong {
+  color: #d3bc8e;
+  font-size: 20px;
+  font-weight: normal;
+  font-family: YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+}
+.chall-title span {
+  font-size: 14px;
+  opacity: 0.7;
+  margin-left: auto;
+  font-weight: normal;
+  font-family: Number, YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+}
+
+/* ===== 房间内容 ===== */
+.chall-body {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+/* 角色头像区 — 四人一行，不折行 */
+.chall-team {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+/* 角色头像 */
 .hard-avatar {
   position: relative;
   display: inline-block;
-  margin: 3px;
 }
 .hard-avatar-img {
   width: 82px;
@@ -217,7 +144,7 @@ body,
   object-fit: cover;
   display: block;
 }
-.hard-avatar .avatar-lv {
+.avatar-lv {
   position: absolute;
   bottom: 0;
   left: 0;
@@ -229,7 +156,7 @@ body,
   font-family: Number, YS, PingFangSC-Medium, "PingFang SC", sans-serif;
   line-height: 1.6;
 }
-.hard-avatar .cons {
+.cons {
   position: absolute;
   top: 0;
   right: 0;
@@ -240,31 +167,151 @@ body,
   line-height: 1.6;
   z-index: 1;
 }
-.cons-0 {
-  background: #666;
-  color: #fff;
+.cons-0 { background: #666; color: #fff; }
+.cons-1 { background: #5cbac2; color: #fff; }
+.cons-2 { background: #339d61; color: #fff; }
+.cons-3 { background: #3e95b9; color: #fff; }
+.cons-4 { background: #3955b7; color: #fff; }
+.cons-5 { background: #531ba9cf; color: #fff; }
+.cons-6 { background: #ff5722; color: #fff; }
+
+/* 分隔线 */
+.chall-body .line {
+  width: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 0 14px;
+  flex-shrink: 0;
+  align-self: stretch;
 }
-.cons-1 {
-  background: #5cbac2;
-  color: #fff;
+
+/* 右侧信息 */
+.chall-info {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
 }
-.cons-2 {
-  background: #339d61;
-  color: #fff;
+
+/* 敌人面板 */
+.enemy-panel {
+  flex: 0.8;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
 }
-.cons-3 {
-  background: #3e95b9;
-  color: #fff;
+.enemy-header {
+  background: rgba(0, 0, 0, 0.5);
+  padding: 6px 10px;
+  font-size: 14px;
+  color: #d3bc8e;
+  font-family: YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  text-align: center;
 }
-.cons-4 {
-  background: #3955b7;
-  color: #fff;
+.enemy-body {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px;
 }
-.cons-5 {
-  background: #531ba9cf;
-  color: #fff;
+.enemy-icon {
+  width: 120px;
+  height: 120px;
+  background-size: cover;
+  background-position: center;
+  background-color: #000;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
-.cons-6 {
-  background: #ff5722;
+
+/* 统计面板（最强一击 / 最高总伤害） */
+.stat-panel {
+  flex: 1.1;
+  background: rgba(16, 24, 34, 0.85);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 12px 14px;
+}
+.stat-panel .stat-bg-face {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 100px;
+  height: 100px;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.3;
+  pointer-events: none;
+}
+.stat-panel-title {
+  position: relative;
+  z-index: 1;
+  font-size: 15px;
+  color: #a09880;
+  font-family: YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+}
+.stat-panel-value {
+  position: relative;
+  z-index: 1;
+  font-size: 24px;
+  font-weight: bold;
+  color: #d3bc8e;
+  font-family: Number, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  margin-top: 8px;
+  word-break: break-all;
+}
+
+/* ===== 怪物描述 ===== */
+.chall-desc {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-top: 12px;
+}
+.chall-desc ul {
+  padding-left: 18px;
+  margin: 0;
+}
+.chall-desc ul li {
+  font-size: 14px;
+  color: #bbb;
+  line-height: 1.8;
+  margin: 2px 0;
+}
+
+/* ===== 提示 ===== */
+.notice {
+  background: rgba(14, 22, 32, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  color: #aaa;
+  font-size: 14px;
+  padding: 12px 16px;
+  margin: 0 0 18px;
+  text-align: left;
+}
+.notice ul {
+  padding-left: 18px;
+}
+.notice ul li {
+  margin: 4px 0;
+}
+
+/* ===== copyright ===== */
+.copyright {
   color: #fff;
+  text-shadow: none;
+  font-family: Number, YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  padding: 8px 12px 20px;
+  position: relative;
+  z-index: 1;
 }
