@@ -1,209 +1,315 @@
-body,
-.container {
-  width: 970px;
+body {
+  width: 900px;
+  margin: 0;
 }
 .container {
-  padding: 5px 0 10px 5px;
+  width: 900px;
+  padding: 0;
+  position: relative;
+  background: url("./images/bg.jpg") center top / cover no-repeat;
 }
-.head-box {
-  display: flex;
-  width: 100%;
+.container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 10, 16, 0.5);
+  z-index: 0;
+  pointer-events: none;
 }
-.head-box .title {
-  font-size: 45px;
-  padding-bottom: 10px;
-  width: 70%;
+.role {
+  width: 900px;
+  padding: 0 12px 0;
+  margin: auto;
+  color: #e8e0d0;
+  position: relative;
+  z-index: 1;
 }
-.head-box .title span {
-  font-size: 30px;
-  margin-left: 10px;
-  color: #d3bc8e;
-}
-.head-box .uid {
-  text-align: right;
-  width: 30%;
-  padding-top: 25px;
-  padding-right: 10px;
-  font-size: 25px;
-}
-.role-stat-cont {
-  display: flex;
-  padding: 5px;
-}
-.role-stat {
-  display: flex;
-}
-.role-stat .cont {
-  margin: 5px 10px 5px 5px;
-  width: 140px;
-  height: 82px;
-}
-.role-stat .cont.star-display {
-  width: 330px;
-}
-.role-stat .cont.star-display .line {
-  width: 1px;
-  background: rgba(255, 255, 255, 0.5);
-  height: 25px;
+
+/* ===== star-icon ===== */
+.star-icon {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
   vertical-align: middle;
-  margin: 5px 3px 0;
+  margin-right: 4px;
 }
-.role-stat strong {
-  text-shadow: 0 0 3px #000;
+
+/* ===== 顶部 ===== */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 30px 12px 20px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
-.role-stat .stat-title {
-  position: absolute;
-  top: 0;
-  background: rgba(0, 0, 0, 0.5);
-  padding: 5px 10px;
-  width: 100%;
-  text-shadow: 0 0 1px #000;
-}
-.role-stat .stat-title span {
-  display: block;
-  font-weight: normal;
+.header-title {
+  font-size: 44px;
+  font-weight: bold;
   font-family: Number, "印品南征北战NZBZ体", NZBZ, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
-  font-size: 20px;
+  letter-spacing: 2px;
 }
-.role-stat .stat-title strong {
-  display: block;
-  font-size: 30px;
-}
-.role-stat .stat-msg {
-  position: absolute;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(2px);
-  padding: 5px 10px;
-  width: 100%;
-  text-shadow: 0 0 1px #000;
-  font-size: 30px;
-  height: 45px;
-  display: flex;
-  justify-content: flex-start;
-}
-.role-stat .stat-msg .stat-star-container {
-  margin-bottom: 10px;
-}
-.role-stat .stat-msg .stat-star-container .stat-star {
-  width: 25px;
-  height: 25px;
-  background-size: cover;
-  margin-top: 4px;
-}
-.role-title {
-  margin: -3px 0 8px;
-  display: flex;
-  align-items: flex-end;
-}
-.role-title strong {
-  margin-left: 3px;
+.header-title span {
+  font-size: 24px;
+  margin-left: 12px;
   color: #d3bc8e;
-  font-size: 18px;
-  font-family: Number, "印品南征北战NZBZ体", NZBZ, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
   font-weight: normal;
-  margin-right: 10px;
+  font-family: Number, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  letter-spacing: 0;
 }
-.role-title .role-star {
+.header-uid {
+  font-size: 22px;
+  font-family: Number, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+/* ===== 统计 ===== */
+.stats {
+  display: flex;
+  gap: 10px;
+  margin: 18px 0;
+}
+.stat-card {
+  flex: 1;
+  background: rgba(16, 24, 34, 0.85);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 12px 14px;
+}
+.stat-card.medal-bar {
+  flex: 2;
+}
+.stat-title {
+  font-size: 15px;
+  color: #a09880;
+  font-family: YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+}
+.stat-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #d3bc8e;
+  font-family: Number, "印品南征北战NZBZ体", NZBZ, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  margin-top: 8px;
+}
+
+/* ===== 勋章 ===== */
+.medal-icons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.medal-icon {
+  width: 22px;
+  height: 22px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  flex-shrink: 0;
+}
+.medal-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.25);
+  margin: 0 6px;
+  flex-shrink: 0;
+}
+
+/* ===== 轮次 ===== */
+.round {
+  background: rgba(14, 22, 32, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 14px;
+}
+.round-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 22px;
+  font-weight: bold;
+  font-family: Number, "印品南征北战NZBZ体", NZBZ, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+.round-medal {
   width: 20px;
   height: 20px;
   background-size: cover;
+  flex-shrink: 0;
 }
-.role-floor-team {
+.round-title strong {
+  color: #d3bc8e;
+  font-size: 20px;
+  font-weight: normal;
+}
+.round-title span {
+  font-size: 14px;
+  opacity: 0.7;
+  margin-left: auto;
+  font-weight: normal;
+  font-family: Number, YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+}
+
+/* ===== 轮次内容 ===== */
+.round-body {
   display: flex;
+  align-items: stretch;
+  gap: 0;
 }
-.role-floor-team .line {
+
+/* 角色头像区 */
+.round-team {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 6px;
+  flex-shrink: 0;
+  width: 170px;
+}
+.role-avatar {
+  position: relative;
+  display: inline-block;
+}
+.role-avatar-img {
+  width: 82px;
+  height: 82px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  object-fit: cover;
+  display: block;
+}
+.avatar-lv {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 12px;
+  padding: 1px 6px;
+  border-radius: 0 6px 0 0;
+  font-family: Number, YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  line-height: 1.6;
+}
+
+/* 分隔线 */
+.round-body .line {
   width: 1px;
-  background: rgba(255, 255, 255, 0.5);
-  height: 80px;
-  vertical-align: middle;
-  margin: 15px 8px 0;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 0 14px;
+  flex-shrink: 0;
+  align-self: stretch;
 }
-.role-team {
+
+/* ===== 信息面板 ===== */
+.round-info {
+  flex: 1;
   display: flex;
-  margin-right: -5px;
-  margin-left: -5px;
-}
-.role-buff {
-  display: flex;
-  margin-right: -5px;
-  margin-left: -5px;
   flex-direction: column;
-  width: 50%;
+  gap: 8px;
+  min-width: 0;
 }
-.role-buff .role-choice-cards-container {
-  width: 100%;
-  height: 100%;
-  background-color: #e7e5d9;
+.info-row {
   display: flex;
-  border-radius: 10px;
+  gap: 8px;
+}
+.info-panel {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 8px;
   overflow: hidden;
-  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
-.role-buff .role-enemy-container {
-  width: 20%;
-  height: 100%;
-  background-color: #e7e5d9;
+.info-panel-narrow {
+  flex: 0 0 auto;
+}
+.info-panel-header {
+  background: rgba(0, 0, 0, 0.5);
+  padding: 6px 10px;
+  font-size: 14px;
+  color: #d3bc8e;
+  font-family: YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+}
+.info-panel-body {
+  padding: 8px 10px;
   display: flex;
-  border-radius: 10px;
-  overflow: hidden;
-  flex-direction: column;
-}
-.role-buff .role-splendour-container {
-  width: 40%;
-  height: 100%;
-  background-color: #e7e5d9;
-  display: flex;
-  border-radius: 10px;
-  overflow: hidden;
-  flex-direction: column;
-}
-.role-buff .role-splendour-buff-container {
-  width: 40%;
-  height: 100%;
-  background-color: #e7e5d9;
-  display: flex;
-  border-radius: 10px;
-  overflow: hidden;
-  flex-direction: column;
-}
-.role-buff .role-choice-cards-header {
-  width: 100%;
-  height: 30px;
-  background-color: #8b8b83;
-  padding: 5px;
-  font-size: 18px;
-}
-.role-buff .role-choice-cards-content {
-  width: 100%;
-  padding: 5px;
-  display: flex;
-}
-.role-buff .role-choice-cards-content .role-content-container {
-  width: 40px;
-  display: flex;
-  margin-top: 5px;
-  margin-left: 5px;
-  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 6px;
   align-items: center;
-  margin-right: 5px;
 }
-.role-buff .role-choice-cards-content .role-content-icon {
+.info-panel-body-center {
+  justify-content: center;
+}
+.info-panel-body-column {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.info-icon {
   width: 40px;
   height: 40px;
   background-size: cover;
-  background-color: black;
+  background-color: #000;
   border-radius: 50%;
+  flex-shrink: 0;
 }
-.role-buff .role-buff-line {
-  width: 100%;
-  height: 48%;
+.info-icon-container {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
-.role-buff .role-buff-line + .role-buff-line {
-  margin-top: 4%;
+.buff-icon {
+  width: 36px;
+  height: 36px;
 }
-.role-notice .cont-body {
-  font-size: 16px;
+.buff-level {
+  font-size: 11px;
+  color: #e8e0d0;
+  text-align: center;
+}
+
+/* ===== 辉彩祝福彩色文字 ===== */
+.stat-hp { color: #0D0DFF; }
+.stat-atk { color: #FD0D0D; }
+.stat-def { color: #A0A00D; }
+.stat-em { color: #00A000; }
+
+/* ===== 提示 ===== */
+.notice {
+  color: #888;
+  font-size: 13px;
+  padding: 8px 12px 20px;
+}
+.notice ul {
+  padding-left: 18px;
+}
+.notice ul li {
+  margin: 4px 0;
+}
+.notice ul li strong {
+  color: #d3bc8e;
+  font-weight: normal;
+}
+
+/* ===== copyright ===== */
+.copyright {
+  color: #fff;
+  text-shadow: none;
+  font-family: Number, YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  padding: 8px 12px 20px;
+  position: relative;
+  z-index: 1;
 }
