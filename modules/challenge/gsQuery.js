@@ -422,7 +422,7 @@ export async function gsSpiralAbyssQuery (e) {
   const periodText = isLast ? '上期' : '本期'
 
   try {
-    const mys = new GenshinMysApi(auth.uid, auth.ck, { game: 'gs' })
+    const mys = new GenshinMysApi(auth.uid, auth.ck, { game: 'gs', log: false })
     let res = await mys.getData('spiralAbyss', { schedule_type: scheduleType })
     res = await checkGsCode(e, res, 'spiralAbyss', mys, { schedule_type: scheduleType })
     if (!res || res.retcode !== 0) return true
@@ -492,7 +492,7 @@ export async function gsRoleCombatQuery (e) {
   const periodText = isLast ? '上期' : '本期'
 
   try {
-    const mys = new GenshinMysApi(auth.uid, auth.ck, { game: 'gs' })
+    const mys = new GenshinMysApi(auth.uid, auth.ck, { game: 'gs', log: false })
     let res = await mys.getData('role_combat', { need_detail: true })
     res = await checkGsCode(e, res, 'role_combat', mys, { need_detail: true })
     if (!res || res.retcode !== 0) return true
@@ -563,7 +563,7 @@ export async function gsHardChallengeQuery (e) {
   else if (isMp) mode = 'mp'
 
   try {
-    const mys = new GenshinMysApi(auth.uid, auth.ck, { game: 'gs' })
+    const mys = new GenshinMysApi(auth.uid, auth.ck, { game: 'gs', log: false })
     let res = await mys.getData('hard_challenge', {})
     res = await checkGsCode(e, res, 'hard_challenge', mys, {})
     if (!res || res.retcode !== 0) return true
