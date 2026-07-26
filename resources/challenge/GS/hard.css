@@ -202,3 +202,69 @@ body,
 .hard-notice .cont-body {
   font-size: 16px;
 }
+
+/* ===== 角色头像 + 等级/命座叠层 ===== */
+.hard-avatar {
+  position: relative;
+  display: inline-block;
+  margin: 3px;
+}
+.hard-avatar-img {
+  width: 82px;
+  height: 82px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  object-fit: cover;
+  display: block;
+}
+.hard-avatar .avatar-lv {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 12px;
+  padding: 1px 6px;
+  border-radius: 0 6px 0 0;
+  font-family: Number, YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+  line-height: 1.6;
+}
+.hard-avatar .cons {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 1px 5px;
+  font-size: 12px;
+  font-weight: bold;
+  border-radius: 0 6px 0 6px;
+  line-height: 1.6;
+  z-index: 1;
+}
+.cons-0 {
+  background: #666;
+  color: #fff;
+}
+.cons-1 {
+  background: #5cbac2;
+  color: #fff;
+}
+.cons-2 {
+  background: #339d61;
+  color: #fff;
+}
+.cons-3 {
+  background: #3e95b9;
+  color: #fff;
+}
+.cons-4 {
+  background: #3955b7;
+  color: #fff;
+}
+.cons-5 {
+  background: #531ba9cf;
+  color: #fff;
+}
+.cons-6 {
+  background: #ff5722;
+  color: #fff;
+}

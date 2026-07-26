@@ -56,9 +56,6 @@
               {{if avatars[id] && avatars[id].level > 0}}
               <span class="avatar-lv">Lv{{avatars[id].level}}</span>
               {{/if}}
-              {{if avatars[id] && avatars[id].cons > 0}}
-              <span class="cons cons-{{avatars[id].cons}}">{{avatars[id].cons}}</span>
-              {{/if}}
             </div>
             {{/each}}
           </div>
@@ -76,9 +73,6 @@
               <img class="team-avatar" src="{{(avatars[id]||{}).face}}">
               {{if avatars[id] && avatars[id].level > 0}}
               <span class="avatar-lv">Lv{{avatars[id].level}}</span>
-              {{/if}}
-              {{if avatars[id] && avatars[id].cons > 0}}
-              <span class="cons cons-{{avatars[id].cons}}">{{avatars[id].cons}}</span>
               {{/if}}
             </div>
             {{/each}}

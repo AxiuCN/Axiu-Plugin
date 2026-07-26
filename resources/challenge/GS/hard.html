@@ -2,7 +2,6 @@
 
 {{block 'css'}}
 <link rel="stylesheet" type="text/css" href="{{_res_path}}/challenge/GS/hard.css"/>
-<link rel="stylesheet" type="text/css" href="{{_res_path}}/challenge/GS/avatar-card.css"/>
 {{/block}}
 
 {{block 'main'}}
@@ -45,7 +44,16 @@
         <div class="hard-team">
           {{set current_avatars=chall?.avatars||[] }}
           {{each current_avatars avatar idx}}
-          <% include(_tpl_path+'/avatar-card.html', [avatars[avatar.avatar_id],{_res_path, cardType:'mini'}]) %>
+          {{set char = avatars[avatar.avatar_id] || {} }}
+          <div class="hard-avatar">
+            <img class="hard-avatar-img" src="{{char.face}}">
+            {{if char.level > 0}}
+            <span class="avatar-lv">Lv{{char.level}}</span>
+            {{/if}}
+            {{if char.cons > 0}}
+            <span class="cons cons-{{char.cons}}">{{char.cons}}</span>
+            {{/if}}
+          </div>
           {{/each}}
         </div>
         <div class="line"></div>

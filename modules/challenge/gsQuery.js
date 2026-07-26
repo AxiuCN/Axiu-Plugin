@@ -457,7 +457,7 @@ export async function gsSpiralAbyssQuery (e) {
       for (const l of f.levels || []) {
         for (const b of l.battles || []) {
           for (const a of b.avatars || []) {
-            if (a.id && a.level) charLevels[a.id] = { level: a.level, cons: a.rank || 0 }
+            if (a.id && a.level) charLevels[a.id] = { level: a.level }
           }
         }
       }

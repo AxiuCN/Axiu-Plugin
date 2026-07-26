@@ -227,45 +227,6 @@ body {
   font-family: Number, YS, PingFangSC-Medium, "PingFang SC", sans-serif;
   line-height: 1.6;
 }
-.abyss-avatar .cons {
-  position: absolute;
-  top: 0;
-  right: 0;
-  padding: 1px 5px;
-  font-size: 12px;
-  font-weight: bold;
-  border-radius: 0 6px 0 6px;
-  line-height: 1.6;
-  z-index: 1;
-}
-.cons-0 {
-  background: #666;
-  color: #fff;
-}
-.cons-1 {
-  background: #5cbac2;
-  color: #fff;
-}
-.cons-2 {
-  background: #339d61;
-  color: #fff;
-}
-.cons-3 {
-  background: #3e95b9;
-  color: #fff;
-}
-.cons-4 {
-  background: #3955b7;
-  color: #fff;
-}
-.cons-5 {
-  background: #531ba9cf;
-  color: #fff;
-}
-.cons-6 {
-  background: #ff5722;
-  color: #fff;
-}
 
 /* ===== copyright ===== */
 .copyright {
