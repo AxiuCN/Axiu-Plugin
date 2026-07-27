@@ -103,7 +103,11 @@ export class ProxySpeak extends plugin {
       delete loader.singleCD[`${e.group_id}.${targetUin}`]
     } catch {}
 
-    // 5. 注入假事件，重新走插件匹配流程
+    // 5. 调 prepareEvent 补全 friend 等非枚举上下文属性
+    //    prepareEvent 内部有 if(!data.member) 等守卫，不会覆盖已手动设置的值
+    Bot.prepareEvent(fakeEvent)
+
+    // 6. 注入假事件，重新走插件匹配流程
     try {
       await loader.deal(fakeEvent)
     } catch (err) {
