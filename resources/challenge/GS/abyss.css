@@ -89,7 +89,7 @@ body {
   height: 100px;
   background-size: cover;
   background-position: center;
-  opacity: 0.3;
+  opacity: 0.4;
   pointer-events: none;
 }
 .stat-title {

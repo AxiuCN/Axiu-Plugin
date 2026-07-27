@@ -35,35 +35,29 @@
     </div>
 
     <div class="chall-body">
-      <!-- 角色 -->
-      <div class="chall-team">
-        {{set current_avatars=chall?.avatars||[] }}
-        {{each current_avatars avatar}}
-        {{set char = avatars[avatar.avatar_id] || {} }}
-        <div class="hard-avatar">
-          <img class="hard-avatar-img" src="{{char.face}}">
-          {{if char.level > 0}}
-          <span class="avatar-lv">Lv{{char.level}}</span>
-          {{/if}}
-          {{if char.cons > 0}}
-          <span class="cons cons-{{char.cons}}">{{char.cons}}</span>
-          {{/if}}
+      <!-- 左半：四人队伍 -->
+      <div class="chall-left">
+        <div class="chall-team">
+          {{set current_avatars=chall?.avatars||[] }}
+          {{each current_avatars avatar}}
+          {{set char = avatars[avatar.avatar_id] || {} }}
+          <div class="hard-avatar">
+            <img class="hard-avatar-img" src="{{char.face}}">
+            {{if char.level > 0}}
+            <span class="avatar-lv">Lv{{char.level}}</span>
+            {{/if}}
+            {{if char.cons > 0}}
+            <span class="cons cons-{{char.cons}}">{{char.cons}}</span>
+            {{/if}}
+          </div>
+          {{/each}}
         </div>
-        {{/each}}
       </div>
 
       <div class="line"></div>
 
-      <!-- 右侧信息 -->
+      <!-- 右半：统计面板（左右分布） -->
       <div class="chall-info">
-        <!-- 敌人 -->
-        <div class="enemy-panel">
-          <div class="enemy-header">Lv.{{chall.monster.level}}</div>
-          <div class="enemy-body">
-            <div class="enemy-icon" style="background-image:url({{chall.monster.icon}})"></div>
-          </div>
-        </div>
-
         <!-- 最强一击 -->
         {{if chall.best_avatars && chall.best_avatars[0]}}
         {{set ba0 = chall.best_avatars[0]}}
@@ -88,14 +82,22 @@
       </div>
     </div>
 
-    <!-- 怪物描述 -->
-    {{if chall.monster?.desc && chall.monster.desc.length}}
-    <div class="chall-desc">
-      <ul>
-        {{each chall.monster.desc desc}}
-        <li>{{@desc}}</li>
-        {{/each}}
-      </ul>
+    <!-- 下一行：boss 图片 + 描述 -->
+    {{if chall.monster?.icon || (chall.monster?.desc && chall.monster.desc.length)}}
+    <div class="chall-boss-row">
+      <div class="chall-boss-icon-wrap">
+        <div class="chall-boss-icon" style="background-image:url({{chall.monster.icon}})"></div>
+        <span class="chall-boss-lv">Lv.{{chall.monster.level}}</span>
+      </div>
+      <div class="chall-boss-info">
+        {{if chall.monster?.desc && chall.monster.desc.length}}
+        <ul>
+          {{each chall.monster.desc desc}}
+          <li>{{@desc}}</li>
+          {{/each}}
+        </ul>
+        {{/if}}
+      </div>
     </div>
     {{/if}}
   </section>
@@ -104,7 +106,9 @@
   <!-- ===== 提示 ===== -->
   <div class="notice">
     <ul>
-      <li>角色装备与圣遗物为当前最新状态</li>
+      <li>当前为<strong>{{mode == 'mp' ? '多人' : '单人'}}</strong>幽境危战统计</li>
+      <li>若要查询<strong>{{mode == 'mp' ? '单人' : '多人'}}</strong>幽境危战统计，请输入<strong>#危战{{mode == 'mp' ? '单人' : '多人'}}</strong>，默认为单人幽境危战统计</li>
+      <li>查询的幽境危战统计会上报排行榜，参与幽境危战排行榜</li>
     </ul>
   </div>
 

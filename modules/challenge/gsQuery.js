@@ -591,7 +591,7 @@ export async function gsHardChallengeQuery (e) {
   const periodText = isLast ? '上期' : '本期'
   const isSingle = /单人|单挑/.test(e.msg)
   const isMp = /组队|多人|合作/.test(e.msg)
-  let mode = 'best'
+  let mode = 'single'
   if (isSingle) mode = 'single'
   else if (isMp) mode = 'mp'
 
@@ -658,7 +658,7 @@ export async function gsHardChallengeQuery (e) {
     const data = buildHardData(rawData, mode)
     data.uid = auth.uid
 
-    const img = await render('challenge/GS', 'hard', { ...data, avatars })
+    const img = await render('challenge/GS', 'hard', { ...data, avatars, mode })
     if (img) await e.reply(img)
   } catch (err) {
     logger?.error(`${LOG_PREFIX}[原神] 幽境危战查询异常:`, err?.message)

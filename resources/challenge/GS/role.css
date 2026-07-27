@@ -114,7 +114,7 @@ body {
   height: 90px;
   background-size: cover;
   background-position: center;
-  opacity: 0.3;
+  opacity: 0.4;
   pointer-events: none;
 }
 .char-stat .stat-title {
