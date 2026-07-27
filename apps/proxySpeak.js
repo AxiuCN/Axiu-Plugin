@@ -103,13 +103,10 @@ export class ProxySpeak extends plugin {
       delete loader.singleCD[`${e.group_id}.${targetUin}`]
     } catch {}
 
-    // 5. 调 prepareEvent 补全 friend 等非枚举上下文属性
-    //    prepareEvent 内部有 if(!data.member) 等守卫，不会覆盖已手动设置的值
-    Bot.prepareEvent(fakeEvent)
-
-    // 6. 注入假事件，重新走插件匹配流程
+    // 5. 通过 Bot.em 注入假事件，走完整框架链路
+    //    prepareEvent → emit('message') → messageEvent → loader.deal
     try {
-      await loader.deal(fakeEvent)
+      await Bot.em('message', fakeEvent)
     } catch (err) {
       logger.error('[Axiu-Plugin][代发言] 注入假事件失败:', err)
       await e.reply('代发言处理失败，请检查日志')
