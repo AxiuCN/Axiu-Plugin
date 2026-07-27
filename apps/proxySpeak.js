@@ -96,6 +96,9 @@ export class ProxySpeak extends plugin {
     // reply_id 也不应继承（否则 dealEvent 中会尝试获取引用消息）
     delete fakeEvent.reply_id
     delete fakeEvent.getReply
+    // original_msg 优先于 e.msg（ProfileDetail.detail 第 17 行），
+    // 必须删除，否则假事件会使用原始 #代 前缀的消息体
+    delete fakeEvent.original_msg
 
     // 4. 清除 CD，防止假事件被冷却拦截
     try {
