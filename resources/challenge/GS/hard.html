@@ -43,9 +43,7 @@
           {{set char = avatars[avatar.avatar_id] || {} }}
           <div class="hard-avatar">
             <img class="hard-avatar-img" src="{{char.face}}">
-            {{if char.level > 0}}
-            <span class="avatar-lv">Lv{{char.level}}</span>
-            {{/if}}
+            <span class="avatar-lv">{{char.level > 0 ? 'Lv'+char.level+' ' : ''}}{{char.abbr || char.name}}</span>
             {{if char.cons > 0}}
             <span class="cons cons-{{char.cons}}">{{char.cons}}</span>
             {{/if}}

@@ -632,13 +632,12 @@ export async function gsHardChallengeQuery (e) {
         .catch(err => logger?.error(`${LOG_PREFIX}[原神] 危战多人上报失败:`, err?.message))
     }
 
-    // 收集角色 ID（从 single 和 mp 两边均收集，避免 best 模式漏掉）
+    // 收集角色 ID（只从当前 mode 收集，避免单人与多人命座覆盖）
     const avatarIds = new Set()
     const charLevels = {}
-    for (const modeKey of ['single', 'mp']) {
-      const md = rawData[modeKey]
-      if (!md?.has_data) continue
-      // 与 buildHardData 保持一致的访问路径：best.challenge → challenge 兜底
+    const mdKey = mode === 'mp' ? 'mp' : 'single'
+    const md = rawData[mdKey]
+    if (md?.has_data) {
       const challs = md.best?.challenge || md.challenge || []
       for (const c of challs) {
         for (const t of c.teams || []) {

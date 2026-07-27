@@ -228,6 +228,24 @@ body {
   line-height: 1.6;
 }
 
+/* ===== 提示 ===== */
+.notice {
+  background: rgba(14, 22, 32, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  color: #aaa;
+  font-size: 14px;
+  padding: 12px 16px;
+  margin: 0 0 18px;
+  text-align: left;
+}
+.notice ul {
+  padding-left: 18px;
+}
+.notice ul li {
+  margin: 4px 0;
+}
+
 /* ===== copyright ===== */
 .copyright {
   color: #fff;

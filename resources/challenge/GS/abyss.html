@@ -53,9 +53,7 @@
             {{each level.up.avatars id}}
             <div class="abyss-avatar">
               <img class="team-avatar" src="{{(avatars[id]||{}).face}}">
-              {{if avatars[id] && avatars[id].level > 0}}
-              <span class="avatar-lv">Lv{{avatars[id].level}}</span>
-              {{/if}}
+              <span class="avatar-lv">{{(avatars[id]||{}).level > 0 ? 'Lv'+(avatars[id]||{}).level+' ' : ''}}{{(avatars[id]||{}).abbr || (avatars[id]||{}).name}}</span>
             </div>
             {{/each}}
           </div>
@@ -71,9 +69,7 @@
             {{each level.down.avatars id}}
             <div class="abyss-avatar">
               <img class="team-avatar" src="{{(avatars[id]||{}).face}}">
-              {{if avatars[id] && avatars[id].level > 0}}
-              <span class="avatar-lv">Lv{{avatars[id].level}}</span>
-              {{/if}}
+              <span class="avatar-lv">{{(avatars[id]||{}).level > 0 ? 'Lv'+(avatars[id]||{}).level+' ' : ''}}{{(avatars[id]||{}).abbr || (avatars[id]||{}).name}}</span>
             </div>
             {{/each}}
           </div>
