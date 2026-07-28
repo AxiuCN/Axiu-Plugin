@@ -136,8 +136,7 @@ export class GachaLogApp extends plugin {
     const authkey = await getAuthKey(this.e)
 
     if (!authkey) {
-      this.e.reply('请发送抽卡记录链接\n获取方式：游戏内→抽卡记录→右上角分享→复制链接')
-      this.setContext('logUrl')
+      this.e.reply('获取authkey失败，stoken可能已过期\n请发送抽卡记录链接或发送【#扫码登录】重新绑定')
       return true
     }
 
@@ -247,6 +246,7 @@ export class GachaLogApp extends plugin {
     }
 
     msg.push('导入成功')
+    msg.push('您还可回复\n【#全部记录】统计全部抽卡数据\n【#武器记录】统计武器池数据\n【#角色统计】按卡池统计数据\n【#导出记录】导出记录数据')
     await this.e.reply(msg.join('\n'))
 
     // 频率限制缓存（5 分钟）
