@@ -129,6 +129,9 @@ export class GachaLogApp extends plugin {
     if (!this.e.uid) {
       this.e.uid = e?.runtime?.user?._regUid || await getUidFromNoteUser(this.e)
     }
+    if (!this.e.region) {
+      this.e.region = getServer(this.e.uid)
+    }
 
     const authkey = await getAuthKey(this.e)
 
@@ -138,9 +141,6 @@ export class GachaLogApp extends plugin {
       return true
     }
 
-    if (!this.e.region) {
-      this.e.region = getServer(this.e.uid)
-    }
     this.e.authkey = authkey
     this.e._lockKey = lockKey
     this._getGcLog(e)
@@ -321,7 +321,7 @@ async function getAuthKey (e) {
       return res.data.authkey
     }
   } catch (err) {
-    logger?.debug(`${LOG_PREFIX}[小助手] stoken获取authkey失败: ${err.message}`)
+    logger?.error(`${LOG_PREFIX}[小助手] stoken获取authkey失败: ${err.message}`)
   }
 
   // 方式2：Redis 缓存（之前通过 URL 提交过的）
