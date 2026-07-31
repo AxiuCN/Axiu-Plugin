@@ -170,6 +170,11 @@ export class MysSigninApp extends plugin {
   // ==================== #开始签到 ====================
 
   async startSignin (e) {
+    if (!getSigninConfig().manualSignin) {
+      await e.reply('手动签到已关闭')
+      return true
+    }
+
     if (isAutoSigninRunning()) {
       await e.reply('自动签到正在执行中，请稍后再试')
       return true
@@ -190,6 +195,11 @@ export class MysSigninApp extends plugin {
   // ==================== #全部签到 ====================
 
   async signinAll (e) {
+    if (!getSigninConfig().manualSignin) {
+      await e.reply('手动签到已关闭')
+      return true
+    }
+
     if (isAutoSigninRunning()) {
       await e.reply('自动签到正在执行中，请勿重复执行')
       return true

@@ -130,6 +130,7 @@ function getSigninConfig () {
   const s = cfg.signin || {}
   return {
     enable: s.enable ?? true,
+    manualSignin: s.manualSignin ?? true,
     schedule: s.schedule ?? '0 0 5 * * ? *',
     refreshSchedule: s.refreshSchedule ?? '0 30 4 * * ? *',
     randomDelayMin: s.randomDelayMin ?? 0,

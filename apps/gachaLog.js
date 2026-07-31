@@ -136,7 +136,7 @@ export class GachaLogApp extends plugin {
     const authkey = await getAuthKey(this.e)
 
     if (!authkey) {
-      this.e.reply('获取authkey失败，stoken可能已过期\n请发送抽卡记录链接或发送【#扫码登录】重新绑定')
+      this.e.reply('获取authkey失败，stoken可能已过期\n请发送【#扫码登录】重新绑定')
       return true
     }
 

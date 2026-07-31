@@ -37,6 +37,7 @@ const TEMPLATE_VARS = {
   'api.GtestType': 'api_GtestType',
   'api.qrLogin_enabled': 'api_qrLogin_enabled',
   'signin.enable': 'signin_enable',
+  'signin.manualSignin': 'signin_manualSignin',
   'signin.schedule': 'signin_schedule',
   'signin.refreshSchedule': 'signin_refreshSchedule',
   'signin.randomDelayMin': 'signin_randomDelayMin',
@@ -173,6 +174,7 @@ export function supportGuoba () {
 
           // signin 主配置
           'signin.enable': signinCfg.enable ?? true,
+          'signin.manualSignin': signinCfg.manualSignin ?? true,
           'signin.schedule': signinCfg.schedule ?? '0 0 5 * * ? *',
           'signin.refreshSchedule': signinCfg.refreshSchedule ?? '0 30 4 * * ? *',
           'signin.randomDelayMin': signinCfg.randomDelayMin ?? 0,

@@ -9,7 +9,19 @@
 
 export function getSigninMainSchema () {
   return [
-    { label: '定时签到', component: 'SOFT_GROUP_BEGIN' },
+    { label: '米游社签到', component: 'SOFT_GROUP_BEGIN' },
+
+    // 手动签到
+    { label: '手动签到', component: 'Divider' },
+    {
+      field: 'signin.manualSignin',
+      label: '启用手动签到',
+      bottomHelpMessage: '关闭后 #签到 / #全部签到 命令不可用',
+      component: 'Switch'
+    },
+
+    // 自动签到
+    { label: '自动签到', component: 'Divider' },
     {
       field: 'signin.enable',
       label: '启用自动签到',
