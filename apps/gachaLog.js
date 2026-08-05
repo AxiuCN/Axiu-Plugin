@@ -23,7 +23,7 @@ const TYPE_NAME = {
 export class GachaLogApp extends plugin {
   constructor () {
     super({
-      name: '抽卡记录管理',
+      name: '[Axiu-Plugin] 抽卡记录管理',
       dsc: '更新抽卡记录、提瓦特小助手全历史导入、获取抽卡链接',
       event: 'message',
       priority: 500,

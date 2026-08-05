@@ -25,7 +25,7 @@ import { gsSpiralAbyssQuery, gsRoleCombatQuery, gsHardChallengeQuery } from '../
 export class ChallengeApp extends plugin {
   constructor () {
     super({
-      name: '终局挑战',
+      name: '[Axiu-Plugin] 终局挑战',
       dsc: '星铁终局挑战查询 + 星铁/原神终局挑战排行',
       event: 'message',
       priority: 1,
