@@ -1,0 +1,87 @@
+/* 帮助图样式 — 深色风格，与终局挑战模板统一 */
+
+body {
+  width: 830px;
+  transform: scale(1);
+  transform-origin: 0 0;
+  color: #f0eaca;
+}
+
+.container {
+  width: 830px;
+  padding: 20px 20px 10px;
+  background: #1a1a2e linear-gradient(180deg, rgba(30, 40, 80, 0.6), rgba(10, 10, 30, 0.9));
+}
+
+.head-box {
+  margin-top: 0;
+}
+
+/* ===== 分组卡片 ===== */
+.cont-box {
+  background: rgba(43, 52, 61, 0.8);
+  border-radius: 15px;
+  margin-top: 20px;
+  overflow: hidden;
+  color: #f0eaca;
+}
+
+.help-group {
+  font-size: 18px;
+  font-weight: bold;
+  color: #ceb78b;
+  padding: 12px 20px 4px;
+}
+
+.help-table {
+  display: table;
+  width: 100%;
+  padding: 0 0 6px;
+  box-sizing: border-box;
+}
+
+.help-table .tr {
+  display: table-row;
+}
+
+.help-table .tr:nth-child(odd) {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.help-table .tr:nth-child(even) {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.help-table .td {
+  display: table-cell;
+  width: 33.33%;
+  padding: 12px 0 12px 20px;
+  box-sizing: border-box;
+  vertical-align: top;
+}
+
+.help-title {
+  display: block;
+  font-size: 16px;
+  font-weight: bold;
+  color: #d3bc8e;
+}
+
+.help-desc {
+  display: block;
+  font-size: 13px;
+  color: rgba(240, 234, 202, 0.7);
+  margin-top: 2px;
+}
+
+/* 默认布局的 copyright 由 help-copyright 替代（含版本号） */
+.copyright {
+  display: none;
+}
+
+.help-copyright {
+  text-align: center;
+  font-size: 13px;
+  color: rgba(240, 234, 202, 0.5);
+  padding: 14px 0 4px;
+}
