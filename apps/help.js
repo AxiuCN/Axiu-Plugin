@@ -6,7 +6,7 @@
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { render } from '../components/render.js'
-import { pluginVersion } from '../components/pluginVersion.js'
+import { pluginVersion, yunzaiVersion } from '../components/pluginVersion.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const pluginRoot = path.join(__dirname, '..')
@@ -45,10 +45,11 @@ export class HelpApp extends plugin {
       const data = {
         helpCfg: {
           title: helpCfg.title || 'Axiu-Plugin 帮助',
-          subTitle: helpCfg.subTitle || '阿修插件',
+          subTitle: `${helpCfg.subTitle || '阿修插件'} v${pluginVersion}`,
         },
         helpGroup,
         version: pluginVersion,
+        yunzaiVersion,
       }
 
       const img = await render('help', 'index', data, 'jpeg')

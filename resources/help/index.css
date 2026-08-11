@@ -14,7 +14,16 @@ body {
 }
 
 .head-box {
-  margin-top: 0;
+  margin: 20px 0 0 0;
+  padding-bottom: 0;
+}
+
+.head-box .title {
+  font-size: 50px;
+}
+
+.label {
+  font-family: Number, "微软雅黑", sans-serif;
 }
 
 /* ===== 分组卡片 ===== */
@@ -22,6 +31,7 @@ body {
   background: rgba(43, 52, 61, 0.8);
   border-radius: 15px;
   margin-top: 20px;
+  margin-bottom: 20px;
   overflow: hidden;
   color: #f0eaca;
 }
@@ -82,6 +92,6 @@ body {
 .help-copyright {
   text-align: center;
   font-size: 13px;
-  color: rgba(240, 234, 202, 0.5);
+  color: #fff;
   padding: 14px 0 4px;
 }
