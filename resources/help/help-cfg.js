@@ -1,5 +1,5 @@
 export const helpCfg = {
-  title: '#Axiu帮助',
+  title: '#阿修帮助',
   subTitle: '阿修插件' // 版本号由 help.js 从 package.json 动态读取
 }
 
