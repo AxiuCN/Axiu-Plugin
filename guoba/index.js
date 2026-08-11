@@ -112,7 +112,8 @@ export function supportGuoba () {
       isV2: false,
       description: '自动入群审核、代发言、米游社过码、米游社签到',
       icon: 'mdi:robot-outline',
-      iconColor: '#1677ff'
+      iconColor: '#1677ff',
+      iconPath: path.join(PLUGIN_DIR, 'resources/images/Axiu.ico')
     },
     configInfo: {
       schemas: [
