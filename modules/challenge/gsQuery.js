@@ -457,9 +457,9 @@ export async function gsSpiralAbyssQuery (e) {
       return true
     }
 
-    // 上报排行
+    // 上报排行（上期查询不更新 current 指针，避免覆盖本期）
     const scheduleId = GsChallengeRank.getScheduleId(rawData, 0)
-    GsChallengeRank.report(auth.uid, e.at || e.user_id, e.group_id, 0, rawData, scheduleId)
+    GsChallengeRank.report(auth.uid, e.at || e.user_id, e.group_id, 0, rawData, scheduleId, !isLast)
       .catch(err => logger?.error(`${LOG_PREFIX}[原神] 深渊上报失败:`, err?.message))
 
     // 收集所有角色 ID（排行统计 + 各间出战）
@@ -533,9 +533,9 @@ export async function gsRoleCombatQuery (e) {
       return true
     }
 
-    // 上报排行
+    // 上报排行（上期查询不更新 current 指针，避免覆盖本期）
     const scheduleId = GsChallengeRank.getScheduleId(rawData, 1)
-    GsChallengeRank.report(auth.uid, e.at || e.user_id, e.group_id, 1, rawData, scheduleId)
+    GsChallengeRank.report(auth.uid, e.at || e.user_id, e.group_id, 1, rawData, scheduleId, !isLast)
       .catch(err => logger?.error(`${LOG_PREFIX}[原神] 剧诗上报失败:`, err?.message))
 
     // 收集角色 ID（含 fight_statisic 中的统计角色）
@@ -621,14 +621,14 @@ export async function gsHardChallengeQuery (e) {
       return true
     }
 
-    // 上报排行（单人和多人均上报，串行避免 Redis 竞态覆盖）
+    // 上报排行（单人和多人均上报，串行避免 Redis 竞态覆盖；上期查询不更新 current 指针）
     const scheduleId = GsChallengeRank.getScheduleId(rawData, 2)
     if (hasSingle) {
-      await GsChallengeRank.report(auth.uid, e.at || e.user_id, e.group_id, 2, rawData, scheduleId)
+      await GsChallengeRank.report(auth.uid, e.at || e.user_id, e.group_id, 2, rawData, scheduleId, !isLast)
         .catch(err => logger?.error(`${LOG_PREFIX}[原神] 危战单人上报失败:`, err?.message))
     }
     if (hasMp) {
-      await GsChallengeRank.report(auth.uid, e.at || e.user_id, e.group_id, 3, rawData, scheduleId)
+      await GsChallengeRank.report(auth.uid, e.at || e.user_id, e.group_id, 3, rawData, scheduleId, !isLast)
         .catch(err => logger?.error(`${LOG_PREFIX}[原神] 危战多人上报失败:`, err?.message))
     }
 

@@ -264,7 +264,10 @@ export default class SrChallengeRank {
 
   // ==================== 上报 ====================
 
-  static async report (uid, qq, groupId, challengeType, data, scheduleId) {
+  /**
+   * @param {boolean} [isCurrent=true] 是否当期数据 — 仅当期才更新 current 指针，防止上期/往期查询污染
+   */
+  static async report (uid, qq, groupId, challengeType, data, scheduleId, isCurrent = true) {
     const { scores, extra } = this.extractScores(data, challengeType)
 
     // 综合排序分
@@ -292,8 +295,10 @@ export default class SrChallengeRank {
       }
     }
 
-    // 当前赛季 scheduleId
-    try { await redis.setEx(currentKey(challengeType), TTL, scheduleId) } catch {}
+    // 当前赛季 scheduleId — 仅当期更新，上期/往期上报不污染 current 指针
+    if (isCurrent) {
+      try { await redis.setEx(currentKey(challengeType), TTL, scheduleId) } catch {}
+    }
 
     // 赛季元信息
     try {
@@ -316,19 +321,32 @@ export default class SrChallengeRank {
       }))
     } catch {}
 
-    // UID 信息（QQ + extra + scores + scheduleId，全局共享）
+    // UID 信息（QQ + 各 scheduleId 的 scores/extra，全局共享）— 按 scheduleId 隔离，上期上报不覆盖本期展示数据
     try {
       const existing = await redis.get(uidKey(uid))
       const info = existing ? JSON.parse(existing) : {}
       info.qq = String(qq || '')
-      if (!info[challengeType] || info[challengeType].time < Date.now()) {
-        info[challengeType] = { scores, extra, scheduleId: String(scheduleId), time: Date.now() }
-      }
+      if (!info[challengeType] || typeof info[challengeType] !== 'object') info[challengeType] = {}
+      info[challengeType][String(scheduleId)] = { scores, extra, time: Date.now() }
       await redis.setEx(uidKey(uid), 90 * 24 * 3600, JSON.stringify(info))
     } catch {}
   }
 
   // ==================== 查询 ====================
+
+  /**
+   * 从 uid 信息中提取指定 scheduleId 的 extra
+   * 新结构：info[challengeType] = { [scheduleId]: {scores, extra, time} }
+   * 旧结构兼容：info[challengeType] = {scores, extra, scheduleId, time}
+   */
+  static _extractUidExtra (info, challengeType, scheduleId) {
+    if (!info) return {}
+    const slot = info[challengeType]
+    if (!slot || typeof slot !== 'object') return {}
+    const cur = slot[String(scheduleId)]
+    if (cur && typeof cur === 'object') return cur.extra || {}
+    return slot.extra || {}
+  }
 
   static async getCurrentScheduleId (challengeType, groupId) {
     try { return await redis.get(currentKey(challengeType)) } catch { return null }
@@ -382,7 +400,7 @@ export default class SrChallengeRank {
     return members.map((m, i) => {
       const uid = String(m.value || m.member)
       const info = infoMap[uid] || {}
-      const ext = info[challengeType]?.extra || {}
+      const ext = this._extractUidExtra(info, challengeType, scheduleId)
       return {
         rank: i + 1,
         uid,
@@ -407,7 +425,7 @@ export default class SrChallengeRank {
         if (raw) {
           const info = JSON.parse(raw)
           qq = info.qq || ''
-          extra = info[challengeType]?.extra || {}
+          extra = this._extractUidExtra(info, challengeType, scheduleId)
         }
       } catch {}
 

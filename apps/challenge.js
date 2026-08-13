@@ -125,7 +125,8 @@ export class ChallengeApp extends plugin {
     if (!this.e.isGroup || !isDetailedSuccess || !this._isRankEnabled()) return
     const scheduleId = SrChallengeRank.getScheduleId(data, challengeType, scheduleType)
     const qq = this.e.at || this.e.user_id
-    SrChallengeRank.report(uid, qq, this.e.group_id, challengeType, data, scheduleId).catch(
+    // scheduleType '1'=当期，'2'=上期，'3'=往期（仅当期更新 current 指针）
+    SrChallengeRank.report(uid, qq, this.e.group_id, challengeType, data, scheduleId, scheduleType === '1').catch(
       err => logger?.error('[Axiu-Plugin][排行] 上报失败', err)
     )
   }
