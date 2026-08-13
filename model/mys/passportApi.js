@@ -171,9 +171,10 @@ export default class PassportApi {
 
       // === BBS / Auth ===
       bbsGetCookie: {
-        url: `${this.apiMap.apiWeb}/auth/api/getCookieAccountInfoBySToken`,
-        query: `game_biz=hk4e_cn&${data.cookies}`,
-        types: ''
+        // 参考 TRSS-Plugin：passport host + DS 签名 + Cookie header（原 api-takumi host 该路径已 405）
+        url: `${mys.pass_api}/account/auth/api/getCookieAccountInfoBySToken`,
+        query: `${data.cookies}`,
+        types: 'pass'
       },
       bbsStoken: {
         url: `${this.apiMap.apiWeb}/auth/api/getMultiTokenByLoginTicket`,

@@ -234,9 +234,6 @@ export default class QrUser {
    * @returns {Promise<Object|null>}
    */
   async getRefreshedCookieAndStoken (userId) {
-    const e = { user_id: userId }
-    const user = new QrUser(e)
-
     const stokenData = await gsCfg.getUserStoken(userId)
     if (Object.keys(stokenData).length === 0) {
       logger.warn(`[Axiu-Plugin] 用户 ${userId} 未绑定stoken`)
@@ -246,12 +243,16 @@ export default class QrUser {
     const firstAccountKey = Object.keys(stokenData)[0]
     const accountStoken = stokenData[firstAccountKey]
 
+    // uid 传游戏 uid，使 PassportApi 能从 stoken YAML 构建 Cookie header（对齐 TRSS）
+    const e = { user_id: userId, uid: String(firstAccountKey) }
+    const user = new QrUser(e)
+
     if (!accountStoken?.stuid || !accountStoken?.stoken) {
       logger.error(`[Axiu-Plugin] 用户 ${userId} 的stoken数据不完整`)
       return null
     }
 
-    let cookiesForRefresh = `stuid=${accountStoken.stuid}&stoken=${accountStoken.stoken}`
+    let cookiesForRefresh = `uid=${accountStoken.stuid}&stoken=${accountStoken.stoken}`
     if (accountStoken?.mid) {
       cookiesForRefresh += `&mid=${accountStoken.mid}`
     }
