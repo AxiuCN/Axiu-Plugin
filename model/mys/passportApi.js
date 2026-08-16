@@ -13,6 +13,23 @@ import * as utils from './passportUtils.js'
 const DEVICE_ID = utils.randomString(32).toUpperCase()
 const DEVICE_NAME = utils.randomString(_.random(1, 10))
 
+/** 从 uid=..&stoken=..[&mid=..] 查询串构造 stoken Cookie（bbsGetCookie 认证，对齐 TRSS）
+ *  返回形如 stuid=Y;stoken=X;mid=Z;，缺 stuid/stoken 时返回空串
+ */
+function buildStokenCookie (cookies) {
+  const map = {}
+  for (const pair of String(cookies || '').split('&')) {
+    const idx = pair.indexOf('=')
+    if (idx < 0) continue
+    const key = pair.slice(0, idx)
+    const val = pair.slice(idx + 1)
+    map[key === 'uid' ? 'stuid' : key] = val
+  }
+  if (!map.stuid || !map.stoken) return ''
+  return ['stuid=' + map.stuid, 'stoken=' + map.stoken, map.mid ? 'mid=' + map.mid : '']
+    .filter(Boolean).join(';') + ';'
+}
+
 export default class PassportApi {
   /**
    * @param {object} e 事件对象（需含 cookie、uid 等字段）
@@ -172,9 +189,11 @@ export default class PassportApi {
       // === BBS / Auth ===
       bbsGetCookie: {
         // 参考 TRSS-Plugin：passport host + DS 签名 + Cookie header（原 api-takumi host 该路径已 405）
+        // Cookie 头优先取显式 cookieHeader，否则从 data.cookies 自动构造 stoken 串
         url: `${mys.pass_api}/account/auth/api/getCookieAccountInfoBySToken`,
         query: `${data.cookies}`,
-        types: 'pass'
+        types: 'pass',
+        cookie: data.cookieHeader || buildStokenCookie(data.cookies)
       },
       bbsStoken: {
         url: `${this.apiMap.apiWeb}/auth/api/getMultiTokenByLoginTicket`,
@@ -201,12 +220,14 @@ export default class PassportApi {
 
     if (!urlMap[type]) return false
 
-    let { url, query = '', body = '', types = '', sign = '' } = urlMap[type]
+    let { url, query = '', body = '', types = '', sign = '', cookie = '' } = urlMap[type]
 
     if (query) url += `?${query}`
     if (body) body = JSON.stringify(body)
 
     const headers = this.getHeaders(types, sign, body, query)
+    // 端点显式指定 stoken Cookie 头时覆盖默认（bbsGetCookie 对齐 TRSS：query + Cookie 双认证）
+    if (cookie) headers.Cookie = cookie
     return { url, headers, body }
   }
 

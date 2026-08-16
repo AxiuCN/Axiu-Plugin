@@ -101,9 +101,15 @@ export class QrLoginApp extends plugin {
     e.region = getServer(e.uid)
     e.raw_message = loginRes.stoken
 
-    // 调 bbsGetCookie + userGameInfo → seachUid 保存
+    // 调 bbsGetCookie + userGameInfo → seachUid 保存（cookieHeader 对齐 TRSS：query + stoken Cookie 双认证）
+    const stuid = e.sk.get('stuid')
+    const stoken = e.sk.get('stoken')
+    const mid = e.sk.get('mid')
     const ckRes = await user.getData('bbsGetCookie',
-      { cookies: `uid=${e.sk.get('stuid')}&stoken=${e.sk.get('stoken')}${e.sk.get('mid') ? '&mid=' + e.sk.get('mid') : ''}` },
+      {
+        cookies: `uid=${stuid}&stoken=${stoken}${mid ? '&mid=' + mid : ''}`,
+        cookieHeader: [`stuid=${stuid}`, `stoken=${stoken}`, mid ? `mid=${mid}` : ''].filter(Boolean).join(';') + ';'
+      },
       false
     )
     if (ckRes?.data) {
@@ -142,7 +148,13 @@ export class QrLoginApp extends plugin {
       let cookies = `uid=${stoken[item].stuid}&stoken=${stoken[item].stoken}`
       if (stoken[item]?.mid) cookies += `&mid=${stoken[item]?.mid}`
 
-      const data = { cookies }
+      const cookieHeader = [
+        `stuid=${stoken[item].stuid}`,
+        `stoken=${stoken[item].stoken}`,
+        stoken[item]?.mid ? `mid=${stoken[item]?.mid}` : ''
+      ].filter(Boolean).join(';') + ';'
+
+      const data = { cookies, cookieHeader }
       if (String(e.uid)[0] * 1 > 5) data.method = 'post'
 
       const res = await user.getData('bbsGetCookie', data, false)

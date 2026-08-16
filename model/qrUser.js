@@ -257,7 +257,13 @@ export default class QrUser {
       cookiesForRefresh += `&mid=${accountStoken.mid}`
     }
 
-    const res = await user.getData('bbsGetCookie', { cookies: cookiesForRefresh }, false)
+    const cookieHeader = [
+      `stuid=${accountStoken.stuid}`,
+      `stoken=${accountStoken.stoken}`,
+      accountStoken?.mid ? `mid=${accountStoken.mid}` : ''
+    ].filter(Boolean).join(';') + ';'
+
+    const res = await user.getData('bbsGetCookie', { cookies: cookiesForRefresh, cookieHeader }, false)
     if (!res?.data?.cookie_token) {
       logger.error(`[Axiu-Plugin] 刷新cookie_token失败: ${res?.message || res?.retcode}`)
       return null

@@ -112,7 +112,7 @@ export default class QrLogin {
     // 获取 cookie_token
     let cookies = `uid=${stuid}&stoken=${SToken}`
     if (mid) cookies += `&mid=${mid}`
-    const ck = await this.user.getData('bbsGetCookie', { cookies }, false)
+    const ck = await this.user.getData('bbsGetCookie', { cookies, cookieHeader: stokenCookie }, false)
 
     if (!ltoken || !ck?.data?.cookie_token) {
       await this.e.reply(`获取ck失败：${ck?.message || ltokenRes?.message || '接口返回为空'}`, true)
