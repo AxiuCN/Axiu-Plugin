@@ -403,7 +403,14 @@ export default class GsChallengeRank {
     info.qq = String(qq || '')
     if (!info[challengeType] || typeof info[challengeType] !== 'object') info[challengeType] = {}
     const slotKey = String(scheduleId)
-    const firstTime = info[challengeType][slotKey]?.firstTime || Date.now()
+    const prevSlot = info[challengeType][slotKey]
+    // 首查时间：首次查询记录；层数/星数上升（成绩提升，层优先同层比星）时更新为本次；否则沿用 — 防重复战斗稀释排名
+    const curFloor = scores.floor || 0
+    const curStar = scores.star || 0
+    const prevFloor = prevSlot?.scores?.floor || 0
+    const prevStar = prevSlot?.scores?.star || 0
+    const upgraded = curFloor > prevFloor || (curFloor === prevFloor && curStar > prevStar)
+    const firstTime = !prevSlot || upgraded ? Date.now() : (prevSlot.firstTime || Date.now())
 
     // 首查时间注入 extra 供展示（不入排序分）
     if (challengeType === 0) extra.first_query_time = firstTime
