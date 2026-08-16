@@ -160,7 +160,10 @@ export default class QrUser {
         if (result?.retcode !== 0) continue
         list.push(...(result?.data?.list || []))
       }
-      if (list.length === 0) return false
+      if (list.length === 0) {
+        logger.warn(`[Axiu-Plugin] seachUid 未查到角色列表 uid=${this.e?.uid}，stoken 未保存`)
+        return false
+      }
 
       const uids = []
       for (const s of list) {

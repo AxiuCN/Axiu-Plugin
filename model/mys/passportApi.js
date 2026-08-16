@@ -145,7 +145,8 @@ export default class PassportApi {
     const urlMap = {
       // === 通用查询 ===
       userGameInfo: {
-        url: `${this.apiMap.apiWeb}/binding/api/getUserGameRolesByCookie`,
+        // 扫码换 stoken 场景 host 固定国服：biz 恒为国服，且 isOs 判定基于 ltuid（米游社账号ID，首位常>5）会误判海外
+        url: `${mys.web_api}/binding/api/getUserGameRolesByCookie`,
         query: `game_biz=${data.biz || 'hk4e_cn'}`,
         types: 'sign'
       },
