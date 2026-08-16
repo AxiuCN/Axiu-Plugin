@@ -74,16 +74,33 @@ const DIMENSIONS = {
 
 const DEFAULT_DIMENSION = { 0: '__', 1: '__', 2: '__', 3: '__' }
 
+/** 深渊一期最长跨度（秒）— 首查时间倒计时窗口，覆盖 15 天一期 + 余量 */
+const ABYSS_MAX_OFFSET = 20 * 24 * 3600
+
 /**
  * 综合排序分数 — 多维度加权编码
+ * @param {number|null} firstTs 该期首次查询时间戳(ms)，首次上报后固定
+ * @param {number|null} startTs 本期开始时间戳(s)，来自 API start_time
  */
-function compoundScore (scores, extra, challengeType) {
+function compoundScore (scores, extra, challengeType, firstTs = null, startTs = null) {
   const R = (v, max) => Math.max(0, Math.min(v, max))
   switch (challengeType) {
-    case 0: // 深境螺旋: 层数 > 星数 > 战斗(少)
-      return (scores.floor || 0) * 1000000
-        + (scores.star || 0) * 100000
+    case 0: { // 深境螺旋: 层数 > 星数 > 首查时间(早) > 战斗(少)
+      let timeTerm = 0
+      if (firstTs && startTs) {
+        const st = Number(startTs)
+        if (Number.isFinite(st) && st > 0) {
+          // 距开赛秒数越小越早查询 → 倒转后越大排名越前
+          const elapsed = Math.floor(Number(firstTs) / 1000) - st
+          timeTerm = R(ABYSS_MAX_OFFSET - elapsed, ABYSS_MAX_OFFSET)
+        }
+      }
+      // 权重: 层(1e11) > 星(1e9) > 首查(×500, 1秒=500分>99) > 战斗(0-99)
+      return (scores.floor || 0) * 100000000000
+        + (scores.star || 0) * 1000000000
+        + timeTerm * 500
         + (99 - R(extra.battle_num || 0, 99))
+    }
     case 1: // 幻想真境剧诗: 模式 > 幕 > 花 > 用时(少) > 借出(多)
       return (scores.mode || 0) * 10000000000
         + (scores.floor || 0) * 100000000
@@ -379,7 +396,20 @@ export default class GsChallengeRank {
   static async report (uid, qq, groupId, challengeType, data, scheduleId, isCurrent = true) {
     const { scores, extra } = this.extractScores(data, challengeType)
 
-    const compound = compoundScore(scores, extra, challengeType)
+    // 读取已有 uidKey，取该期首次查询时间（首次上报后固定，供排序 + 展示）
+    let existing = null
+    try { existing = await redis.get(uidKey(uid)) } catch {}
+    const info = existing ? JSON.parse(existing) : {}
+    info.qq = String(qq || '')
+    if (!info[challengeType] || typeof info[challengeType] !== 'object') info[challengeType] = {}
+    const slotKey = String(scheduleId)
+    const firstTime = info[challengeType][slotKey]?.firstTime || Date.now()
+
+    // 首查时间注入 extra 供展示（不入排序分）
+    if (challengeType === 0) extra.first_query_time = firstTime
+
+    const startTs = data?.start_time || data?.schedule?.start_time || null
+    const compound = compoundScore(scores, extra, challengeType, firstTime, startTs)
     if (compound > 0) {
       try {
         const ck = rankKey(challengeType, '__', scheduleId)
@@ -435,12 +465,9 @@ export default class GsChallengeRank {
     }
 
     // UID 信息（QQ + 各 scheduleId 的 scores/extra，全局共享）— 按 scheduleId 隔离，上期上报不覆盖本期展示数据
+    // firstTime 沿用首次上报值，不因重复查询更新（首查时间固定，battle 可更新）
+    info[challengeType][slotKey] = { scores, extra, firstTime, time: Date.now() }
     try {
-      const existing = await redis.get(uidKey(uid))
-      const info = existing ? JSON.parse(existing) : {}
-      info.qq = String(qq || '')
-      if (!info[challengeType] || typeof info[challengeType] !== 'object') info[challengeType] = {}
-      info[challengeType][String(scheduleId)] = { scores, extra, time: Date.now() }
       await redis.setEx(uidKey(uid), 90 * 24 * 3600, JSON.stringify(info))
     } catch (err) {
       logger?.error(`${LOG_PREFIX}[原神排行] 设置 UID 信息失败`, err)

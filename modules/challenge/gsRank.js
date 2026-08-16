@@ -25,6 +25,15 @@ function fmtDuration (sec) {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+/** 毫秒时间戳 → MM-DD HH:mm（首查时间） */
+function fmtFirstTime (ms) {
+  if (!ms) return '-'
+  const d = new Date(ms)
+  if (isNaN(d.getTime())) return '-'
+  const p = (n) => String(n).padStart(2, '0')
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
 /**
  * 关键词 → challengeType
  * 幽境危战默认单人(2)，含多人/组队关键词 → 多人(3)
@@ -42,10 +51,11 @@ export function resolveGsType (text) {
 /** 构造排行多列展示数据 */
 export function buildGsCols (extra, challengeType) {
   switch (challengeType) {
-    case 0: // 深境螺旋: 层 | ★ | 战斗
+    case 0: // 深境螺旋: 层 | ★ | 首查时间 | 战斗
       return [
         { v: extra.max_floor || '-', l: '层' },
         { v: extra.max_floor_star ?? extra.total_star ?? '-', l: '★' },
+        { v: fmtFirstTime(extra.first_query_time), l: '首查' },
         { v: extra.battle_num ?? '-', l: '战斗' }
       ]
     case 1: // 幻想真境剧诗: 模式 | 幕 | 星章 | 用时 | 借出
