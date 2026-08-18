@@ -10,9 +10,11 @@ config/*.yaml
 # 依赖
 node_modules/
 
-# Claude Code 工作区
+# Claude Code / DeepSeek Harness 工作区
 .claude/
+.dsh/
 CLAUDE.md
+AGENTS.md
 
 # 日志
 log/

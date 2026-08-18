@@ -94,13 +94,9 @@ class StokenStore {
         if (ck?.uid || !ck) {
           fs.writeFileSync(file, yaml, 'utf8')
         } else {
-          if (!ck[Object.keys(data)[0]]) {
-            ck = YAML.stringify(ck)
-            fs.writeFileSync(file, yaml + ck, 'utf8')
-          } else {
-            ck[Object.keys(data)[0]] = data[Object.keys(data)[0]]
-            fs.writeFileSync(file, YAML.stringify(ck), 'utf8')
-          }
+          // 对象合并后整体序列化（原实现 yaml + ck 字符串拼接会生成非法多文档 YAML，YAML.parse 只取首文档导致前序键丢失）
+          Object.assign(ck, data)
+          fs.writeFileSync(file, YAML.stringify(ck), 'utf8')
         }
       })
     }

@@ -44,7 +44,16 @@ export default class PassportApi {
         const file = `./plugins/Axiu-Plugin/data/stoken/${String(e.user_id)}.yaml`
         if (fs.existsSync(file) && e?.uid) {
           const ck = YAML.parse(fs.readFileSync(file, 'utf8'))
-          const sk = ck?.[e.uid]
+          let sk = ck?.[e.uid]
+          // 按游戏 UID 键未命中时，用 cookie 中的 ltuid（米游社账号ID）关联文件条目：
+          // genAuthKey 场景 e.uid 是游戏 UID（如 251094196），而 stoken 文件可能缺失该键，
+          // 但同账号其他游戏角色的条目持有相同的 stuid/ltuid 与 stoken（stoken 是账号级凭证）
+          if (!sk?.stoken && this.cookie) {
+            const ltuid = String(this.cookie).match(/ltuid=(\d+)/)?.[1]
+            if (ltuid) {
+              sk = Object.values(ck || {}).find(v => String(v?.stuid) === ltuid) || sk
+            }
+          }
           if (sk?.stuid && sk?.stoken) {
             this.cookies = `stuid=${sk.stuid};stoken=${sk.stoken};ltoken=${sk.ltoken || ''}`
             if (sk?.mid) this.cookies += `;mid=${sk.mid}`

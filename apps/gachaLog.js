@@ -77,7 +77,8 @@ export class GachaLogApp extends plugin {
       auth_appid: 'webview_gacha'
     })
     if (!authkeyRes?.data) {
-      e.reply(`uid:${e.uid},authkey获取失败：${(authkeyRes?.message || '').includes('登录失效') ? '请重新绑定stoken' : authkeyRes?.message}`)
+      // 命中登录失效类错误时给出明确指引（API 原文为「登录状态失效，请重新登录」，需放宽匹配）
+      e.reply(`uid:${e.uid},authkey获取失败：${/登录(状态)?失效/.test(authkeyRes?.message || '') ? '请重新绑定stoken' : authkeyRes?.message}`)
       return true
     }
 
