@@ -82,7 +82,6 @@ export const helpList = [
     list: [
       { title: '入群审核', desc: '申请备注答对自动放行' },
       { title: '米游社过码', desc: '验证码自动识别 / 手动打码' },
-      { title: 'CK 自动刷新', desc: 'CK 失效自动刷新并私聊通知' },
     ]
   },
 ]

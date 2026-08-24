@@ -8,8 +8,23 @@
 
 在 Yunzai 根目录执行：
 
+> Github
 ```bash
 git clone --depth=1 https://github.com/AxiuCN/Axiu-Plugin.git ./plugins/Axiu-Plugin/
+git -C ./plugins/Axiu-Plugin submodule update --init -- tool/MihoyoBBSTools
+pnpm install --filter=Axiu-Plugin
+```
+
+> Gitee
+```bash
+git clone --depth=1 https://gitee.com/AxiuCN/Axiu-Plugin.git ./plugins/Axiu-Plugin/
+git -C ./plugins/Axiu-Plugin submodule update --init -- tool/MihoyoBBSTools
+pnpm install --filter=Axiu-Plugin
+```
+
+> Gitcode
+```bash
+git clone --depth=1 https://gitcode.com/AxiuCN/Axiu-Plugin.git ./plugins/Axiu-Plugin/
 git -C ./plugins/Axiu-Plugin submodule update --init -- tool/MihoyoBBSTools
 pnpm install --filter=Axiu-Plugin
 ```
@@ -22,7 +37,6 @@ pnpm install --filter=Axiu-Plugin
 
 - `#扫码登录` — 生成 QR 码，米游社扫码后自动绑定 stoken 并查找游戏角色，同时自动绑定 CK 到 cookie 池（无需手动 `#刷新ck`）
 - `#刷新ck` — 遍历已绑定的 stoken，刷新 cookie_token 并绑定到 cookie 系统
-- **CK 自动刷新** — 米游社 API 返回 10001（CK 过期）时，自动用已绑定的 stoken 刷新 cookie 并重试请求，无需手动 `#刷新ck`
 - 可在锅巴后台开关
 
 ### 米游社签到
@@ -121,6 +135,7 @@ pnpm install --filter=Axiu-Plugin
 - 仲裁额外支持 `往期`（显示三期历史）
 - `*星铁` 前缀可选
 - 查询遇到验证码时自动调用本插件过码平台
+- 星铁 API 返回 10001（CK 过期）时自动用已绑定的 stoken 刷新 cookie 并重试（本插件自实现；原神侧同理由 genshin 插件处理）
 
 **终局挑战排行** — 在群聊中查询挑战数据时自动上报成绩，支持群内排名。
 

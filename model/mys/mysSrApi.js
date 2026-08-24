@@ -8,6 +8,12 @@ import fetch from 'node-fetch'
 import MysApi from '../../../genshin/model/mys/mysApi.js'
 import SRApiTool from './srApiTool.js'
 import { generateSeed } from './srApiTool.js'
+import stokenStore from '../stokenStore.js'
+import QrUser from '../qrUser.js'
+import { LOG_PREFIX } from '../../components/constants.js'
+
+/** 每个 ltuid 一个互斥锁，防止星铁侧并发请求重复刷新同一 CK */
+const _srRefreshLocks = new Map()
 
 export default class MysSrApi extends MysApi {
   constructor (uid, cookie, option = {}) {
@@ -363,7 +369,13 @@ export default class MysSrApi extends MysApi {
         break
       }
       default:
-        if (/(登录|login)/i.test(res.message)) {
+        if (res.retcode === 10001 && /(登录|login)/i.test(res.message)) {
+          // CK 失效 → stoken 自动刷新重试（Axiu 自实现，不依赖 genshin 补丁）
+          logger.mark(`[Axiu-Plugin][MysSrApi][UID:${this.uid}] ck失效，尝试自动刷新...`)
+          res = await this._refreshCkAndRetry(e, res, type, data)
+          if (Number(res.retcode) === 0) break
+          this.e.reply(`UID:${this.uid}，米游社cookie已失效`)
+        } else if (/(登录|login)/i.test(res.message)) {
           logger.mark(`[Axiu-Plugin][MysSrApi][UID:${this.uid}] ck失效`)
           this.e.reply(`UID:${this.uid}，米游社cookie已失效`)
         } else {
@@ -376,6 +388,132 @@ export default class MysSrApi extends MysApi {
       logger.mark(`[Axiu-Plugin][MysSrApi] 接口报错 — ${JSON.stringify(res)}，UID：${this.uid}`)
     }
     return res
+  }
+
+  // ==================== CK 自动刷新（星铁自实现，不依赖 genshin 补丁） ====================
+
+  /**
+   * 从 stoken 存储查找与 ltuid 匹配的条目
+   * @param {string} ltuid - 米游社账号 ID
+   * @returns {Promise<{userId: string, stoken: object}|null>}
+   */
+  async _findStokenByLtuid (ltuid) {
+    try {
+      const allStokens = await stokenStore.getBingStoken()
+      for (const userStokens of allStokens) {
+        for (const [, st] of Object.entries(userStokens)) {
+          if (String(st?.stuid) === String(ltuid)) {
+            return { userId: String(st.userId), stoken: st }
+          }
+        }
+      }
+    } catch (err) {
+      logger.error(`${LOG_PREFIX}[MysSrApi] 搜索stoken失败: ${err.message}`)
+    }
+    return null
+  }
+
+  /**
+   * 用 stoken 刷新 CK 并绑定（单次刷新，互斥锁在 _refreshCkAndRetry 里管理）
+   * @param {{userId: string, stoken: object}} found
+   * @returns {Promise<string|null>} 完整新 cookie，失败返回 null
+   */
+  async _doRefreshCk (found) {
+    try {
+      const qrUser = new QrUser({
+        user_id: found.userId,
+        uid: found.stoken.uid
+      })
+
+      let cookies = `uid=${found.stoken.stuid}&stoken=${found.stoken.stoken}`
+      if (found.stoken?.mid) cookies += `&mid=${found.stoken.mid}`
+
+      const res = await qrUser.getData('bbsGetCookie', { cookies }, false)
+      if (!res?.data?.cookie_token) {
+        logger.warn(`${LOG_PREFIX}[MysSrApi] 刷新失败 ltuid:${found.stoken.stuid}: ${res?.message || res?.retcode}`)
+        return null
+      }
+
+      const ck = res.data.cookie_token
+      const fullCookie =
+        `ltoken=${found.stoken.ltoken};ltuid=${found.stoken.stuid};` +
+        `cookie_token=${ck};account_id=${found.stoken.stuid};`
+
+      // 绑定到 genshin CK 系统
+      try {
+        const UserCk = (await import('../../../genshin/model/user.js')).default
+        await new UserCk({ user_id: found.userId, ck: fullCookie, reply: () => {} }).bing()
+      } catch (err) {
+        logger.error(`${LOG_PREFIX}[MysSrApi] 绑定失败: ${err.message}`)
+        return null
+      }
+
+      logger.info(`${LOG_PREFIX}[MysSrApi] CK自动刷新成功 ltuid:${found.stoken.stuid}`)
+      return fullCookie
+    } catch (err) {
+      logger.error(`${LOG_PREFIX}[MysSrApi] _doRefreshCk 异常: ${err.message}`)
+      return null
+    }
+  }
+
+  /**
+   * CK 失效（10001）→ stoken 刷新 → 重试
+   * @param {object} e - 消息 event
+   * @param {object} res - 原始 10001 响应
+   * @param {string} type - API 类型
+   * @param {object} data - 请求参数
+   * @returns {Promise<object>} 重试后的 res（仍失败则返回原始 10001）
+   */
+  async _refreshCkAndRetry (e, res, type, data) {
+    const ltuid =
+      this.cookie?.match(/ltuid=(\d+)/)?.[1] ||
+      this.cookie?.match(/account_id=(\d+)/)?.[1]
+    if (!ltuid) return res
+
+    const found = await this._findStokenByLtuid(ltuid)
+    if (!found) {
+      logger.mark(`${LOG_PREFIX}[MysSrApi][UID:${this.uid}] ck失效但无匹配stoken`)
+      return res
+    }
+
+    // 互斥锁：同一 ltuid 并发请求仅第一个刷新，其余等待其结果
+    const existing = _srRefreshLocks.get(ltuid)
+    if (existing) {
+      const newCookie = await existing
+      if (!newCookie) return res
+      this.cookie = newCookie
+      const retryRes = await this.getData(type, data)
+      return retryRes && Number(retryRes.retcode) === 0 ? retryRes : res
+    }
+
+    let resolveLock
+    const lockPromise = new Promise(resolve => { resolveLock = resolve })
+    _srRefreshLocks.set(ltuid, lockPromise)
+
+    try {
+      const newCookie = await this._doRefreshCk(found)
+      resolveLock(newCookie)
+
+      if (!newCookie) {
+        e.reply?.(`UID:${this.uid}，sk已失效，请重新扫码登录`)
+        return res
+      }
+
+      this.cookie = newCookie
+      // 用新 cookie 重试（注意：与首次请求同 data，命中无 10001 缓存则走真实请求）
+      const retryRes = await this.getData(type, data)
+      if (retryRes && Number(retryRes.retcode) === 0) {
+        e.reply?.(`UID:${this.uid}，ck已失效，已自动刷新成功`)
+        return retryRes
+      }
+      return res
+    } catch (err) {
+      logger.error(`${LOG_PREFIX}[MysSrApi] 刷新流程异常: ${err.message}`)
+      resolveLock(null)
+      return res
+    } finally {
+      _srRefreshLocks.delete(ltuid)
+    }
   }
 }
 
