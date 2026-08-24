@@ -17,6 +17,7 @@ import {
   getNextN,
   writeUserConfig,
   refreshUserConfigCookie,
+  deleteUserConfig,
   deleteUserConfigs,
   getSigninConfig,
   pluginRoot
@@ -36,7 +37,9 @@ const randomDelay = (min, max) =>
  * 用 stoken 获取新 cookie_token
  * @param {string} userId - QQ 号
  * @param {object} st - stoken 条目 ({stuid, stoken, ltoken, mid, uid})
- * @returns {Promise<string|null>} 完整 cookie 字符串，失败返回 null
+ * @returns {Promise<{cookie: string|null, stokenInvalid: boolean}>}
+ *   cookie - 完整 cookie 字符串，失败为 null
+ *   stokenInvalid - 失败且判定为 stoken 失效（登录类错误）时为 true
  */
 async function refreshCookie (userId, st) {
   try {
@@ -51,18 +54,27 @@ async function refreshCookie (userId, st) {
 
     const res = await qrUser.getData('bbsGetCookie', { cookies }, false)
     if (!res?.data?.cookie_token) {
-      logger?.warn(
-        `${SIGNIN_LOG_PREFIX} bbsGetCookie 失败: uid=${st.uid} ` +
-        `retcode=${res?.retcode} msg=${res?.message}`
-      )
-      return null
+      const stokenInvalid = /(登录|login)/i.test(res?.message || '')
+      if (stokenInvalid) {
+        logger?.warn(
+          `${SIGNIN_LOG_PREFIX} bbsGetCookie stoken失效: uid=${st.uid} ` +
+          `retcode=${res?.retcode} msg=${res?.message}`
+        )
+      } else {
+        logger?.warn(
+          `${SIGNIN_LOG_PREFIX} bbsGetCookie 失败: uid=${st.uid} ` +
+          `retcode=${res?.retcode} msg=${res?.message}`
+        )
+      }
+      return { cookie: null, stokenInvalid }
     }
 
     const ck = res.data.cookie_token
-    return `ltoken=${st.ltoken};ltuid=${st.stuid};cookie_token=${ck};account_id=${st.stuid};`
+    const cookie = `ltoken=${st.ltoken};ltuid=${st.stuid};cookie_token=${ck};account_id=${st.stuid};`
+    return { cookie, stokenInvalid: false }
   } catch (err) {
     logger?.error(`${SIGNIN_LOG_PREFIX} refreshCookie 异常: ${err.message}`)
-    return null
+    return { cookie: null, stokenInvalid: false }
   }
 }
 
@@ -104,9 +116,16 @@ async function registerUser (userId) {
       continue
     }
 
-    const cookie = await refreshCookie(userId, st)
+    const { cookie, stokenInvalid } = await refreshCookie(userId, st)
     if (!cookie) {
-      errors.push(`uid=${uid}: cookie 刷新失败，stoken 可能已失效`)
+      if (stokenInvalid) {
+        // stoken 已失效：自动从 stoken 存储清理该账号条目，避免后续流程重复报错
+        stokenStore.deleteStokenEntry(userId, uid)
+        logger?.warn(`${SIGNIN_LOG_PREFIX} 自动清理失效stoken: QQ=${userId} uid=${uid} stuid=${String(st.stuid)}`)
+        errors.push(`uid=${uid}: stoken 已失效，已自动删除，请重新扫码绑定`)
+      } else {
+        errors.push(`uid=${uid}: cookie 刷新失败，stoken 可能已失效`)
+      }
       continue
     }
 
@@ -310,9 +329,16 @@ async function refreshUserCookies (userId) {
         continue
       }
 
-      const cookie = await refreshCookie(userId, st)
+      const { cookie, stokenInvalid } = await refreshCookie(userId, st)
       if (!cookie) {
-        errors.push(`n=${cfg.n}: cookie 刷新失败`)
+        if (stokenInvalid) {
+          // sk（stoken）已失效：自动删除该签到配置文件，避免每日自动刷新/签到持续失败空转
+          deleteUserConfig(userId, cfg.n)
+          logger?.warn(`${SIGNIN_LOG_PREFIX} 自动删除失效sk配置: QQ=${userId} n=${cfg.n} stuid=${stuid} (stoken失效)`)
+          errors.push(`n=${cfg.n}: sk 已失效，已自动删除签到配置，请重新扫码绑定`)
+        } else {
+          errors.push(`n=${cfg.n}: cookie 刷新失败`)
+        }
         continue
       }
 
@@ -331,6 +357,52 @@ async function refreshUserCookies (userId) {
   let msg = `已刷新 ${refreshed} 个账号的 cookie`
   if (errors.length > 0) msg += `\n失败:\n${errors.join('\n')}`
   return { ok: true, count: refreshed, message: msg }
+}
+
+// ==================== 删除签到/删除stoken ====================
+
+/**
+ * 删除指定 QQ 的所有签到配置文件（#删除签到）
+ * @param {string} userId - QQ 号
+ * @returns {{ok: boolean, count: number, message: string}}
+ */
+async function deleteUserSigninConfigs (userId) {
+  const configs = listUserConfigs(userId)
+  if (configs.length === 0) {
+    return { ok: false, count: 0, message: '未注册签到，无需删除' }
+  }
+  const deleted = deleteUserConfigs(userId)
+  logger?.info(`${SIGNIN_LOG_PREFIX} 删除签到配置: QQ=${userId} 共${deleted}个`)
+  return {
+    ok: true,
+    count: deleted,
+    message: `已删除 ${deleted} 个签到配置\n如需继续签到请重新发送【#注册自动签到】`
+  }
+}
+
+/**
+ * 删除指定 QQ 的全部 stoken（#删除stoken）
+ * 遍历 stoken 文件所有条目逐个删除（同 stoken 合并删除），文件清空后删除文件本身
+ * @param {string} userId - QQ 号
+ * @returns {{ok: boolean, count: number, message: string}}
+ */
+async function deleteUserStoken (userId) {
+  const stokenData = await stokenStore.getUserStoken(userId)
+  const uids = Object.keys(stokenData)
+  if (uids.length === 0) {
+    return { ok: false, count: 0, message: '未绑定 stoken' }
+  }
+
+  let deleted = 0
+  for (const uid of uids) {
+    if (stokenStore.deleteStokenEntry(userId, uid)) deleted++
+  }
+  logger?.info(`${SIGNIN_LOG_PREFIX} 删除stoken: QQ=${userId} 删除${deleted}个条目`)
+  return {
+    ok: true,
+    count: deleted,
+    message: `已删除 ${deleted} 个 stoken 条目\n删除后需重新发送【#扫码登录】绑定`
+  }
 }
 
 /**
@@ -540,6 +612,8 @@ export {
   signinForAll,
   refreshUserCookies,
   refreshAllUserCookies,
+  deleteUserSigninConfigs,
+  deleteUserStoken,
   initEnvironment,
   getSigninStatus,
   formatUserSigninResult,

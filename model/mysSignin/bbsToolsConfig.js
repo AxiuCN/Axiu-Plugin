@@ -211,6 +211,22 @@ function refreshUserConfigCookie (filePath, stokenEntry, cookie) {
 }
 
 /**
+ * 删除指定 QQ 的单个签到配置文件（按序号）
+ * @param {string} qq - QQ 号
+ * @param {number} n - 配置序号
+ * @returns {boolean} 是否删除成功
+ */
+function deleteUserConfig (qq, n) {
+  const filePath = getUserConfigPath(qq, n)
+  try {
+    fs.unlinkSync(filePath)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
  * 删除指定 QQ 的所有签到配置文件
  * @param {string} qq - QQ 号
  * @returns {number} 删除的文件数
@@ -236,5 +252,6 @@ export {
   buildUserConfig,
   writeUserConfig,
   refreshUserConfigCookie,
+  deleteUserConfig,
   deleteUserConfigs
 }

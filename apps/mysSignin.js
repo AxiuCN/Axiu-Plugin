@@ -9,6 +9,8 @@
  *    #全部签到     — 手动执行全部已注册用户签到（仅 master，自动签到期间不可用）
  *    #刷新自动签到 — 刷新当前用户所有签到配置的 cookie
  *    #签到状态     — 查看当前用户绑定和签到注册情况
+ *    #删除签到     — 删除当前用户的所有签到配置文件（需重新注册）
+ *    #删除stoken   — 删除当前用户的所有 stoken 条目（需重新扫码绑定）
  *
  *  定时任务：每日自动签到（cron 从 config/config.yaml → signin.schedule 读取）
  */
@@ -23,6 +25,8 @@ import {
   signinForAll,
   refreshUserCookies,
   refreshAllUserCookies,
+  deleteUserSigninConfigs,
+  deleteUserStoken,
   initEnvironment,
   getSigninStatus,
   formatSummaryReport,
@@ -46,7 +50,9 @@ export class MysSigninApp extends plugin {
         { reg: '^#(开始|手动|测试)?签到$', fnc: 'startSignin', permission: 'all', log: true },
         { reg: '^#全部签到$', fnc: 'signinAll', permission: 'master', log: true },
         { reg: '^#刷新自动签到$', fnc: 'refreshCookieCmd', permission: 'all', log: true },
-        { reg: '^#签到状态$', fnc: 'signinStatus', permission: 'all', log: true }
+        { reg: '^#签到状态$', fnc: 'signinStatus', permission: 'all', log: true },
+        { reg: '^#删除签到$', fnc: 'deleteSigninCmd', permission: 'all', log: true },
+        { reg: '^#删除stoken$', fnc: 'deleteStokenCmd', permission: 'all', log: true }
       ],
       task: [
         {
@@ -238,6 +244,22 @@ export class MysSigninApp extends plugin {
   async signinStatus (e) {
     const { message } = await getSigninStatus(e.user_id)
     await e.reply(message)
+    return true
+  }
+
+  // ==================== #删除签到 ====================
+
+  async deleteSigninCmd (e) {
+    const result = await deleteUserSigninConfigs(e.user_id)
+    await e.reply(result.message)
+    return true
+  }
+
+  // ==================== #删除stoken ====================
+
+  async deleteStokenCmd (e) {
+    const result = await deleteUserStoken(e.user_id)
+    await e.reply(result.message)
     return true
   }
 

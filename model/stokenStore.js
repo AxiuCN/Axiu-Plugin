@@ -101,6 +101,34 @@ class StokenStore {
       })
     }
   }
+
+  /**
+   * 删除单个 stoken 条目（按游戏 UID 定位，同 stoken 的多个 uid 一并删除）
+   * @param {string} userId - QQ 号
+   * @param {string|number} uid - 游戏 UID
+   * @returns {boolean} 是否删除了条目
+   */
+  deleteStokenEntry (userId, uid) {
+    const file = `./plugins/${plugin}/data/stoken/${userId}.yaml`
+    try {
+      if (!fs.existsSync(file)) return false
+      const ck = YAML.parse(fs.readFileSync(file, 'utf8')) || {}
+      const target = ck[uid]
+      if (!target?.stoken) return false
+      // 同 stoken 的条目视为同一账号，一并删除
+      for (const key of Object.keys(ck)) {
+        if (ck[key]?.stoken === target.stoken) delete ck[key]
+      }
+      if (Object.keys(ck).length === 0) {
+        fs.unlinkSync(file)
+      } else {
+        fs.writeFileSync(file, YAML.stringify(ck), 'utf8')
+      }
+      return true
+    } catch {
+      return false
+    }
+  }
 }
 
 export default new StokenStore()
