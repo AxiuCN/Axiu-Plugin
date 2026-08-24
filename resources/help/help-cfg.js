@@ -18,6 +18,8 @@ export const helpList = [
       { title: '#签到', desc: '立即执行当前账号签到' },
       { title: '#签到状态', desc: '查看绑定账号数与签到开关' },
       { title: '#刷新自动签到', desc: '用 stoken 刷新 cookie 保证定时签到' },
+      { title: '#删除签到', desc: '删除当前账号的签到配置（需重新注册）' },
+      { title: '#删除stoken', desc: '删除当前账号的 stoken（需重新扫码绑定）' },
       { title: '#注册本群签到', desc: '为群内绑定成员注册签到（群主/管理员）' },
     ]
   },
