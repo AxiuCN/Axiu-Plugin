@@ -100,13 +100,18 @@ export class MysSigninApp extends plugin {
     await e.reply('正在注册自动签到...')
     const result = await registerUser(e.user_id)
     const failCount = result.failed?.length || 0
-    const total = result.count + failCount
+    const successCount = result.count || 0
+    const total = successCount + failCount
     if (total === 0) {
       // 前置失败（如未绑定 stoken）：直接透出原因，避免 0/0
       await e.reply(result.message + this._reportFooter())
       return true
     }
-    let report = `--- 注册签到报告 ---\n注册签到成功: ${result.count}/${total}\n注册签到失败: ${failCount}/${total}`
+    let report = `--- 注册签到报告 ---\n注册签到成功: ${successCount}/${total}\n注册签到失败: ${failCount}/${total}`
+    // 增量注册明细（仅当有新增/更新时有意义）
+    if (result.created > 0 && result.updated > 0) report += `\n（新增 ${result.created} 个账号，更新 ${result.updated} 个账号）`
+    else if (result.created > 0) report += `\n（新增 ${result.created} 个账号）`
+    else if (result.updated > 0) report += `\n（更新 ${result.updated} 个账号）`
     await e.reply(report + this._reportFooter())
     return true
   }
@@ -156,7 +161,7 @@ export class MysSigninApp extends plugin {
     await e.reply(`共 ${memberIds.length} 名成员，开始注册（可能需要几分钟）...`)
     const result = await registerGroupMembers(memberIds)
     let report = `--- 注册本群签到报告 ---\n注册签到成功: ${result.success}/${result.total}\n注册签到失败: ${result.failed.length}/${result.total}`
-    if (result.skipped > 0) report += `\n跳过（已注册）: ${result.skipped} 人`
+    if (result.skipped > 0) report += `\n无变更（已注册）: ${result.skipped} 人`
     await e.reply(report + this._reportFooter())
     return true
   }

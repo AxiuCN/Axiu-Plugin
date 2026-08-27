@@ -81,14 +81,14 @@ async function refreshCookie (userId, st) {
 // ==================== 注册 ====================
 
 /**
- * 为单个用户注册自动签到
+ * 为单个用户注册自动签到（增量：已有账号原地更新、新增创建、残留清理）
  * @param {string} userId - QQ 号
- * @returns {Promise<{ok: boolean, count: number, failed: Array<string>, message: string}>}
+ * @returns {Promise<{ok: boolean, count: number, created: number, updated: number, failed: Array<string>, message: string}>}
  */
 async function registerUser (userId) {
   const stokenData = await stokenStore.getUserStoken(userId)
   if (!stokenData || Object.keys(stokenData).length === 0) {
-    return { ok: false, count: 0, failed: [], message: '请先绑定 stoken\n发送【#扫码登录】进行绑定' }
+    return { ok: false, count: 0, created: 0, updated: 0, failed: [], message: '请先绑定 stoken\n发送【#扫码登录】进行绑定' }
   }
 
   const accounts = Object.entries(stokenData)
@@ -107,13 +107,29 @@ async function registerUser (userId) {
     uniqueAccounts.push([uid, st])
   }
 
-  let registered = 0
+  // 读取已有配置（stuid → 配置文件），实现增量注册：
+  //   stuid 已有配置 → 原地刷新 cookie；stuid 新增 → 新建配置
+  const existingConfigs = listUserConfigs(userId).map(cfg => {
+    let stuid = null
+    try {
+      stuid = String(YAML.parse(fs.readFileSync(cfg.path, 'utf8'))?.account?.stuid || '')
+    } catch { /* 配置读取失败视为无 stuid */ }
+    return { ...cfg, stuid }
+  })
+  const configByStuid = new Map()
+  for (const cfg of existingConfigs) {
+    if (cfg.stuid && !configByStuid.has(cfg.stuid)) configByStuid.set(cfg.stuid, cfg)
+  }
+
+  let created = 0
+  let updated = 0
   const errors = []
   let accountIdx = 0
 
   for (const [uid, st] of uniqueAccounts) {
     accountIdx++
     const label = `账号${accountIdx}`
+    const stuid = String(st.stuid)
 
     if (!st?.stuid || !st?.stoken) {
       errors.push(`${label} stoken 数据不完整`)
@@ -123,9 +139,14 @@ async function registerUser (userId) {
     const { cookie, stokenInvalid } = await refreshCookie(userId, st)
     if (!cookie) {
       if (stokenInvalid) {
-        // stoken 已失效：自动从 stoken 存储清理该账号条目，避免后续流程重复报错
+        // stoken 已失效：自动从 stoken 存储清理该账号条目，若已有配置一并删除
         stokenStore.deleteStokenEntry(userId, uid)
-        logger?.warn(`${SIGNIN_LOG_PREFIX} 自动清理失效stoken: QQ=${userId} uid=${uid} stuid=${String(st.stuid)}`)
+        const oldCfg = configByStuid.get(stuid)
+        if (oldCfg) {
+          deleteUserConfig(userId, oldCfg.n)
+          configByStuid.delete(stuid)
+        }
+        logger?.warn(`${SIGNIN_LOG_PREFIX} 自动清理失效stoken: QQ=${userId} uid=${uid} stuid=${stuid}`)
         errors.push(`${label} sk 已失效，已自动删除，请重新扫码绑定后重新【#注册自动签到】`)
       } else {
         errors.push(`${label} cookie 刷新失败，sk 可能已失效`)
@@ -133,49 +154,69 @@ async function registerUser (userId) {
       continue
     }
 
-    const n = getNextN(userId)
+    const existing = configByStuid.get(stuid)
     try {
-      writeUserConfig(userId, n, st, cookie)
-      registered++
-      logger?.info(`${SIGNIN_LOG_PREFIX} 注册成功: QQ=${userId} n=${n} uid=${uid} stuid=${String(st.stuid)}`)
+      if (existing) {
+        // stuid 已有配置：原地刷新 cookie，不新建 n
+        refreshUserConfigCookie(existing.path, st, cookie)
+        updated++
+        logger?.info(`${SIGNIN_LOG_PREFIX} 更新注册: QQ=${userId} n=${existing.n} stuid=${stuid}`)
+      } else {
+        const n = getNextN(userId)
+        writeUserConfig(userId, n, st, cookie)
+        created++
+        logger?.info(`${SIGNIN_LOG_PREFIX} 新注册: QQ=${userId} n=${n} stuid=${stuid}`)
+      }
     } catch (err) {
       errors.push(`${label} 写入配置失败: ${err.message}`)
     }
   }
 
+  // 清理残留：已有配置的 stuid 已不在 stoken 数据中（用户删除过 stoken）→ 删除该配置
+  for (const cfg of existingConfigs) {
+    if (!cfg.stuid) continue
+    if (!seenStuid.has(cfg.stuid) && configByStuid.has(cfg.stuid)) {
+      deleteUserConfig(userId, cfg.n)
+      logger?.info(`${SIGNIN_LOG_PREFIX} 清理残留配置: QQ=${userId} n=${cfg.n} stuid=${cfg.stuid}（stoken已不存在）`)
+    }
+  }
+
+  const registered = created + updated
   if (registered === 0) {
-    return { ok: false, count: 0, failed: errors, message: `注册失败\n${errors.join('\n')}` }
+    return { ok: false, count: 0, created: 0, updated: 0, failed: errors, message: `注册失败\n${errors.join('\n')}` }
   }
 
   let msg = `已注册 ${registered} 个账号`
+  if (created > 0 && updated > 0) msg = `新增 ${created} 个账号，更新 ${updated} 个账号`
+  else if (created > 0) msg = `新增 ${created} 个账号`
+  else if (updated > 0) msg = `已更新 ${updated} 个账号`
   if (errors.length > 0) msg += `\n以下账号注册失败:\n${errors.join('\n')}`
-  return { ok: true, count: registered, failed: errors, message: msg }
+  return { ok: true, count: registered, created, updated, failed: errors, message: msg }
 }
 
 /**
- * 批量注册群成员
+ * 批量注册群成员（对每个成员执行增量注册：已有账号更新/补新增、残留清理）
  * @param {string[]} memberIds - 群成员 QQ 号列表
  * @returns {Promise<{ok: boolean, total: number, success: number, skipped: number, failed: Array<string>, message: string}>}
  */
 async function registerGroupMembers (memberIds) {
   let success = 0
-  let skipped = 0
+  let noChange = 0
   const failed = []
 
   // 去重：同一 QQ 只处理一次
   const uniqueIds = [...new Set(memberIds.map(String))]
 
   for (const userId of uniqueIds) {
-    // 已是注册用户则跳过，避免跨群重复创建配置
-    const existing = listUserConfigs(userId)
-    if (existing.length > 0) {
-      skipped++
-      continue
-    }
-
+    // 增量注册：已有配置的成员会更新 cookie / 补新增账号，无需跳过
     const result = await registerUser(userId)
     if (result.ok) {
-      success++
+      if (result.count > 0) {
+        success++
+      } else {
+        // 注册成功但无新增/更新（stoken 与已有配置一致等场景）
+        noChange++
+      }
     } else {
       failed.push(String(userId))
     }
@@ -184,13 +225,13 @@ async function registerGroupMembers (memberIds) {
   }
 
   return {
-    ok: success > 0 || skipped > 0,
+    ok: success > 0 || noChange > 0,
     total: uniqueIds.length,
     success,
-    skipped,
+    skipped: noChange,
     failed,
     message: `已为 ${success} 个成员注册签到` +
-      (skipped > 0 ? `\n跳过 ${skipped} 人（已注册）` : '') +
+      (noChange > 0 ? `\n无变更 ${noChange} 人` : '') +
       (failed.length > 0 ? `\n失败 ${failed.length} 人` : '')
   }
 }
