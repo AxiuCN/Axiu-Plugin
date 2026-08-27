@@ -236,6 +236,53 @@ async function registerGroupMembers (memberIds) {
   }
 }
 
+/**
+ * 注册机器人所在全部群的成员签到（#注册所有群签到，仅 master）
+ * 逐群 getMemberMap → registerGroupMembers，群间随机间隔防限流
+ * @returns {Promise<{total: number, groups: Array<{groupId: string, total: number, success: number, failed: Array<string>, skipped: number}>, message: string}>}
+ */
+async function registerAllGroups () {
+  const groupIds = Bot.getGroupList?.() || []
+  if (groupIds.length === 0) {
+    logger?.info(`${SIGNIN_LOG_PREFIX} 无可用群，跳过全群注册`)
+    return { total: 0, groups: [], message: '机器人未加入任何群' }
+  }
+
+  logger?.info(`${SIGNIN_LOG_PREFIX} 开始全群注册: ${groupIds.length} 个群`)
+  const groups = []
+
+  for (const groupId of groupIds) {
+    let memberIds = []
+    try {
+      const group = Bot.pickGroup(groupId)
+      const memberMap = await group.getMemberMap()
+      memberIds = [...memberMap.keys()].filter(id => String(id) !== String(Bot.uin))
+    } catch (err) {
+      logger?.warn(`${SIGNIN_LOG_PREFIX} 获取群成员失败 group=${groupId}: ${err.message}`)
+      groups.push({ groupId: String(groupId), total: 0, success: 0, failed: [], skipped: 0, error: '获取群成员失败' })
+      continue
+    }
+
+    const result = await registerGroupMembers(memberIds)
+    groups.push({
+      groupId: String(groupId),
+      total: result.total,
+      success: result.success,
+      failed: result.failed,
+      skipped: result.skipped
+    })
+    await randomDelay(2000, 5000)
+  }
+
+  const totalMembers = groups.reduce((s, g) => s + g.total, 0)
+  const totalSuccess = groups.reduce((s, g) => s + g.success, 0)
+  return {
+    total: totalMembers,
+    groups,
+    message: `全群注册完成: ${groups.length} 个群，${totalSuccess}/${totalMembers} 成员注册成功`
+  }
+}
+
 // ==================== 签到执行 ====================
 
 /**
@@ -685,6 +732,7 @@ export {
   refreshCookie,
   registerUser,
   registerGroupMembers,
+  registerAllGroups,
   signinForUser,
   signinForAll,
   refreshUserCookies,

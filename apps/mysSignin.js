@@ -4,6 +4,7 @@
  *    #初始化签到环境 — 检查 Python、安装依赖、拉取子模块（仅 master）
  *    #注册自动签到 — 为当前用户注册签到（所有已绑定 stoken 的账号）
  *    #注册本群签到 — 为群内所有已绑定 stoken 的成员注册（仅 master/admin）
+ *    #注册所有群签到 — 为机器人所在全部群的成员注册（仅 master）
  *    #签到名单列表 — 列出所有已注册签到用户（仅 master）
  *    #签到         — 手动执行当前用户的签到
  *    #全部签到     — 手动执行全部已注册用户签到（仅 master，自动签到期间不可用）
@@ -21,6 +22,7 @@ import {
   refreshCookie,
   registerUser,
   registerGroupMembers,
+  registerAllGroups,
   signinForUser,
   signinForAll,
   refreshUserCookies,
@@ -49,6 +51,7 @@ export class MysSigninApp extends plugin {
         { reg: '^#初始化签到环境$', fnc: 'initEnv', permission: 'master', log: true },
         { reg: '^#注册自动签到$', fnc: 'register', permission: 'all', log: true },
         { reg: '^#注册本群签到$', fnc: 'groupRegister', permission: 'all', log: true },
+        { reg: '^#注册所有群签到$', fnc: 'registerAllCmd', permission: 'master', log: true },
         { reg: '^#签到名单列表$', fnc: 'listProfiles', permission: 'master', log: true },
         { reg: '^#(开始|手动|测试)?签到$', fnc: 'startSignin', permission: 'all', log: true },
         { reg: '^#全部签到$', fnc: 'signinAll', permission: 'master', log: true },
@@ -163,6 +166,47 @@ export class MysSigninApp extends plugin {
     let report = `--- 注册本群签到报告 ---\n注册签到成功: ${result.success}/${result.total}\n注册签到失败: ${result.failed.length}/${result.total}`
     if (result.skipped > 0) report += `\n无变更（已注册）: ${result.skipped} 人`
     await e.reply(report + this._reportFooter())
+    return true
+  }
+
+  // ==================== #注册所有群签到 ====================
+
+  async registerAllCmd (e) {
+    if (isAutoSigninRunning()) {
+      await e.reply('签到/注册任务正在执行中，请稍后再试')
+      return true
+    }
+
+    const groupIds = Bot.getGroupList?.() || []
+    if (groupIds.length === 0) {
+      await e.reply('机器人未加入任何群')
+      return true
+    }
+
+    await e.reply(`共 ${groupIds.length} 个群，开始注册所有群成员（可能需要较长时间）...`)
+    setAutoSigninRunning(true)
+
+    try {
+      const result = await registerAllGroups()
+      const totalMembers = result.groups.reduce((s, g) => s + g.total, 0)
+      const totalSuccess = result.groups.reduce((s, g) => s + g.success, 0)
+      let report = `--- 注册所有群签到报告 ---\n注册签到成功: ${totalSuccess}/${totalMembers}\n注册签到失败: ${result.groups.reduce((s, g) => s + g.failed.length, 0)}/${totalMembers}`
+      for (const g of result.groups) {
+        if (g.error) {
+          report += `\n群 ${g.groupId}: ${g.error}`
+        } else {
+          report += `\n群 ${g.groupId}: 成功 ${g.success}/${g.total}` +
+            (g.failed.length > 0 ? `，失败 ${g.failed.length}` : '') +
+            (g.skipped > 0 ? `，无变更 ${g.skipped}` : '')
+        }
+      }
+      await e.reply(report + this._reportFooter())
+    } catch (err) {
+      logger?.error(`${SIGNIN_LOG_PREFIX} 全群注册异常: ${err.message}`)
+      await e.reply(`全群注册失败: ${err.message}`)
+    } finally {
+      setAutoSigninRunning(false)
+    }
     return true
   }
 

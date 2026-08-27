@@ -28,6 +28,7 @@ export const helpList = [
     auth: 'master',
     list: [
       { title: '#初始化签到环境', desc: '检查 Python、安装依赖、拉取签到引擎' },
+      { title: '#注册所有群签到', desc: '为机器人所在全部群成员注册签到' },
       { title: '#签到名单列表', desc: '列出所有已注册用户' },
       { title: '#全部签到', desc: '立即为全部注册用户执行签到' },
     ]
