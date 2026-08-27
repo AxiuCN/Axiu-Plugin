@@ -242,7 +242,13 @@ async function registerGroupMembers (memberIds) {
  * @returns {Promise<{total: number, groups: Array<{groupId: string, total: number, success: number, failed: Array<string>, skipped: number}>, message: string}>}
  */
 async function registerAllGroups () {
-  const groupIds = Bot.getGroupList?.() || []
+  const allGroupIds = Bot.getGroupList?.() || []
+  // 过滤特殊会话（如 OneBot 的 stdin 控制台等非数字群号），仅处理真实数字群
+  const groupIds = allGroupIds.filter(id => /^\d+$/.test(String(id)))
+  const skippedSpecial = allGroupIds.length - groupIds.length
+  if (skippedSpecial > 0) {
+    logger?.info(`${SIGNIN_LOG_PREFIX} 跳过特殊会话 ${skippedSpecial} 个（非数字群号）`)
+  }
   if (groupIds.length === 0) {
     logger?.info(`${SIGNIN_LOG_PREFIX} 无可用群，跳过全群注册`)
     return { total: 0, groups: [], message: '机器人未加入任何群' }

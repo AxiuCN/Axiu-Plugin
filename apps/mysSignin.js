@@ -177,7 +177,8 @@ export class MysSigninApp extends plugin {
       return true
     }
 
-    const groupIds = Bot.getGroupList?.() || []
+    const allGroupIds = Bot.getGroupList?.() || []
+    const groupIds = allGroupIds.filter(id => /^\d+$/.test(String(id)))
     if (groupIds.length === 0) {
       await e.reply('机器人未加入任何群')
       return true
