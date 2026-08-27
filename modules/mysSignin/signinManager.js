@@ -83,12 +83,12 @@ async function refreshCookie (userId, st) {
 /**
  * 为单个用户注册自动签到
  * @param {string} userId - QQ 号
- * @returns {Promise<{ok: boolean, count: number, message: string}>}
+ * @returns {Promise<{ok: boolean, count: number, failed: Array<string>, message: string}>}
  */
 async function registerUser (userId) {
   const stokenData = await stokenStore.getUserStoken(userId)
   if (!stokenData || Object.keys(stokenData).length === 0) {
-    return { ok: false, count: 0, message: '请先绑定 stoken\n发送【#扫码登录】进行绑定' }
+    return { ok: false, count: 0, failed: [], message: '请先绑定 stoken\n发送【#扫码登录】进行绑定' }
   }
 
   const accounts = Object.entries(stokenData)
@@ -144,18 +144,18 @@ async function registerUser (userId) {
   }
 
   if (registered === 0) {
-    return { ok: false, count: 0, message: `注册失败\n${errors.join('\n')}` }
+    return { ok: false, count: 0, failed: errors, message: `注册失败\n${errors.join('\n')}` }
   }
 
   let msg = `已注册 ${registered} 个账号`
   if (errors.length > 0) msg += `\n以下账号注册失败:\n${errors.join('\n')}`
-  return { ok: true, count: registered, message: msg }
+  return { ok: true, count: registered, failed: errors, message: msg }
 }
 
 /**
  * 批量注册群成员
  * @param {string[]} memberIds - 群成员 QQ 号列表
- * @returns {Promise<{ok: boolean, total: number, success: number, message: string}>}
+ * @returns {Promise<{ok: boolean, total: number, success: number, skipped: number, failed: Array<string>, message: string}>}
  */
 async function registerGroupMembers (memberIds) {
   let success = 0
@@ -175,9 +175,9 @@ async function registerGroupMembers (memberIds) {
 
     const result = await registerUser(userId)
     if (result.ok) {
-      success += result.count
+      success++
     } else {
-      failed.push(`QQ=${userId}: ${result.message}`)
+      failed.push(String(userId))
     }
     // 随机间隔避免并发 API 调用
     await randomDelay(1000, 3000)
@@ -188,10 +188,10 @@ async function registerGroupMembers (memberIds) {
     total: uniqueIds.length,
     success,
     skipped,
-    message: `已为 ${success} 个账号注册签到` +
+    failed,
+    message: `已为 ${success} 个成员注册签到` +
       (skipped > 0 ? `\n跳过 ${skipped} 人（已注册）` : '') +
-      (failed.length > 0 ? `\n失败:\n${failed.slice(0, 5).join('\n')}` : '') +
-      (failed.length > 5 ? `\n...及其他 ${failed.length - 5} 个失败` : '')
+      (failed.length > 0 ? `\n失败 ${failed.length} 人` : '')
   }
 }
 

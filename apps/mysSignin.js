@@ -99,7 +99,15 @@ export class MysSigninApp extends plugin {
   async register (e) {
     await e.reply('正在注册自动签到...')
     const result = await registerUser(e.user_id)
-    await e.reply(result.message + this._reportFooter())
+    const failCount = result.failed?.length || 0
+    const total = result.count + failCount
+    if (total === 0) {
+      // 前置失败（如未绑定 stoken）：直接透出原因，避免 0/0
+      await e.reply(result.message + this._reportFooter())
+      return true
+    }
+    let report = `--- 注册签到报告 ---\n注册签到成功: ${result.count}/${total}\n注册签到失败: ${failCount}/${total}`
+    await e.reply(report + this._reportFooter())
     return true
   }
 
@@ -147,7 +155,9 @@ export class MysSigninApp extends plugin {
 
     await e.reply(`共 ${memberIds.length} 名成员，开始注册（可能需要几分钟）...`)
     const result = await registerGroupMembers(memberIds)
-    await e.reply(result.message + this._reportFooter())
+    let report = `--- 注册本群签到报告 ---\n注册签到成功: ${result.success}/${result.total}\n注册签到失败: ${result.failed.length}/${result.total}`
+    if (result.skipped > 0) report += `\n跳过（已注册）: ${result.skipped} 人`
+    await e.reply(report + this._reportFooter())
     return true
   }
 
