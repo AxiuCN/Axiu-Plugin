@@ -30,10 +30,13 @@ import {
   initEnvironment,
   getSigninStatus,
   formatSummaryReport,
+  buildSigninReport,
+  buildRefreshReport,
   isAutoSigninRunning,
   setAutoSigninRunning
 } from '../modules/mysSignin/signinManager.js'
 import { getSigninConfig, listAllRegisteredQQ, listUserConfigs } from '../model/mysSignin/bbsToolsConfig.js'
+import { pluginVersion, yunzaiVersion } from '../components/pluginVersion.js'
 
 export class MysSigninApp extends plugin {
   constructor () {
@@ -96,7 +99,7 @@ export class MysSigninApp extends plugin {
   async register (e) {
     await e.reply('正在注册自动签到...')
     const result = await registerUser(e.user_id)
-    await e.reply(result.message)
+    await e.reply(result.message + this._reportFooter())
     return true
   }
 
@@ -144,7 +147,7 @@ export class MysSigninApp extends plugin {
 
     await e.reply(`共 ${memberIds.length} 名成员，开始注册（可能需要几分钟）...`)
     const result = await registerGroupMembers(memberIds)
-    await e.reply(result.message)
+    await e.reply(result.message + this._reportFooter())
     return true
   }
 
@@ -194,7 +197,7 @@ export class MysSigninApp extends plugin {
 
     await e.reply(`开始签到 (共 ${configs.length} 个账号)...`)
     const result = await signinForUser(e.user_id, false)
-    await e.reply(result.message)
+    await e.reply(result.message + this._reportFooter())
     return true
   }
 
@@ -223,7 +226,7 @@ export class MysSigninApp extends plugin {
     try {
       const summary = await signinForAll(false)
       const report = formatSummaryReport(summary)
-      await e.reply(report)
+      await e.reply(report + this._reportFooter())
     } finally {
       setAutoSigninRunning(false)
     }
@@ -235,7 +238,7 @@ export class MysSigninApp extends plugin {
   async refreshCookieCmd (e) {
     await e.reply('正在刷新签到 cookie...')
     const result = await refreshUserCookies(e.user_id)
-    await e.reply(result.message)
+    await e.reply(result.message + this._reportFooter())
     return true
   }
 
@@ -274,7 +277,8 @@ export class MysSigninApp extends plugin {
     logger?.info(`${SIGNIN_LOG_PREFIX} 定时刷新cookie完成: ${result.message}`)
 
     if (cfg.notifyGroup && result.total > 0) {
-      await this._sendNotification(`--- 自动刷新Cookie报告 ---\n${result.message}`)
+      const { header, failedUsers } = buildRefreshReport(result)
+      await this._sendReport(header, failedUsers)
     }
     return true
   }
@@ -308,7 +312,8 @@ export class MysSigninApp extends plugin {
 
       // 发送签到汇总通知
       if (cfg.notifyGroup && summary.details.length > 0) {
-        await this._sendNotification(formatSummaryReport(summary))
+        const { header, failedUsers } = buildSigninReport(summary)
+        await this._sendReport(header, failedUsers)
       }
 
       logger?.info(
@@ -349,5 +354,65 @@ export class MysSigninApp extends plugin {
         }
       }
     }
+  }
+
+  /**
+   * 发送结构化汇总报告（带失败用户分组与版权行）
+   * @param {string} header - 报告头（含统计）
+   * @param {Array<{qq: string, lines: string[]}>} failedUsers - 失败用户分组明细
+   * 群聊：失败用户在通知群内用 @，否则显示 QQ 号；主人在私聊，一律用 QQ 号文本
+   */
+  async _sendReport (header, failedUsers) {
+    const cfg = getSigninConfig()
+    const footer = `\n\nCreated By TRSS-Yunzai v${yunzaiVersion} & Axiu-Plugin v${pluginVersion}`
+
+    // 主人私聊：一律 QQ 号文本（不用 @）
+    try {
+      const masterQQ = (await import('../../../lib/config/config.js')).default?.masterQQ
+      if (masterQQ && masterQQ.length > 0) {
+        const friend = Bot.pickFriend(masterQQ[0])
+        let msg = header
+        for (const u of failedUsers) {
+          msg += `\nQQ:${u.qq}\n${u.lines.join('\n')}`
+        }
+        await friend.sendMsg(msg + footer)
+      }
+    } catch (err) {
+      logger?.warn(`${SIGNIN_LOG_PREFIX} 发送master报告失败: ${err.message}`)
+    }
+
+    // 通知配置的群聊：失败用户在群内 @，不在群内显示 QQ 号
+    if (cfg.reportGroups) {
+      const groupIds = String(cfg.reportGroups).split(/[,，\s]+/).filter(Boolean)
+      for (const groupId of groupIds) {
+        try {
+          const group = Bot.pickGroup(groupId.trim())
+          if (!group) continue
+          // 群成员集合（判断 @ 是否有效）
+          let memberMap = null
+          try { memberMap = await group.getMemberMap() } catch { /* 成员拉取失败降级为 QQ 号 */ }
+          const isMember = memberMap ? (qq) => memberMap.has(String(qq)) : () => false
+
+          const segments = [{ type: 'text', text: header }]
+          for (const u of failedUsers) {
+            if (isMember(u.qq)) {
+              segments.push({ type: 'at', qq: Number(u.qq) })
+              segments.push({ type: 'text', text: '\n' + u.lines.join('\n') })
+            } else {
+              segments.push({ type: 'text', text: `\nQQ:${u.qq}\n${u.lines.join('\n')}` })
+            }
+          }
+          segments.push({ type: 'text', text: footer })
+          await group.sendMsg(segments)
+        } catch (err) {
+          logger?.warn(`${SIGNIN_LOG_PREFIX} 发送群报告失败 group=${groupId}: ${err.message}`)
+        }
+      }
+    }
+  }
+
+  /** 报告尾版权行（用户主动命令回复用） */
+  _reportFooter () {
+    return `\n\nCreated By TRSS-Yunzai v${yunzaiVersion} & Axiu-Plugin v${pluginVersion}`
   }
 }

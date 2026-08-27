@@ -109,10 +109,14 @@ async function registerUser (userId) {
 
   let registered = 0
   const errors = []
+  let accountIdx = 0
 
   for (const [uid, st] of uniqueAccounts) {
+    accountIdx++
+    const label = `账号${accountIdx}`
+
     if (!st?.stuid || !st?.stoken) {
-      errors.push(`uid=${uid}: stoken 数据不完整`)
+      errors.push(`${label} stoken 数据不完整`)
       continue
     }
 
@@ -122,9 +126,9 @@ async function registerUser (userId) {
         // stoken 已失效：自动从 stoken 存储清理该账号条目，避免后续流程重复报错
         stokenStore.deleteStokenEntry(userId, uid)
         logger?.warn(`${SIGNIN_LOG_PREFIX} 自动清理失效stoken: QQ=${userId} uid=${uid} stuid=${String(st.stuid)}`)
-        errors.push(`uid=${uid}: stoken 已失效，已自动删除，请重新扫码绑定`)
+        errors.push(`${label} sk 已失效，已自动删除，请重新扫码绑定后重新【#注册自动签到】`)
       } else {
-        errors.push(`uid=${uid}: cookie 刷新失败，stoken 可能已失效`)
+        errors.push(`${label} cookie 刷新失败，sk 可能已失效`)
       }
       continue
     }
@@ -135,7 +139,7 @@ async function registerUser (userId) {
       registered++
       logger?.info(`${SIGNIN_LOG_PREFIX} 注册成功: QQ=${userId} n=${n} uid=${uid} stuid=${String(st.stuid)}`)
     } catch (err) {
-      errors.push(`uid=${uid}: 写入配置失败: ${err.message}`)
+      errors.push(`${label} 写入配置失败: ${err.message}`)
     }
   }
 
@@ -290,21 +294,21 @@ async function signinForAll (isAuto = true, onProgress) {
 /**
  * 刷新指定 QQ 的所有签到配置文件的 cookie
  * @param {string} userId - QQ 号
- * @returns {Promise<{ok: boolean, count: number, message: string}>}
+ * @returns {Promise<{ok: boolean, count: number, message: string, failed: Array<{n: number, reason: string}>}>}
  */
 async function refreshUserCookies (userId) {
   const stokenData = await stokenStore.getUserStoken(userId)
   if (!stokenData || Object.keys(stokenData).length === 0) {
-    return { ok: false, count: 0, message: '请先绑定 stoken' }
+    return { ok: false, count: 0, message: '请先绑定 stoken', failed: [] }
   }
 
   const configs = listUserConfigs(userId)
   if (configs.length === 0) {
-    return { ok: false, count: 0, message: '未注册签到，请先发送【#注册自动签到】' }
+    return { ok: false, count: 0, message: '未注册签到，请先发送【#注册自动签到】', failed: [] }
   }
 
   let refreshed = 0
-  const errors = []
+  const failed = []
 
   for (const cfg of configs) {
     // 从配置文件中读取 stuid 匹配 stoken
@@ -314,7 +318,7 @@ async function refreshUserCookies (userId) {
         : null
 
       if (!cfgData?.account?.stuid) {
-        errors.push(`n=${cfg.n}: 配置文件异常`)
+        failed.push({ n: cfg.n, reason: '配置文件异常' })
         continue
       }
 
@@ -325,7 +329,7 @@ async function refreshUserCookies (userId) {
       )
 
       if (!st) {
-        errors.push(`n=${cfg.n}: 未找到匹配的 stoken`)
+        failed.push({ n: cfg.n, reason: '未找到匹配的 stoken' })
         continue
       }
 
@@ -335,9 +339,9 @@ async function refreshUserCookies (userId) {
           // sk（stoken）已失效：自动删除该签到配置文件，避免每日自动刷新/签到持续失败空转
           deleteUserConfig(userId, cfg.n)
           logger?.warn(`${SIGNIN_LOG_PREFIX} 自动删除失效sk配置: QQ=${userId} n=${cfg.n} stuid=${stuid} (stoken失效)`)
-          errors.push(`n=${cfg.n}: sk 已失效，已自动删除签到配置，请重新扫码绑定`)
+          failed.push({ n: cfg.n, reason: 'sk 已失效，已自动删除签到配置，请重新扫码绑定后重新【#注册自动签到】' })
         } else {
-          errors.push(`n=${cfg.n}: cookie 刷新失败`)
+          failed.push({ n: cfg.n, reason: 'cookie 刷新失败' })
         }
         continue
       }
@@ -346,17 +350,20 @@ async function refreshUserCookies (userId) {
       refreshed++
       logger?.info(`${SIGNIN_LOG_PREFIX} 刷新cookie成功: QQ=${userId} n=${cfg.n}`)
     } catch (err) {
-      errors.push(`n=${cfg.n}: ${err.message}`)
+      failed.push({ n: cfg.n, reason: err.message })
     }
   }
 
   if (refreshed === 0) {
-    return { ok: false, count: 0, message: `刷新失败\n${errors.join('\n')}` }
+    return {
+      ok: false, count: 0, failed,
+      message: '刷新失败\n' + failed.map(f => `账号${f.n} ${f.reason}`).join('\n')
+    }
   }
 
   let msg = `已刷新 ${refreshed} 个账号的 cookie`
-  if (errors.length > 0) msg += `\n失败:\n${errors.join('\n')}`
-  return { ok: true, count: refreshed, message: msg }
+  if (failed.length > 0) msg += '\n失败:\n' + failed.map(f => `账号${f.n} ${f.reason}`).join('\n')
+  return { ok: true, count: refreshed, failed, message: msg }
 }
 
 // ==================== 删除签到/删除stoken ====================
@@ -408,25 +415,25 @@ async function deleteUserStoken (userId) {
 /**
  * 刷新所有已注册用户的签到 cookie
  * 每日 4:30 自动执行，确保 5:00 签到前 cookie 有效
- * @returns {Promise<{total: number, success: number, message: string}>}
+ * @returns {Promise<{total: number, success: number, failedUsers: Array<{userId: string, failed: Array<{n: number, reason: string}>}>, message: string}>}
  */
 async function refreshAllUserCookies () {
   const qqList = listAllRegisteredQQ()
   if (qqList.length === 0) {
     logger?.info(`${SIGNIN_LOG_PREFIX} 无已注册用户，跳过刷新`)
-    return { total: 0, success: 0, message: '无已注册用户' }
+    return { total: 0, success: 0, failedUsers: [], message: '无已注册用户' }
   }
 
   logger?.info(`${SIGNIN_LOG_PREFIX} 开始批量刷新cookie: ${qqList.length} 个用户`)
   let success = 0
-  const failed = []
+  const failedUsers = []
 
   for (const userId of qqList) {
     const result = await refreshUserCookies(userId)
     if (result.ok) {
       success++
-    } else {
-      failed.push(`QQ=${userId}: ${result.message}`)
+    } else if (result.failed?.length > 0) {
+      failedUsers.push({ userId, failed: result.failed })
     }
     await randomDelay(2000, 5000)
   }
@@ -437,9 +444,9 @@ async function refreshAllUserCookies () {
   return {
     total: qqList.length,
     success,
+    failedUsers,
     message: `刷新完成: ${success}/${qqList.length} 成功` +
-      (failed.length > 0 ? `\n失败:\n${failed.slice(0, 5).join('\n')}` : '') +
-      (failed.length > 5 ? `\n...及其他 ${failed.length - 5} 个失败` : '')
+      (failedUsers.length > 0 ? `\n失败:\n${failedUsers.map(u => `QQ=${u.userId}: ${u.failed.map(f => `账号${f.n} ${f.reason}`).join('; ')}`).join('\n')}` : '')
   }
 }
 
@@ -559,41 +566,70 @@ async function getSigninStatus (userId) {
 function formatUserSigninResult (userId, results) {
   const okCount = results.filter(r => r.ok).length
   const failCount = results.filter(r => !r.ok).length
-  let msg = `签到完成: 成功 ${okCount}`
-  if (failCount > 0) msg += ` / 失败 ${failCount}`
+  let msg = `签到完成: 成功 ${okCount} 个账号`
+  if (failCount > 0) msg += ` / 失败 ${failCount} 个账号`
 
   for (const r of results) {
-    const status = r.ok ? '✓' : '✗'
-    const errMsg = r.ok ? '' : ` — ${r.message || '失败'}`
-    msg += `\n  ${status} #${r.n}${errMsg}`
+    if (r.ok) continue
+    msg += `\n账号${r.n}: ${r.message || '未知错误'}`
   }
   return msg
 }
 
 /**
- * 格式化全部签到汇总报告
+ * 构建自动签到汇总报告（结构化：头部统计 + 失败用户分组）
+ * @param {{total: number, success: number, details: Array}} summary
+ * @returns {{header: string, failedUsers: Array<{qq: string, lines: string[]}>}}
+ */
+function buildSigninReport (summary) {
+  if (summary.total === 0) return { header: '没有已注册的签到用户', failedUsers: [] }
+
+  const failedUsers = summary.details
+    .filter(d => d.results?.some(r => !r.ok))
+    .map(d => ({
+      qq: String(d.userId),
+      lines: (d.results || [])
+        .filter(r => !r.ok)
+        .map(r => `账号${r.n}: ${r.message || '未知错误'}`)
+    }))
+
+  return {
+    header: `--- 自动签到报告 ---\n签到成功: ${summary.success}/${summary.total} 用户\n签到失败: ${failedUsers.length}/${summary.total} 用户`,
+    failedUsers
+  }
+}
+
+/**
+ * 格式化全部签到汇总报告（兼容旧文本调用）
  * @param {{total: number, success: number, details: Array}} summary
  * @returns {string}
  */
 function formatSummaryReport (summary) {
-  if (summary.total === 0) return '没有已注册的签到用户'
-
-  let msg = `--- 自动签到报告 ---\n成功: ${summary.success}/${summary.total} 用户`
-
-  // 仅列出失败账户
-  const failedUsers = summary.details.filter(
-    d => d.results?.some(r => !r.ok)
-  )
-  if (failedUsers.length > 0) {
-    msg += '\n失败账户:'
-    for (const d of failedUsers) {
-      const failures = d.results?.filter(r => !r.ok) || []
-      for (const f of failures) {
-        msg += `\n  QQ=${d.userId}: ${f.message || '未知错误'}`
-      }
-    }
+  const { header, failedUsers } = buildSigninReport(summary)
+  let msg = header
+  for (const u of failedUsers) {
+    msg += `\n@${u.qq}\n${u.lines.join('\n')}`
   }
   return msg
+}
+
+/**
+ * 构建自动刷新Cookie汇总报告
+ * @param {{total: number, success: number, failedUsers: Array<{userId: string, failed: Array<{n: number, reason: string}>}>}} result
+ * @returns {{header: string, failedUsers: Array<{qq: string, lines: string[]}>}}
+ */
+function buildRefreshReport (result) {
+  if (result.total === 0) return { header: '无已注册用户，未执行刷新', failedUsers: [] }
+
+  const failedUsers = result.failedUsers.map(u => ({
+    qq: String(u.userId),
+    lines: u.failed.map(f => `账号${f.n} ${f.reason}`)
+  }))
+
+  return {
+    header: `--- 自动刷新Cookie报告 ---\n刷新Cookie成功: ${result.success}/${result.total}\n刷新Cookie失败: ${failedUsers.length}/${result.total}`,
+    failedUsers
+  }
 }
 
 // ==================== 自动签到锁 ====================
@@ -618,6 +654,8 @@ export {
   getSigninStatus,
   formatUserSigninResult,
   formatSummaryReport,
+  buildSigninReport,
+  buildRefreshReport,
   isAutoSigninRunning,
   setAutoSigninRunning
 }
