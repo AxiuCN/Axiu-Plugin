@@ -439,12 +439,19 @@ export default class MysSrApi extends MysApi {
         `ltoken=${found.stoken.ltoken};ltuid=${found.stoken.stuid};` +
         `cookie_token=${ck};account_id=${found.stoken.stuid};`
 
-      // 绑定到 genshin CK 系统
+      // 更新账号级 ck 数据（对齐 genshin ckRefresh：不调用 user.js bing()，刷新不改变 QQ↔账号 归属）
+      // 仅让所有引用该账号的查询/用户拿到新 ck，防止刷新把账号挂到与查询无关的用户名下
       try {
-        const UserCk = (await import('../../../genshin/model/user.js')).default
-        await new UserCk({ user_id: found.userId, ck: fullCookie, reply: () => {} }).bing()
+        const MysUser = (await import('../../../genshin/model/mys/MysUser.js')).default
+        const mys = await MysUser.create(found.stoken.stuid)
+        if (!mys) {
+          logger.warn(`${LOG_PREFIX}[MysSrApi] 无账号记录可更新 ltuid:${found.stoken.stuid}`)
+          return null
+        }
+        mys.setCkData({ ck: fullCookie })
+        await mys.save()
       } catch (err) {
-        logger.error(`${LOG_PREFIX}[MysSrApi] 绑定失败: ${err.message}`)
+        logger.error(`${LOG_PREFIX}[MysSrApi] 更新账号ck失败: ${err.message}`)
         return null
       }
 
