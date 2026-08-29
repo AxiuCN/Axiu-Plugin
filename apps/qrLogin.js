@@ -97,13 +97,10 @@ export class QrLoginApp extends plugin {
 
     // 合并转发绑定提示
     if (sendMsg.length > 0) {
-      const bot = e.bot || Bot
-      const nickname = bot.nickname || 'Yunzai-Bot'
-      const msgList = sendMsg.map(msg => ({
-        message: msg,
-        nickname,
-        user_id: bot.uin
-      }))
+      const msgList = [
+        { message: '*扫码登录成功，Bot大部分功能已开放*' },
+        ...sendMsg.map(msg => ({ message: msg }))
+      ]
       const forwardMsg = e.isGroup
         ? await e.group.makeForwardMsg(msgList)
         : await e.friend.makeForwardMsg(msgList)
@@ -209,13 +206,8 @@ export class QrLoginApp extends plugin {
 
     // 合并转发结果
     if (sendMsg.length > 0) {
-      const bot = e.bot || Bot
-      const nickname = bot.nickname || 'Yunzai-Bot'
-      const msgList = sendMsg.map(msg => ({
-        message: msg,
-        nickname,
-        user_id: bot.uin
-      }))
+      // node 匿名：不携带机器人昵称（与 common.makeForwardMsg 一致）
+      const msgList = sendMsg.map(msg => ({ message: msg }))
       const forwardMsg = e.isGroup
         ? await e.group.makeForwardMsg(msgList)
         : await e.friend.makeForwardMsg(msgList)
