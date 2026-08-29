@@ -65,23 +65,49 @@ export class QrLoginApp extends plugin {
     return true
   }
 
-  /** 扫码成功后绑定 stoken 并自动将 CK 注入 cookie 池（对齐逍遥 bindSkCK） */
+  /** 扫码成功后绑定 stoken 并自动将 CK 注入 cookie 池（对齐逍遥 bindSkCK）
+ *  绑定阶段（seachUid + bing）的提示合并为一条转发消息，避免扫码完成后连环刷屏
+ */
   async _bindSkCK (e, loginRes) {
-    // 1. 绑定 stoken
-    e.msg = loginRes.stoken
-    e.raw_message = loginRes.stoken
-    await this._bindStoken(e, loginRes)
+    // 拦截绑定阶段的所有 reply（seachUid「stoken绑定成功」/ bing「绑定Cookie成功+使用说明」），收集后合并转发
+    const sendMsg = []
+    const origReply = e.reply
+    e.reply = (msg) => { sendMsg.push(msg) }
 
-    // 2. 绑定 CK 到 V3 cookie 池（GetQrCode 已返回完整 cookie，无需再次获取）
-    e.ck = loginRes.cookie
-    e.msg = loginRes.cookie
-    e.raw_message = loginRes.cookie
     try {
-      const userck = (await import('../../../plugins/genshin/model/user.js')).default
-      await (new userck(e)).bing()
-      logger?.info(`${LOG_PREFIX} 扫码登录自动绑定CK成功: QQ=${e.user_id}`)
-    } catch (err) {
-      logger?.warn(`${LOG_PREFIX} 自动绑定CK失败: QQ=${e.user_id} ${err.message}`)
+      // 1. 绑定 stoken
+      e.msg = loginRes.stoken
+      e.raw_message = loginRes.stoken
+      await this._bindStoken(e, loginRes)
+
+      // 2. 绑定 CK 到 V3 cookie 池（GetQrCode 已返回完整 cookie，无需再次获取）
+      e.ck = loginRes.cookie
+      e.msg = loginRes.cookie
+      e.raw_message = loginRes.cookie
+      try {
+        const userck = (await import('../../../plugins/genshin/model/user.js')).default
+        await (new userck(e)).bing()
+        logger?.info(`${LOG_PREFIX} 扫码登录自动绑定CK成功: QQ=${e.user_id}`)
+      } catch (err) {
+        logger?.warn(`${LOG_PREFIX} 自动绑定CK失败: QQ=${e.user_id} ${err.message}`)
+      }
+    } finally {
+      e.reply = origReply
+    }
+
+    // 合并转发绑定提示
+    if (sendMsg.length > 0) {
+      const bot = e.bot || Bot
+      const nickname = bot.nickname || 'Yunzai-Bot'
+      const msgList = sendMsg.map(msg => ({
+        message: msg,
+        nickname,
+        user_id: bot.uin
+      }))
+      const forwardMsg = e.isGroup
+        ? await e.group.makeForwardMsg(msgList)
+        : await e.friend.makeForwardMsg(msgList)
+      await origReply(forwardMsg)
     }
   }
 
