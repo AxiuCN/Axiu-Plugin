@@ -98,7 +98,7 @@ export class QrLoginApp extends plugin {
     // 合并转发绑定提示
     if (sendMsg.length > 0) {
       const msgList = [
-        { message: '*扫码登录成功，Bot大部分功能已开放*' },
+        { message: '扫码登录成功，Bot大部分功能已开放' },
         ...sendMsg.map(msg => ({ message: msg }))
       ]
       const forwardMsg = e.isGroup
