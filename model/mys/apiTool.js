@@ -74,7 +74,8 @@ export default class apiTool {
       },
       test_nine: {
         url: `${gsCfg.api.api}`,
-        query: `gt=${data.gt}&challenge=${data.challenge}`
+        query: `gt=${data.gt}&challenge=${data.challenge}`,
+        types: 'noheader'
       },
       recognize: {
         url: `${gsCfg.api.api}`,
@@ -88,11 +89,13 @@ export default class apiTool {
       },
       in: {
         url: `${gsCfg.api.api}`,
-        query: `${gsCfg.api.key}&${gsCfg.api.query}&gt=${data.gt}&challenge=${data.challenge}`
+        query: `${gsCfg.api.key}&${gsCfg.api.query}&gt=${data.gt}&challenge=${data.challenge}`,
+        types: 'noheader'
       },
       res: {
         url: `${gsCfg.api.resapi}`,
-        query: `${gsCfg.api.key}&${gsCfg.api.resquery}&id=${data.request}`
+        query: `${gsCfg.api.key}&${gsCfg.api.resquery}&id=${data.request}`,
+        types: 'noheader'
       },
       /** fp参数用于减少验证码 */
       ...(/cn_|_cn/.test(this.server) ? {
