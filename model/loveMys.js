@@ -58,7 +58,10 @@ export default class LoveMys {
 
       let type = gsCfg.api.type
       let GtestType = gsCfg.api.GtestType
-      let test_nine = res
+      // 挑战数据（createVerification/createGeetest 成功结果）：全程保留，手动降级兜底用
+      let challengeData = res
+      // 求解结果：独立变量接收，失败时不覆盖挑战数据（避免 res 变 false 后 gt/challenge 丢失）
+      let solveRes
       let retry = 0
       if (type == 0) {
         if ([2, 1].includes(GtestType)) {
@@ -66,16 +69,17 @@ export default class LoveMys {
             if (tnAttempt > 0) {
               logger.mark(`[loveMys] test_nine 过码失败，第 ${tnAttempt + 1}/3 次尝试`)
               // 重新创建挑战（旧挑战可能已过期）
-              res = await vali.getData(retcode === 10035 ? 'createGeetest' : 'createVerification', { headers, app_key })
-              if (!res || res?.retcode !== 0) break
-              test_nine = res
+              const newChallenge = await vali.getData(retcode === 10035 ? 'createGeetest' : 'createVerification', { headers, app_key })
+              if (!newChallenge || newChallenge?.retcode !== 0) break
+              res = newChallenge
+              challengeData = newChallenge
             }
-            res = await vali.getData('test_nine', res?.data)
-            if (res?.data?.validate) {
+            solveRes = await vali.getData('test_nine', res?.data)
+            if (solveRes?.data?.validate) {
               res = {
                 data: {
-                  challenge: test_nine?.data?.challenge,
-                  validate: res?.data?.validate
+                  challenge: res?.data?.challenge,
+                  validate: solveRes?.data?.validate
                 }
               }
               // 验证求解结果
@@ -89,40 +93,53 @@ export default class LoveMys {
           }
         }
       } else if (type == 1) {
-        if ([2, 1].includes(GtestType)) res = await vali.getData('recognize', res?.data)
-        if (res?.resultid) {
-          let results = res
+        if ([2, 1].includes(GtestType)) solveRes = await vali.getData('recognize', res?.data)
+        if (solveRes?.resultid) {
+          let results = solveRes
           await common.sleep(5000)
-          res = await vali.getData('results', results)
-          while ((res?.status == 2) && retry < 10) {
+          solveRes = await vali.getData('results', results)
+          while ((solveRes?.status == 2) && retry < 10) {
             await common.sleep(5000)
-            res = await vali.getData('results', results)
+            solveRes = await vali.getData('results', results)
             retry++
           }
         }
       } else if (type == 2) {
-        if ([2, 1].includes(GtestType)) res = await vali.getData('in', res?.data)
-        if (res?.request) {
-          let request = res
+        if ([2, 1].includes(GtestType)) solveRes = await vali.getData('in', res?.data)
+        if (solveRes?.request) {
+          let request = solveRes
           await common.sleep(5000)
-          res = await vali.getData('res', request)
-          while ((res?.request == 'CAPCHA_NOT_READY') && retry < 10) {
+          solveRes = await vali.getData('res', request)
+          while ((solveRes?.request == 'CAPCHA_NOT_READY') && retry < 10) {
             await common.sleep(5000)
-            res = await vali.getData('res', request)
+            solveRes = await vali.getData('res', request)
             retry++
           }
         }
       }
-      if (res?.data?.validate || res?.request?.geetest_validate) {
+      // 统一处理：求解成功 → 回传验证；失败 → 手动降级
+      const solvedData = solveRes?.data?.validate
+        ? solveRes.data
+        : (solveRes?.request?.geetest_validate ? solveRes.request : null)
+      if (solvedData) {
         res = await vali.getData(retcode === 10035 ? 'verifyGeetest' : 'verifyVerification', {
-          ...res?.data ? res.data : res.request,
+          ...solvedData,
           headers,
           app_key
         })
       } else {
         if ([2, 0].includes(GtestType)) {
-          if (GtestType === 2) res = await vali.getData(retcode === 10035 ? 'createGeetest' : 'createVerification', { headers, app_key })
-          res = await this.Manual_geetest(e, res?.data)
+          if (GtestType === 2) {
+            // 重试创建挑战（旧挑战可能已过期）；失败保留原挑战数据
+            const newChallenge = await vali.getData(retcode === 10035 ? 'createGeetest' : 'createVerification', { headers, app_key })
+            if (newChallenge?.data?.gt && newChallenge?.data?.challenge) {
+              res = newChallenge
+              challengeData = newChallenge
+            }
+          }
+          // 手动打码入参兜底：res 当前挑战数据优先，缺失时用 challengeData（保证链接总能发出）
+          const manualData = res?.data?.gt && res?.data?.challenge ? res.data : challengeData?.data
+          res = await this.Manual_geetest(e, manualData)
           if (res?.data?.validate || res?.data?.geetest_validate) {
             res = await vali.getData(retcode === 10035 ? 'verifyGeetest' : 'verifyVerification', {
               ...res.data,
