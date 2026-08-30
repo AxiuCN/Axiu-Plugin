@@ -34,8 +34,8 @@ import {
   formatSummaryReport,
   buildSigninReport,
   buildRefreshReport,
-  isAutoSigninRunning,
-  setAutoSigninRunning
+  setAutoSigninRunning,
+  tryAcquireAutoSignin
 } from '../modules/mysSignin/signinManager.js'
 import { getSigninConfig, listAllRegisteredQQ, listUserConfigs } from '../model/mysSignin/bbsToolsConfig.js'
 import { pluginVersion, yunzaiVersion } from '../components/pluginVersion.js'
@@ -100,22 +100,30 @@ export class MysSigninApp extends plugin {
   // ==================== #注册自动签到 ====================
 
   async register (e) {
-    await e.reply('正在注册自动签到...')
-    const result = await registerUser(e.user_id)
-    const failCount = result.failed?.length || 0
-    const successCount = result.count || 0
-    const total = successCount + failCount
-    if (total === 0) {
-      // 前置失败（如未绑定 stoken）：直接透出原因，避免 0/0
-      await e.reply(result.message + this._reportFooter())
+    if (!tryAcquireAutoSignin()) {
+      await e.reply('签到/注册任务正在执行中，请稍后再试')
       return true
     }
-    let report = `--- 注册签到报告 ---\n注册签到成功: ${successCount}/${total}\n注册签到失败: ${failCount}/${total}`
-    // 增量注册明细（仅当有新增/更新时有意义）
-    if (result.created > 0 && result.updated > 0) report += `\n（新增 ${result.created} 个账号，更新 ${result.updated} 个账号）`
-    else if (result.created > 0) report += `\n（新增 ${result.created} 个账号）`
-    else if (result.updated > 0) report += `\n（更新 ${result.updated} 个账号）`
-    await e.reply(report + this._reportFooter())
+    try {
+      await e.reply('正在注册自动签到...')
+      const result = await registerUser(e.user_id)
+      const failCount = result.failed?.length || 0
+      const successCount = result.count || 0
+      const total = successCount + failCount
+      if (total === 0) {
+        // 前置失败（如未绑定 stoken）：直接透出原因，避免 0/0
+        await e.reply(result.message + this._reportFooter())
+        return true
+      }
+      let report = `--- 注册签到报告 ---\n注册签到成功: ${successCount}/${total}\n注册签到失败: ${failCount}/${total}`
+      // 增量注册明细（仅当有新增/更新时有意义）
+      if (result.created > 0 && result.updated > 0) report += `\n（新增 ${result.created} 个账号，更新 ${result.updated} 个账号）`
+      else if (result.created > 0) report += `\n（新增 ${result.created} 个账号）`
+      else if (result.updated > 0) report += `\n（更新 ${result.updated} 个账号）`
+      await e.reply(report + this._reportFooter())
+    } finally {
+      setAutoSigninRunning(false)
+    }
     return true
   }
 
@@ -127,67 +135,75 @@ export class MysSigninApp extends plugin {
       return true
     }
 
-    // 权限检查：master 或群管理
-    if (!e.isMaster) {
-      const group = e.group || Bot.pickGroup(e.group_id)
-      try {
-        const member = await group?.pickMember(e.user_id)?.getInfo()
-        if (!member || (member.role !== 'owner' && member.role !== 'admin')) {
-          await e.reply('仅群主/管理员可执行此操作')
+    if (!tryAcquireAutoSignin()) {
+      await e.reply('签到/注册任务正在执行中，请稍后再试')
+      return true
+    }
+
+    try {
+      // 权限检查：master 或群管理
+      if (!e.isMaster) {
+        const group = e.group || Bot.pickGroup(e.group_id)
+        try {
+          const member = await group?.pickMember(e.user_id)?.getInfo()
+          if (!member || (member.role !== 'owner' && member.role !== 'admin')) {
+            await e.reply('仅群主/管理员可执行此操作')
+            return true
+          }
+        } catch {
+          await e.reply('权限检查失败，请稍后重试')
           return true
         }
-      } catch {
-        await e.reply('权限检查失败，请稍后重试')
+      }
+
+      await e.reply('正在获取群成员列表并注册签到...')
+
+      // 获取群成员
+      let memberIds = []
+      try {
+        const group = e.group || Bot.pickGroup(e.group_id)
+        const memberMap = await group.getMemberMap()
+        memberIds = [...memberMap.keys()].filter(id => String(id) !== String(Bot.uin))
+      } catch (err) {
+        logger?.error(`${SIGNIN_LOG_PREFIX} 获取群成员失败: ${err.message}`)
+        await e.reply('获取群成员列表失败')
         return true
       }
+
+      if (memberIds.length === 0) {
+        await e.reply('群成员列表为空')
+        return true
+      }
+
+      await e.reply(`共 ${memberIds.length} 名成员，开始注册（可能需要几分钟）...`)
+      const result = await registerGroupMembers(memberIds)
+      let report = `--- 注册本群签到报告 ---\n注册签到成功: ${result.success}/${result.total}\n注册签到失败: ${result.failed.length}/${result.total}`
+      if (result.skipped > 0) report += `\n无变更（已注册）: ${result.skipped} 人`
+      await e.reply(report + this._reportFooter())
+    } finally {
+      setAutoSigninRunning(false)
     }
-
-    await e.reply('正在获取群成员列表并注册签到...')
-
-    // 获取群成员
-    let memberIds = []
-    try {
-      const group = e.group || Bot.pickGroup(e.group_id)
-      const memberMap = await group.getMemberMap()
-      memberIds = [...memberMap.keys()].filter(id => String(id) !== String(Bot.uin))
-    } catch (err) {
-      logger?.error(`${SIGNIN_LOG_PREFIX} 获取群成员失败: ${err.message}`)
-      await e.reply('获取群成员列表失败')
-      return true
-    }
-
-    if (memberIds.length === 0) {
-      await e.reply('群成员列表为空')
-      return true
-    }
-
-    await e.reply(`共 ${memberIds.length} 名成员，开始注册（可能需要几分钟）...`)
-    const result = await registerGroupMembers(memberIds)
-    let report = `--- 注册本群签到报告 ---\n注册签到成功: ${result.success}/${result.total}\n注册签到失败: ${result.failed.length}/${result.total}`
-    if (result.skipped > 0) report += `\n无变更（已注册）: ${result.skipped} 人`
-    await e.reply(report + this._reportFooter())
     return true
   }
 
   // ==================== #注册所有群签到 ====================
 
   async registerAllCmd (e) {
-    if (isAutoSigninRunning()) {
+    if (!tryAcquireAutoSignin()) {
       await e.reply('签到/注册任务正在执行中，请稍后再试')
       return true
     }
 
-    const allGroupIds = Bot.getGroupList?.() || []
-    const groupIds = allGroupIds.filter(id => /^\d+$/.test(String(id)))
-    if (groupIds.length === 0) {
-      await e.reply('机器人未加入任何群')
-      return true
-    }
-
-    await e.reply(`共 ${groupIds.length} 个群，开始注册所有群成员（可能需要较长时间）...`)
-    setAutoSigninRunning(true)
-
     try {
+      const allGroupIds = Bot.getGroupList?.() || []
+      const groupIds = allGroupIds.filter(id => /^\d+$/.test(String(id)))
+      if (groupIds.length === 0) {
+        await e.reply('机器人未加入任何群')
+        return true
+      }
+
+      await e.reply(`共 ${groupIds.length} 个群，开始注册所有群成员（可能需要较长时间）...`)
+
       const result = await registerAllGroups()
       const totalMembers = result.groups.reduce((s, g) => s + g.total, 0)
       const totalSuccess = result.groups.reduce((s, g) => s + g.success, 0)
@@ -244,20 +260,24 @@ export class MysSigninApp extends plugin {
       return true
     }
 
-    if (isAutoSigninRunning()) {
-      await e.reply('自动签到正在执行中，请稍后再试')
+    if (!tryAcquireAutoSignin()) {
+      await e.reply('签到任务正在执行中，请稍后再试')
       return true
     }
 
-    const configs = listUserConfigs(e.user_id)
-    if (configs.length === 0) {
-      await e.reply('未注册签到\n发送【#注册自动签到】进行注册')
-      return true
-    }
+    try {
+      const configs = listUserConfigs(e.user_id)
+      if (configs.length === 0) {
+        await e.reply('未注册签到\n发送【#注册自动签到】进行注册')
+        return true
+      }
 
-    await e.reply(`开始签到 (共 ${configs.length} 个账号)...`)
-    const result = await signinForUser(e.user_id, false)
-    await e.reply(result.message + this._reportFooter())
+      await e.reply(`开始签到 (共 ${configs.length} 个账号)...`)
+      const result = await signinForUser(e.user_id, false)
+      await e.reply(result.message + this._reportFooter())
+    } finally {
+      setAutoSigninRunning(false)
+    }
     return true
   }
 
@@ -269,21 +289,19 @@ export class MysSigninApp extends plugin {
       return true
     }
 
-    if (isAutoSigninRunning()) {
-      await e.reply('自动签到正在执行中，请勿重复执行')
+    if (!tryAcquireAutoSignin()) {
+      await e.reply('签到任务正在执行中，请勿重复执行')
       return true
     }
-
-    const qqList = listAllRegisteredQQ()
-    if (qqList.length === 0) {
-      await e.reply('暂无已注册签到用户')
-      return true
-    }
-
-    await e.reply(`开始全部签到 (共 ${qqList.length} 个用户)...`)
-    setAutoSigninRunning(true)
 
     try {
+      const qqList = listAllRegisteredQQ()
+      if (qqList.length === 0) {
+        await e.reply('暂无已注册签到用户')
+        return true
+      }
+
+      await e.reply(`开始全部签到 (共 ${qqList.length} 个用户)...`)
       const summary = await signinForAll(false)
       const report = formatSummaryReport(summary)
       await e.reply(report + this._reportFooter())
@@ -296,9 +314,18 @@ export class MysSigninApp extends plugin {
   // ==================== #刷新自动签到 ====================
 
   async refreshCookieCmd (e) {
-    await e.reply('正在刷新签到 cookie...')
-    const result = await refreshUserCookies(e.user_id)
-    await e.reply(result.message + this._reportFooter())
+    if (!tryAcquireAutoSignin()) {
+      await e.reply('签到/刷新任务正在执行中，请稍后再试')
+      return true
+    }
+
+    try {
+      await e.reply('正在刷新签到 cookie...')
+      const result = await refreshUserCookies(e.user_id)
+      await e.reply(result.message + this._reportFooter())
+    } finally {
+      setAutoSigninRunning(false)
+    }
     return true
   }
 
@@ -313,16 +340,34 @@ export class MysSigninApp extends plugin {
   // ==================== #删除签到 ====================
 
   async deleteSigninCmd (e) {
-    const result = await deleteUserSigninConfigs(e.user_id)
-    await e.reply(result.message)
+    if (!tryAcquireAutoSignin()) {
+      await e.reply('签到/刷新任务正在执行中，请稍后再试')
+      return true
+    }
+
+    try {
+      const result = await deleteUserSigninConfigs(e.user_id)
+      await e.reply(result.message)
+    } finally {
+      setAutoSigninRunning(false)
+    }
     return true
   }
 
   // ==================== #删除stoken ====================
 
   async deleteStokenCmd (e) {
-    const result = await deleteUserStoken(e.user_id)
-    await e.reply(result.message)
+    if (!tryAcquireAutoSignin()) {
+      await e.reply('签到/刷新任务正在执行中，请稍后再试')
+      return true
+    }
+
+    try {
+      const result = await deleteUserStoken(e.user_id)
+      await e.reply(result.message)
+    } finally {
+      setAutoSigninRunning(false)
+    }
     return true
   }
 
@@ -332,13 +377,22 @@ export class MysSigninApp extends plugin {
     const cfg = getSigninConfig()
     if (!cfg.enable) return true
 
-    logger?.info(`${SIGNIN_LOG_PREFIX} 定时刷新cookie开始`)
-    const result = await refreshAllUserCookies()
-    logger?.info(`${SIGNIN_LOG_PREFIX} 定时刷新cookie完成: ${result.message}`)
+    if (!tryAcquireAutoSignin()) {
+      logger?.warn(`${SIGNIN_LOG_PREFIX} 定时刷新cookie跳过: 签到/刷新任务正在执行中`)
+      return true
+    }
 
-    if (cfg.notifyGroup && result.total > 0) {
-      const { header, failedUsers } = buildRefreshReport(result)
-      await this._sendReport(header, failedUsers)
+    try {
+      logger?.info(`${SIGNIN_LOG_PREFIX} 定时刷新cookie开始`)
+      const result = await refreshAllUserCookies()
+      logger?.info(`${SIGNIN_LOG_PREFIX} 定时刷新cookie完成: ${result.message}`)
+
+      if (cfg.notifyGroup && result.total > 0) {
+        const { header, failedUsers } = buildRefreshReport(result)
+        await this._sendReport(header, failedUsers)
+      }
+    } finally {
+      setAutoSigninRunning(false)
     }
     return true
   }
@@ -352,22 +406,21 @@ export class MysSigninApp extends plugin {
       return true
     }
 
-    if (isAutoSigninRunning()) {
-      logger?.warn(`${SIGNIN_LOG_PREFIX} 自动签到已在执行中，跳过`)
+    // 在任何 await（含随机延迟）之前原子占锁，避免延迟窗口内双跑
+    if (!tryAcquireAutoSignin()) {
+      logger?.warn(`${SIGNIN_LOG_PREFIX} 自动签到跳过: 签到/刷新任务正在执行中`)
       return true
     }
 
-    // 随机延迟
-    if (cfg.randomDelayMin > 0) {
-      const delay = Math.floor(Math.random() * cfg.randomDelayMin * 60000)
-      logger?.info(`${SIGNIN_LOG_PREFIX} 随机延迟 ${(delay / 1000).toFixed(0)}s 后开始`)
-      await new Promise(resolve => setTimeout(resolve, delay))
-    }
-
-    logger?.info(`${SIGNIN_LOG_PREFIX} 自动签到开始`)
-    setAutoSigninRunning(true)
-
     try {
+      // 随机延迟
+      if (cfg.randomDelayMin > 0) {
+        const delay = Math.floor(Math.random() * cfg.randomDelayMin * 60000)
+        logger?.info(`${SIGNIN_LOG_PREFIX} 随机延迟 ${(delay / 1000).toFixed(0)}s 后开始`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+
+      logger?.info(`${SIGNIN_LOG_PREFIX} 自动签到开始`)
       const summary = await signinForAll(true)
 
       // 发送签到汇总通知
@@ -448,10 +501,11 @@ export class MysSigninApp extends plugin {
         try {
           const group = Bot.pickGroup(groupId.trim())
           if (!group) continue
-          // 群成员集合（判断 @ 是否有效）
+          // 群成员集合（判断 @ 是否有效）：key 类型各适配器可能不同（number/string），统一规范化为字符串 Set
           let memberMap = null
           try { memberMap = await group.getMemberMap() } catch { /* 成员拉取失败降级为 QQ 号 */ }
-          const isMember = memberMap ? (qq) => memberMap.has(String(qq)) : () => false
+          const memberSet = memberMap ? new Set([...memberMap.keys()].map(String)) : null
+          const isMember = memberSet ? (qq) => memberSet.has(String(qq)) : () => false
 
           const segments = [{ type: 'text', text: header }]
           for (const u of failedUsers) {

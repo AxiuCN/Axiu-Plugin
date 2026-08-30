@@ -74,31 +74,33 @@ class StokenStore {
     }
   }
 
-  /** 保存/合并 stoken 数据 */
+  /** 保存/合并 stoken 数据
+   *  同步 read-modify-write：事件循环内不交错，避免回调式 fs.exists 下
+   *  首绑多角色（原神+星铁并发保存）时前一次写入被空文件初始化截断的丢数据竞态
+   */
   saveBingStoken (userId, data) {
     const file = `./plugins/${plugin}/data/stoken/${userId}.yaml`
     if (lodash.isEmpty(data)) {
       fs.existsSync(file) && fs.unlinkSync(file)
-    } else {
-      // 确保目录存在
-      const dir = `./plugins/${plugin}/data/stoken/`
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+      return
+    }
+    // 确保目录存在
+    const dir = `./plugins/${plugin}/data/stoken/`
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
 
-      fs.exists(file, (exists) => {
-        if (!exists) {
-          fs.writeFileSync(file, '', 'utf8')
-        }
-        let ck = fs.readFileSync(file, 'utf-8')
-        const yaml = YAML.stringify(data)
-        ck = YAML.parse(ck)
-        if (ck?.uid || !ck) {
-          fs.writeFileSync(file, yaml, 'utf8')
-        } else {
-          // 对象合并后整体序列化（原实现 yaml + ck 字符串拼接会生成非法多文档 YAML，YAML.parse 只取首文档导致前序键丢失）
-          Object.assign(ck, data)
-          fs.writeFileSync(file, YAML.stringify(ck), 'utf8')
-        }
-      })
+    let ck = {}
+    if (fs.existsSync(file)) {
+      try {
+        ck = YAML.parse(fs.readFileSync(file, 'utf8')) || {}
+      } catch { ck = {} }
+    }
+    if (ck?.uid || Object.keys(ck).length === 0) {
+      // 空文件/旧结构：整体写入新数据
+      fs.writeFileSync(file, YAML.stringify(data), 'utf8')
+    } else {
+      // 对象合并后整体序列化（原实现 yaml + ck 字符串拼接会生成非法多文档 YAML，YAML.parse 只取首文档导致前序键丢失）
+      Object.assign(ck, data)
+      fs.writeFileSync(file, YAML.stringify(ck), 'utf8')
     }
   }
 

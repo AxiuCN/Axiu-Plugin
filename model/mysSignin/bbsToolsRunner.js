@@ -73,9 +73,13 @@ function runSingleSignin (options) {
     let stdout = ''
     let stderr = ''
 
+    // 输出有界尾部缓冲：异常/恶意 Python 持续输出时内存不无限增长（保留最近 64KB）
+    const MAX_OUTPUT = 64 * 1024
+    const appendBounded = (buf, text) => (buf + text).slice(-MAX_OUTPUT)
+
     proc.stdout.on('data', (data) => {
       const text = data.toString()
-      stdout += text
+      stdout = appendBounded(stdout, text)
       // Python 签到详细输出写入文件日志，避免刷屏云崽运行日志
       if (text.trim()) {
         writeSigninLog(`[QQ=${userId} #${profileN}] ${text.trim()}`)
@@ -84,7 +88,7 @@ function runSingleSignin (options) {
 
     proc.stderr.on('data', (data) => {
       const text = data.toString()
-      stderr += text
+      stderr = appendBounded(stderr, text)
       // MihoyoBBSTools 使用 Python logging 模块，默认输出到 stderr
       // 这些都是正常业务日志（签到进度、任务状态等），同样写入文件日志
       if (text.trim()) {
@@ -93,17 +97,28 @@ function runSingleSignin (options) {
     })
 
     const timeoutMs = 600000 // 10 分钟
-    const timer = setTimeout(() => {
-      logger?.error(`${SIGNIN_LOG_PREFIX} 签到超时: QQ=${userId} n=${profileN}`)
-      proc.kill('SIGTERM')
+    let settled = false
+    const settleOnce = (result) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
       if (captchaBridge) captchaBridge.stop()
       cleanupDir()
-      resolve({ ok: false, statusCode: -1, message: '签到超时（10分钟）' })
+      resolve(result)
+    }
+
+    const timer = setTimeout(() => {
+      logger?.error(`${SIGNIN_LOG_PREFIX} 签到超时: QQ=${userId} n=${profileN}`)
+      // TERM → 等待 → KILL：进程可能忽略 SIGTERM 或卡在阻塞 IO
+      proc.kill('SIGTERM')
+      const killer = setTimeout(() => {
+        try { proc.kill('SIGKILL') } catch { /* 进程已结束 */ }
+      }, 5000)
+      if (killer.unref) killer.unref()
+      settleOnce({ ok: false, statusCode: -1, message: '签到超时（10分钟）' })
     }, timeoutMs)
 
     proc.on('close', (code) => {
-      clearTimeout(timer)
-
       // 先停止过码桥接（不再需要轮询），保留临时目录以便读取 result.json
       if (captchaBridge) captchaBridge.stop()
 
@@ -114,15 +129,13 @@ function runSingleSignin (options) {
           logger?.info(
             `${SIGNIN_LOG_PREFIX} 签到完成: QQ=${userId} n=${profileN} ok=${result.ok} code=${result.statusCode}`
           )
-          cleanupDir()
-          resolve(result)
+          settleOnce(result)
         } else if (code === 0) {
           // Python 正常退出但无 result.json：日志中已输出签到结果，视为成功
           logger?.info(
             `${SIGNIN_LOG_PREFIX} 签到完成(无result文件): QQ=${userId} n=${profileN} exit=0`
           )
-          cleanupDir()
-          resolve({
+          settleOnce({
             ok: true,
             statusCode: 0,
             message: stdout.slice(-500) || '签到完成（详见日志）'
@@ -131,8 +144,7 @@ function runSingleSignin (options) {
           logger?.error(
             `${SIGNIN_LOG_PREFIX} 签到异常: QQ=${userId} n=${profileN} exit=${code} 无结果文件`
           )
-          cleanupDir()
-          resolve({
+          settleOnce({
             ok: false,
             statusCode: code || -1,
             message: stderr.slice(-500) || stdout.slice(-500) || '未知错误（无输出）'
@@ -140,17 +152,13 @@ function runSingleSignin (options) {
         }
       } catch (err) {
         logger?.error(`${SIGNIN_LOG_PREFIX} 解析结果失败: ${err.message}`)
-        cleanupDir()
-        resolve({ ok: false, statusCode: -1, message: `结果解析失败: ${err.message}` })
+        settleOnce({ ok: false, statusCode: -1, message: `结果解析失败: ${err.message}` })
       }
     })
 
     proc.on('error', (err) => {
-      clearTimeout(timer)
-      if (captchaBridge) captchaBridge.stop()
-      cleanupDir()
       logger?.error(`${SIGNIN_LOG_PREFIX} 启动Python失败: ${err.message}`)
-      resolve({
+      settleOnce({
         ok: false,
         statusCode: -1,
         message: `Python 启动失败: ${err.message}\n请检查 signin.pythonCommand 配置（当前: ${signinCfg.pythonCommand}）`

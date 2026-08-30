@@ -2,6 +2,7 @@
  *  - 写入 pluginRoot/log/signin-{date}.log
  *  - 首次写入时清理 7 天前的旧日志
  *  - Python 签到详细输出写到此日志，不在云崽运行日志中刷屏
+ *  - 异步串行队列写入（promise 链），避免 Python 高频输出时同步阻塞事件循环
  */
 
 import fs from 'node:fs'
@@ -14,6 +15,7 @@ const pluginRoot = path.join(__dirname, '..')
 const LOG_DIR = path.join(pluginRoot, 'log')
 
 let _cleaned = false
+let _queue = Promise.resolve()
 
 /** 确保日志目录存在 */
 function ensureLogDir () {
@@ -42,14 +44,19 @@ function cleanOldLogs () {
 }
 
 /**
- * 写入一行签到日志到当日文件
+ * 写入一行签到日志到当日文件（异步串行队列，写失败不抛出，不影响签到主流程）
  * @param {string} text - 日志内容
  */
 export function writeSigninLog (text) {
-  ensureLogDir()
-  cleanOldLogs()
-  const today = new Date().toISOString().slice(0, 10)
-  const logPath = path.join(LOG_DIR, `signin-${today}.log`)
-  const ts = new Date().toISOString().replace('T', ' ').slice(0, 19)
-  fs.appendFileSync(logPath, `[${ts}] ${text}\n`, 'utf8')
+  try {
+    ensureLogDir()
+    cleanOldLogs()
+    const today = new Date().toISOString().slice(0, 10)
+    const logPath = path.join(LOG_DIR, `signin-${today}.log`)
+    const ts = new Date().toISOString().replace('T', ' ').slice(0, 19)
+    const line = `[${ts}] ${text}\n`
+    _queue = _queue
+      .then(() => fs.promises.appendFile(logPath, line, 'utf8'))
+      .catch(() => { /* 日志写失败不影响签到主流程 */ })
+  } catch { /* 日志路径异常同样不影响签到 */ }
 }

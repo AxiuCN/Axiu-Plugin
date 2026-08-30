@@ -54,7 +54,8 @@ async function refreshCookie (userId, st) {
 
     const res = await qrUser.getData('bbsGetCookie', { cookies }, false)
     if (!res?.data?.cookie_token) {
-      const stokenInvalid = /(登录|login)/i.test(res?.message || '')
+      // 仅当消息明确表达"登录凭证失效"才判定 stoken 失效（收窄判定，避免"登录服务繁忙"等临时错误误删）
+      const stokenInvalid = /((登录|login).*(失效|过期|无效|invalid|expired))|((失效|过期|无效|invalid|expired).*(登录|login))|请重新登录/i.test(res?.message || '')
       if (stokenInvalid) {
         logger?.warn(
           `${SIGNIN_LOG_PREFIX} bbsGetCookie stoken失效: uid=${st.uid} ` +
@@ -646,14 +647,17 @@ async function initEnvironment () {
   }
 
   // 3. 安装 Python 依赖（自动处理 pip 缺失 / PEP 668 / 网络镜像，失败透出真实错误）
+  let depOk = true
   const reqPath = `${pluginRoot}/tool/MihoyoBBSTools/MihoyoBBSTools/requirements.txt`
   if (!fs.existsSync(reqPath)) {
+    depOk = false
     parts.push('依赖安装未通过: 未找到 requirements.txt（子模块拉取可能失败，请检查网络后重试）')
   } else {
     const depRes = installPythonDeps(pythonCmd, reqPath)
     if (depRes.ok) {
       parts.push(`Python 依赖安装完成${depRes.notes.length ? `（${depRes.notes.join('；')}）` : ''}`)
     } else {
+      depOk = false
       parts.push(
         `依赖安装未通过\n${depRes.notes.join('\n')}${depRes.notes.length ? '\n' : ''}错误输出(尾部):\n${depRes.error}`
       )
@@ -667,7 +671,7 @@ async function initEnvironment () {
     parts.push('签到配置目录已创建')
   }
 
-  return { ok: true, message: parts.join('\n') }
+  return { ok: depOk, message: parts.join('\n') }
 }
 
 // ==================== 状态查询 ====================
@@ -803,6 +807,17 @@ let _autoSigninRunning = false
 function isAutoSigninRunning () { return _autoSigninRunning }
 function setAutoSigninRunning (v) { _autoSigninRunning = v }
 
+/**
+ * 原子获取批量任务互斥锁（检查+设置无 await 间隔，避免并发任务双跑）
+ * 调用前不得有任何 await —— 先占锁再执行后续异步流程
+ * @returns {boolean} 是否成功获取锁
+ */
+function tryAcquireAutoSignin () {
+  if (_autoSigninRunning) return false
+  _autoSigninRunning = true
+  return true
+}
+
 export {
   SIGNIN_LOG_PREFIX,
   refreshCookie,
@@ -822,5 +837,6 @@ export {
   buildSigninReport,
   buildRefreshReport,
   isAutoSigninRunning,
-  setAutoSigninRunning
+  setAutoSigninRunning,
+  tryAcquireAutoSignin
 }

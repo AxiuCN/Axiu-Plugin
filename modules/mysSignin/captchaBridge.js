@@ -21,8 +21,15 @@ import { SIGNIN_LOG_PREFIX } from '../../components/constants.js'
 /** 轮询间隔 (ms) */
 const POLL_INTERVAL = 500
 
-/** 内部轮询通用工具 */
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+/** 可中断 sleep（stop 时立即返回） */
+const sleep = (ms, signal) => new Promise((resolve) => {
+  if (signal?.aborted) return resolve()
+  const t = setTimeout(resolve, ms)
+  signal?.addEventListener('abort', () => {
+    clearTimeout(t)
+    resolve()
+  }, { once: true })
+})
 
 /**
  * 过码桥接器
@@ -39,6 +46,7 @@ export class CaptchaBridge {
     this._timer = null
     this._running = false
     this._processed = new Set() // 已处理的 request id
+    this._abort = null // AbortController：stop 时中断进行中的 fetch/轮询
   }
 
   /** 开始监控指定目录 */
@@ -47,6 +55,7 @@ export class CaptchaBridge {
     this._captchaDir = captchaDir
     this._running = true
     this._processed.clear()
+    this._abort = new AbortController()
     this._poll()
   }
 
@@ -57,6 +66,9 @@ export class CaptchaBridge {
       clearTimeout(this._timer)
       this._timer = null
     }
+    // 中断进行中的 fetch 与轮询 sleep（_solveCaptcha 各 fetch 已传 signal）
+    this._abort?.abort()
+    this._abort = null
     this._captchaDir = null
   }
 
@@ -140,7 +152,7 @@ export class CaptchaBridge {
   async _solveViaTestNine (gt, challenge, apiCfg) {
     const url = `${apiCfg.api}?gt=${encodeURIComponent(gt)}&challenge=${encodeURIComponent(challenge)}`
     logger?.info(`${SIGNIN_LOG_PREFIX} [过码] test_nine 请求: ${url}`)
-    const res = await fetch(url, { timeout: 30000 })
+    const res = await fetch(url, { timeout: 30000, signal: this._abort?.signal })
     const data = await res.json()
     if (data?.data?.validate) {
       return { ok: true, challenge, validate: data.data.validate }
@@ -156,7 +168,8 @@ export class CaptchaBridge {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: config,
-      timeout: 30000
+      timeout: 30000,
+      signal: this._abort?.signal
     })
     const recognizeData = await recognizeRes.json()
     if (!recognizeData?.resultid) {
@@ -166,9 +179,10 @@ export class CaptchaBridge {
 
     // 轮询结果（最多 10 次，每次 5s）
     for (let i = 0; i < 10; i++) {
-      await sleep(5000)
+      await sleep(5000, this._abort?.signal)
+      if (this._abort?.signal?.aborted) break
       const resultUrl = `${apiCfg.resapi}?${apiCfg.key}&resultid=${recognizeData.resultid}`
-      const resultRes = await fetch(resultUrl, { timeout: 10000 })
+      const resultRes = await fetch(resultUrl, { timeout: 10000, signal: this._abort?.signal })
       const resultData = await resultRes.json()
       if (resultData?.status === 1) {
         // status 1 = 成功
@@ -183,7 +197,7 @@ export class CaptchaBridge {
   /** 2captcha.com */
   async _solveVia2captcha (gt, challenge, apiCfg) {
     const inUrl = `${apiCfg.api}?${apiCfg.key}&${apiCfg.query}&gt=${gt}&challenge=${challenge}`
-    const inRes = await fetch(inUrl, { timeout: 30000 })
+    const inRes = await fetch(inUrl, { timeout: 30000, signal: this._abort?.signal })
     const inData = await inRes.json()
     if (!inData?.request) {
       logger?.warn(`${SIGNIN_LOG_PREFIX} [过码] 2captcha in 无 request: ${JSON.stringify(inData)}`)
@@ -192,9 +206,10 @@ export class CaptchaBridge {
 
     // 轮询结果（最多 10 次，每次 5s）
     for (let i = 0; i < 10; i++) {
-      await sleep(5000)
+      await sleep(5000, this._abort?.signal)
+      if (this._abort?.signal?.aborted) break
       const resUrl = `${apiCfg.resapi}?${apiCfg.key}&${apiCfg.resquery}&id=${inData.request}`
-      const resRes = await fetch(resUrl, { timeout: 10000 })
+      const resRes = await fetch(resUrl, { timeout: 10000, signal: this._abort?.signal })
       const resData = await resRes.json()
       if (resData?.request === 'CAPCHA_NOT_READY') continue
       if (resData?.request?.geetest_validate) {
