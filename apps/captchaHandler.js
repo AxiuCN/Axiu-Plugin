@@ -35,18 +35,18 @@ export class CaptchaHandler extends plugin {
       return reject()
     }
 
-    // 校验配置完整性
+    // 校验配置完整性（任一必填字段缺失即拒绝，避免部分配置仍发起畸形请求）
     const apiCfg = gsCfg.api
-    let apiCheck
+    const missing = []
     if (apiCfg.type == 0) {
-      apiCheck = !apiCfg.api
+      if (!apiCfg.api) missing.push('api')
     } else if (apiCfg.type == 1) {
-      apiCheck = !apiCfg.api && !apiCfg.resapi && !apiCfg.key && !apiCfg.query
+      for (const f of ['api', 'resapi', 'key', 'query']) if (!apiCfg[f]) missing.push(f)
     } else if (apiCfg.type == 2) {
-      apiCheck = !apiCfg.api && !apiCfg.resapi && !apiCfg.key && !apiCfg.query && !apiCfg.resquery
+      for (const f of ['api', 'resapi', 'key', 'query', 'resquery']) if (!apiCfg[f]) missing.push(f)
     }
-    if ([1, 2].includes(apiCfg.GtestType) && apiCheck) {
-      return reject('loveMys: 未正确填写配置文件[api.yaml]')
+    if ([1, 2].includes(apiCfg.GtestType) && missing.length > 0) {
+      return reject(`loveMys: 未正确填写配置文件[api.yaml]，缺失字段: ${missing.join(', ')}`)
     }
 
     // 过码并重放请求

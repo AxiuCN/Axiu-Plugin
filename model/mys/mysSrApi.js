@@ -199,7 +199,8 @@ export default class MysSrApi extends MysApi {
     const param = {
       headers,
       agent: await this.getAgent(),
-      timeout: 10000
+      // 宿主 fetch 为自实现（undici），timeout 选项会被静默忽略，改用 AbortSignal 超时
+      signal: AbortSignal.timeout(10000)
     }
     if (body) {
       param.method = 'post'

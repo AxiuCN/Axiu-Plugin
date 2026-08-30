@@ -9,6 +9,7 @@ import fs from 'node:fs'
 import YAML from 'yaml'
 import * as mys from './passportTool.js'
 import * as utils from './passportUtils.js'
+import { maskSecrets, maskUrl } from '../../components/maskSecrets.js'
 
 const DEVICE_ID = utils.randomString(32).toUpperCase()
 const DEVICE_NAME = utils.randomString(_.random(1, 10))
@@ -98,7 +99,8 @@ export default class PassportApi {
 
     const param = {
       headers,
-      timeout: 10000
+      // 宿主 fetch 为自实现（undici），timeout 选项会被静默忽略，改用 AbortSignal 超时
+      signal: AbortSignal.timeout(10000)
     }
 
     if (body) {
@@ -138,7 +140,8 @@ export default class PassportApi {
     }
 
     if (res.retcode !== 0) {
-      logger.debug(`[passportApi][请求参数] ${url} ${JSON.stringify(param)}`)
+      // 脱敏后再记录（URL 查询串可能含 stoken/login_ticket/game_token，param 含 Cookie 头）
+      logger.debug(`[passportApi][请求参数] ${maskUrl(url)} ${JSON.stringify(maskSecrets(param))}`)
     }
 
     res.api = type

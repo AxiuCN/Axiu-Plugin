@@ -1,5 +1,6 @@
 import fetch from 'node-fetch'
 import MysApi from './mys/mysApi.js'
+import { maskSecrets, maskUrl } from '../components/maskSecrets.js'
 
 export default class getDeviceFp {
   static async Fp(uid, ck, game) {
@@ -35,7 +36,8 @@ export default class getDeviceFp {
         body: sdk.body
       })
       const fpRes = await res.json()
-      logger.debug(`[米游社][设备指纹]${JSON.stringify(fpRes)}`)
+      // 脱敏后再写日志（fpRes 可能含设备 id/指纹等敏感字段）
+      logger.debug(`[米游社][设备指纹]${JSON.stringify(maskSecrets(fpRes))}`)
       deviceFp = fpRes?.data?.device_fp
       if (!deviceFp) {
         return { deviceFp: null }
@@ -50,7 +52,8 @@ export default class getDeviceFp {
         if (!!deviceLogin && !!saveDevice) {
           logger.debug(`[米游社][设备登录]保存设备信息`)
           try {
-            logger.debug(`[米游社][设备登录]${JSON.stringify(deviceLogin)}`)
+            // 脱敏 URL 与响应后再写日志（deviceLogin 的 headers 含 Cookie，result 含设备凭据）
+            logger.debug(`[米游社][设备登录]${maskUrl(deviceLogin.url)}`)
             const login = await fetch(deviceLogin.url, {
               headers: deviceLogin.headers,
               method: 'POST',
@@ -62,7 +65,7 @@ export default class getDeviceFp {
               body: saveDevice.body
             })
             const result = await Promise.all([login.json(), save.json()])
-            logger.debug(`[米游社][设备登录]${JSON.stringify(result)}`)
+            logger.debug(`[米游社][设备登录]${JSON.stringify(maskSecrets(result))}`)
           } catch (error) {
             logger.error(`[米游社][设备登录]${error.message}`)
           }

@@ -53,19 +53,15 @@ export class GachaLogApp extends plugin {
   // ==================== 命令1: #更新抽卡记录（从 qrLogin 迁移，仅保留更新） ====================
 
   async gachaLog (e) {
+    // 任务开始前原子占锁（SET NX EX），并发重复命令只有一个能执行
+    const lockKey = `Axiu-Plugin:gachaLog:update:${e.user_id}`
+    if (!await tryAcquireGachaLock(lockKey)) {
+      e.reply(`请求过快，请${await gachaLockRemaining(lockKey) || 5 * 60}秒后重试...`)
+      return true
+    }
+
     const user = new QrUser(e)
     await user.cookie(e)
-
-    // 频率限制
-    const lockKey = `Axiu-Plugin:gachaLog:update:${e.user_id}`
-    const lockData = await redis.get(lockKey)
-    if (lockData) {
-      const remaining = Math.ceil((JSON.parse(lockData).expire - Date.now() / 1000))
-      if (remaining > 0) {
-        e.reply(`请求过快，请${remaining}秒后重试...`)
-        return true
-      }
-    }
 
     // 获取 authkey
     if (!e.uid) {
@@ -94,26 +90,19 @@ export class GachaLogApp extends plugin {
       logger.error(`${LOG_PREFIX} 更新抽卡记录失败: ${err.message}`)
       e.reply(`更新抽卡记录失败：${err.message}`)
     }
-
-    // 频率限制缓存（5 分钟）
-    const lockEx = 5 * 60
-    redis.set(lockKey, JSON.stringify({ expire: Math.floor(Date.now() / 1000) + lockEx }), { EX: lockEx })
     return true
   }
 
   // ==================== 命令2: #更新小助手抽卡记录（从天如移植） ====================
 
   async gachaLogAssistant (e) {
-    // 频率限制
+    // 任务开始前原子占锁
     const lockKey = `Axiu-Plugin:gachaLog:assistant:${e.user_id}`
-    const lockData = await redis.get(lockKey)
-    if (lockData) {
-      const remaining = Math.ceil((JSON.parse(lockData).expire - Date.now() / 1000))
-      if (remaining > 0) {
-        e.reply(`请求过快，请${remaining}秒后重试...`)
-        return true
-      }
+    if (!await tryAcquireGachaLock(lockKey)) {
+      e.reply(`请求过快，请${await gachaLockRemaining(lockKey) || 5 * 60}秒后重试...`)
+      return true
     }
+    this.e._lockKey = lockKey
 
     // 用户提供了抽卡链接 → 解析链接获取 authkey
     const urlMatch = /https.*/.exec(this.e.msg)
@@ -122,7 +111,7 @@ export class GachaLogApp extends plugin {
         this.e.uid = e?.runtime?.user?._regUid || await getUidFromNoteUser(this.e)
       }
       this.e.msg = urlMatch[0]
-      this.logUrl(e)
+      await this.logUrl(e)
       return true
     }
 
@@ -142,8 +131,7 @@ export class GachaLogApp extends plugin {
     }
 
     this.e.authkey = authkey
-    this.e._lockKey = lockKey
-    this._getGcLog(e)
+    await this._getGcLog(e)
     return true
   }
 
@@ -168,8 +156,7 @@ export class GachaLogApp extends plugin {
     }
     this.e.authkey = param.authkey
     this.e.region = param.region
-    this.e._lockKey = `Axiu-Plugin:gachaLog:assistant:${e.user_id}`
-    this._getGcLog(e)
+    await this._getGcLog(e)
     this.finish('logUrl')
   }
 
@@ -188,7 +175,8 @@ export class GachaLogApp extends plugin {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `uid=${this.e.uid}&gachaurl=${encodeURIComponent(gachaURL)}&lang=zh-Hans`,
-        timeout: 10000
+        // 宿主 fetch 为自实现（undici），timeout 选项会被静默忽略，改用 AbortSignal 超时
+        signal: AbortSignal.timeout(10000)
       })
     } catch (err) {
       logger?.error(`${LOG_PREFIX}[小助手] 请求 lelaer.com 失败: ${err.message}`)
@@ -249,13 +237,6 @@ export class GachaLogApp extends plugin {
     msg.push('导入成功')
     msg.push('您还可回复\n【#全部记录】统计全部抽卡数据\n【#武器记录】统计武器池数据\n【#角色统计】按卡池统计数据\n【#导出记录】导出记录数据')
     await this.e.reply(msg.join('\n'))
-
-    // 频率限制缓存（5 分钟）
-    const lockKey = this.e._lockKey
-    if (lockKey) {
-      const lockEx = 5 * 60
-      redis.set(lockKey, JSON.stringify({ expire: Math.floor(Date.now() / 1000) + lockEx }), { EX: lockEx })
-    }
   }
 
   // ==================== 命令3: #获取抽卡链接（仅私聊） ====================
@@ -266,15 +247,11 @@ export class GachaLogApp extends plugin {
       return true
     }
 
-    // 频率限制
+    // 任务开始前原子占锁
     const lockKey = `Axiu-Plugin:gachaLog:getUrl:${e.user_id}`
-    const lockData = await redis.get(lockKey)
-    if (lockData) {
-      const remaining = Math.ceil((JSON.parse(lockData).expire - Date.now() / 1000))
-      if (remaining > 0) {
-        e.reply(`请求过快，请${remaining}秒后重试...`)
-        return true
-      }
+    if (!await tryAcquireGachaLock(lockKey)) {
+      e.reply(`请求过快，请${await gachaLockRemaining(lockKey) || 5 * 60}秒后重试...`)
+      return true
     }
 
     if (!e.uid) {
@@ -291,14 +268,34 @@ export class GachaLogApp extends plugin {
     const url = `https://hk4e-api.mihoyo.com/event/gacha_info/api/getGachaLog?authkey_ver=1&sign_type=2&auth_appid=webview_gacha&init_type=301&gacha_id=fecafa7b6560db5f3182222395d88aaa6aaac1bc&timestamp=${Math.floor(Date.now() / 1000)}&lang=zh-cn&device_type=mobile&plat_type=ios&region=${e.region}&authkey=${encodeURIComponent(authkey)}&game_biz=hk4e_cn&gacha_type=301&page=1&size=5&end_id=0`
 
     e.reply(`uid:${e.uid}\n抽卡链接：\n${url}`)
-
-    const lockEx = 5 * 60
-    redis.set(lockKey, JSON.stringify({ expire: Math.floor(Date.now() / 1000) + lockEx }), { EX: lockEx })
     return true
   }
 }
 
 // ==================== 工具函数 ====================
+
+/** 原子占锁（SET NX EX）：任务开始前调用，防并发重复请求 */
+async function tryAcquireGachaLock (lockKey) {
+  const lockEx = 5 * 60
+  const ok = await redis.set(lockKey, JSON.stringify({ expire: Date.now() / 1000 + lockEx }), {
+    EX: lockEx,
+    NX: true
+  })
+  return ok === 'OK'
+}
+
+/** 读取锁剩余秒数（容错：旧格式/损坏值返回 0） */
+async function gachaLockRemaining (lockKey) {
+  try {
+    const lockData = await redis.get(lockKey)
+    if (!lockData) return 0
+    const expire = JSON.parse(lockData).expire
+    if (typeof expire !== 'number') return 0
+    return Math.ceil(expire - Date.now() / 1000)
+  } catch {
+    return 0
+  }
+}
 
 /** 通过 NoteUser 获取绑定的 UID */
 async function getUidFromNoteUser (e) {

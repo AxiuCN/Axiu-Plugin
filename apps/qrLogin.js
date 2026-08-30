@@ -9,6 +9,7 @@ import QrUser from '../model/qrUser.js'
 import stokenStore from '../model/stokenStore.js'
 import { getServer } from '../model/mys/passportUtils.js'
 import { render } from '../components/render.js'
+import { getPluginConfig } from '../components/config.js'
 import { LOG_PREFIX } from '../components/constants.js'
 
 export class QrLoginApp extends plugin {
@@ -35,9 +36,18 @@ export class QrLoginApp extends plugin {
     })
   }
 
+  /** 扫码登录开关（fail-closed：关闭时命令直接拒绝） */
+  _qrEnabled () {
+    return getPluginConfig()?.api?.qrLogin_enabled !== false
+  }
+
   // ==================== #扫码登录 ====================
 
   async qrCodeLogin (e) {
+    if (!this._qrEnabled()) {
+      e.reply('扫码登录功能已关闭')
+      return true
+    }
     const qr = new QrLogin(e)
     await qr.init()
 
@@ -143,6 +153,10 @@ export class QrLoginApp extends plugin {
   // ==================== #刷新ck ====================
 
   async updCookie (e) {
+    if (!this._qrEnabled()) {
+      e.reply('扫码登录功能已关闭')
+      return true
+    }
     const stoken = await stokenStore.getUserStoken(e.user_id)
     if (Object.keys(stoken).length === 0) {
       e.reply('请先绑定stoken\n发送【#扫码登录】进行绑定')
