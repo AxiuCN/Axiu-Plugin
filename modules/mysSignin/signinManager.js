@@ -589,7 +589,7 @@ function installPythonDeps (pythonCmd, reqPath) {
       if (attempt.ok) return { ok: true, notes }
       output = attempt.output
     } catch {
-      notes.push('ensurepip 失败，请先安装 python3-pip（如 apt install python3-pip）')
+      notes.push('请在 Linux 服务器终端中手动执行【sudo apt update && sudo apt install -y python3-pip】安装 python3-pip 后再重试')
     }
   }
 
