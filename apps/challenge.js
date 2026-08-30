@@ -17,6 +17,7 @@
 import { render } from '../components/render.js'
 import { getPluginConfig } from '../components/config.js'
 import SrChallengeRank from '../model/srChallengeRank.js'
+import GsChallengeRank from '../model/gsChallengeRank.js'
 import { queryChallenge, recentPeak, getCurrentChallengeType } from '../modules/challenge/srQuery.js'
 import { handleSrRank, handleSrRankReset } from '../modules/challenge/srRank.js'
 import { handleGsRank, handleGsRankReset } from '../modules/challenge/gsRank.js'
@@ -281,8 +282,7 @@ export class ChallengeApp extends plugin {
   async gsAbyssRankManage (e) {
     const enable = e.msg.includes('开启')
     const status = enable ? 1 : 0
-    const GsSrChallengeRank = (await import('../model/gsSrChallengeRank.js')).default
-    await GsSrChallengeRank.setGroupStatus(e.group_id, status)
+    await GsChallengeRank.setGroupStatus(e.group_id, status)
     await e.reply(`已${enable ? '开启' : '关闭'}本群深渊排行功能`)
     return true
   }

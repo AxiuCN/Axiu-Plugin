@@ -587,8 +587,10 @@ export async function gsHardChallengeQuery (e) {
   const periodText = isLast ? '上期' : '本期'
   const isSingle = /单人|单挑/.test(e.msg)
   const isMp = /组队|多人|合作/.test(e.msg)
+  const isBest = /最佳/.test(e.msg)
   let mode = 'single'
-  if (isSingle) mode = 'single'
+  if (isBest) mode = 'best'
+  else if (isSingle) mode = 'single'
   else if (isMp) mode = 'mp'
 
   try {
@@ -631,7 +633,10 @@ export async function gsHardChallengeQuery (e) {
     // 收集角色 ID（只从当前 mode 收集，避免单人与多人命座覆盖）
     const avatarIds = new Set()
     const charLevels = {}
-    const mdKey = mode === 'mp' ? 'mp' : 'single'
+    const bestCalc = (d) => (d?.has_data ? (d.best?.difficulty || 0) * 1000 - (d.best?.second || 0) : 0)
+    let mdKey = 'single'
+    if (mode === 'mp') mdKey = 'mp'
+    else if (mode === 'best') mdKey = bestCalc(rawData.mp) > bestCalc(rawData.single) ? 'mp' : 'single'
     const md = rawData[mdKey]
     if (md?.has_data) {
       const challs = md.best?.challenge || md.challenge || []

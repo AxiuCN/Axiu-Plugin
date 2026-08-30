@@ -69,7 +69,14 @@ export async function queryChallenge (ctx, challengeType, auth) {
 
   const data = { ...challengeData.data }
 
-  if (data.groups && data.groups.length > 1) {
+  // 统一归一化：数组字段默认空数组，避免空记录/短历史时地板访问抛 TypeError
+  data.groups = data.groups || []
+  data.all_floor_detail = data.all_floor_detail || []
+  data.challenge_peak_records = data.challenge_peak_records || []
+  data.peak_records = data.peak_records || {}
+  data.peak_records.mob_records = data.peak_records.mob_records || []
+
+  if (data.groups.length > 1) {
     const activeGroup = scheduleType === '1'
       ? data.groups.find(g => g.status === 'New')
       : data.groups.find(g => g.status === 'End')
@@ -84,8 +91,8 @@ export async function queryChallenge (ctx, challengeType, auth) {
 
   // 时间格式化
   if ([0, 1].includes(challengeType)) {
-    data.beginTime = timeFormat(data.groups[0].begin_time)
-    data.endTime = timeFormat(data.groups[0].end_time)
+    data.beginTime = timeFormat(data.groups[0]?.begin_time)
+    data.endTime = timeFormat(data.groups[0]?.end_time)
   } else if (challengeType === 2) {
     data.beginTime = timeFormat(data.begin_time)
     data.endTime = timeFormat(data.end_time)
@@ -93,18 +100,23 @@ export async function queryChallenge (ctx, challengeType, auth) {
     data.peak_records = last
       ? data.challenge_peak_records[1]
       : data.challenge_peak_records[0]
-    data.beginTime = timeFormat(data.peak_records.group.begin_time)
-    data.endTime = timeFormat(data.peak_records.group.end_time)
+    data.peak_records = data.peak_records || {}
+    data.peak_records.mob_records = data.peak_records.mob_records || []
+    data.beginTime = timeFormat(data.peak_records.group?.begin_time)
+    data.endTime = timeFormat(data.peak_records.group?.end_time)
   }
 
   // 楼层数据格式化
   if (challengeType !== 3) {
-    data.all_floor_detail = data.all_floor_detail.map(floor => ({
-      ...floor,
-      node_1: { ...floor.node_1, ...(floor.node_1.challenge_time && { challengeTime: timeFormat(floor.node_1.challenge_time, true) }) },
-      ...(floor.node_2 && { node_2: { ...floor.node_2, ...(floor.node_2.challenge_time && { challengeTime: timeFormat(floor.node_2.challenge_time, true) }) } }),
-      ...(floor.node_3 && { node_3: { ...floor.node_3, ...(floor.node_3.challenge_time && { challengeTime: timeFormat(floor.node_3.challenge_time, true) }) } })
-    }))
+    // 空数组时跳过（无挑战记录），保留 all_floor_detail 空数组供模板兜底
+    if (data.all_floor_detail.length > 0) {
+      data.all_floor_detail = data.all_floor_detail.map(floor => ({
+        ...floor,
+        node_1: { ...(floor.node_1 || {}), ...((floor.node_1?.challenge_time) && { challengeTime: timeFormat(floor.node_1.challenge_time, true) }) },
+        ...(floor.node_2 && { node_2: { ...floor.node_2, ...(floor.node_2.challenge_time && { challengeTime: timeFormat(floor.node_2.challenge_time, true) }) } }),
+        ...(floor.node_3 && { node_3: { ...floor.node_3, ...(floor.node_3.challenge_time && { challengeTime: timeFormat(floor.node_3.challenge_time, true) }) } })
+      }))
+    }
   } else {
     if (data.peak_records.boss_record) {
       data.peak_records.boss_record.challengeTime = timeFormat(data.peak_records.boss_record.challenge_time, true)
@@ -133,9 +145,12 @@ export async function queryChallenge (ctx, challengeType, auth) {
   return { data, uid, challengeType, type: scheduleType }
 }
 
-/** 仲裁往期格式化 */
+/** 仲裁往期格式化（record 缺失时返回空对象，配合往期不足 N 期场景） */
 export function recentPeak (record) {
+  if (!record) return {}
   const data = { ...record }
+  data.group = data.group || {}
+  data.mob_records = data.mob_records || []
   data.beginTime = timeFormat(data.group.begin_time)
   data.endTime = timeFormat(data.group.end_time)
   if (data.boss_record) {
