@@ -171,22 +171,44 @@ export default class LoveMys {
       return { data: null, message: '未正确填写配置文件[api.yaml]', retcode: null }
     }
 
-    let res = await fetch(`${apiCfg.verifyAddr}`, {
-      method: 'post',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(data)
-    })
+    let res
+    try {
+      res = await fetch(`${apiCfg.verifyAddr}`, {
+        method: 'post',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(data),
+        // 公网手动打码服务可能无响应：超时即放弃，避免无限挂起卡死
+        signal: AbortSignal.timeout(10000)
+      })
+    } catch (err) {
+      logger.error(`[loveMys][GT-Manual] verifyAddr 请求失败: ${err.message}`)
+      return { data: null, message: '手动打码服务不可用（verifyAddr 请求超时/失败）', retcode: null }
+    }
     if (!res.ok) {
       logger.error(`[loveMys][GT-Manual] ${res.status} ${res.statusText}`)
       return false
     }
-    res = await res.json()
+    try {
+      res = await res.json()
+    } catch (err) {
+      logger.error(`[loveMys][GT-Manual] 响应解析失败: ${err.message}`)
+      return false
+    }
     if (!res.data) return false
 
     await e.reply(`请点击验证链接地址或复制到浏览器打开完成验证\n${res.data.link}`, true)
 
     for (let i = 0; i < 80; i++) {
-      let validate = await (await fetch(res.data.result)).json()
+      let validate
+      try {
+        validate = await (await fetch(res.data.result, {
+          // 结果轮询同样加超时：公网服务无响应时及时退出而非永久轮询
+          signal: AbortSignal.timeout(10000)
+        })).json()
+      } catch (err) {
+        logger.error(`[loveMys][GT-Manual] result 轮询失败: ${err.message}`)
+        return false
+      }
       if (validate?.data) return validate
 
       await new Promise((resolve) => setTimeout(resolve, 1500))
