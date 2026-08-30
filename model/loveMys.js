@@ -182,19 +182,25 @@ export default class LoveMys {
       })
     } catch (err) {
       logger.error(`[loveMys][GT-Manual] verifyAddr 请求失败: ${err.message}`)
+      await e.reply('手动打码服务不可用（verifyAddr 请求失败），无法处理验证码')
       return { data: null, message: '手动打码服务不可用（verifyAddr 请求超时/失败）', retcode: null }
     }
     if (!res.ok) {
       logger.error(`[loveMys][GT-Manual] ${res.status} ${res.statusText}`)
+      await e.reply(`手动打码服务异常（HTTP ${res.status}）`)
       return false
     }
     try {
       res = await res.json()
     } catch (err) {
       logger.error(`[loveMys][GT-Manual] 响应解析失败: ${err.message}`)
+      await e.reply('手动打码服务响应异常，无法处理验证码')
       return false
     }
-    if (!res.data) return false
+    if (!res.data) {
+      await e.reply('手动打码服务返回异常，无法处理验证码')
+      return false
+    }
 
     await e.reply(`请点击验证链接地址或复制到浏览器打开完成验证\n${res.data.link}`, true)
 
@@ -207,12 +213,14 @@ export default class LoveMys {
         })).json()
       } catch (err) {
         logger.error(`[loveMys][GT-Manual] result 轮询失败: ${err.message}`)
+        await e.reply('手动打码验证超时，请重新发送命令重试')
         return false
       }
       if (validate?.data) return validate
 
       await new Promise((resolve) => setTimeout(resolve, 1500))
     }
+    await e.reply('手动打码验证超时（长时间未完成），请重新发送命令重试')
     return false
   }
 }
