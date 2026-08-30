@@ -664,10 +664,10 @@ async function initEnvironment () {
     }
   }
 
-  // 4. 确保 MihoyoBBSTools config 目录存在
+  // 4. 确保 MihoyoBBSTools config 目录存在（0700，含账号凭据）
   const BBS_TOOLS_CONFIG_DIR = path.join(pluginRoot, 'tool', 'MihoyoBBSTools', 'MihoyoBBSTools', 'config')
   if (!fs.existsSync(BBS_TOOLS_CONFIG_DIR)) {
-    fs.mkdirSync(BBS_TOOLS_CONFIG_DIR, { recursive: true })
+    fs.mkdirSync(BBS_TOOLS_CONFIG_DIR, { recursive: true, mode: 0o700 })
     parts.push('签到配置目录已创建')
   }
 

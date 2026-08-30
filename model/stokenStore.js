@@ -77,6 +77,7 @@ class StokenStore {
   /** 保存/合并 stoken 数据
    *  同步 read-modify-write：事件循环内不交错，避免回调式 fs.exists 下
    *  首绑多角色（原神+星铁并发保存）时前一次写入被空文件初始化截断的丢数据竞态
+   *  权限：目录 0700 / 文件 0600，仅 Bot 运行用户可读（stoken 为高权限凭据）
    */
   saveBingStoken (userId, data) {
     const file = `./plugins/${plugin}/data/stoken/${userId}.yaml`
@@ -84,9 +85,9 @@ class StokenStore {
       fs.existsSync(file) && fs.unlinkSync(file)
       return
     }
-    // 确保目录存在
+    // 确保目录存在（0700）
     const dir = `./plugins/${plugin}/data/stoken/`
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true, mode: 0o700 })
 
     let ck = {}
     if (fs.existsSync(file)) {
@@ -96,11 +97,11 @@ class StokenStore {
     }
     if (ck?.uid || Object.keys(ck).length === 0) {
       // 空文件/旧结构：整体写入新数据
-      fs.writeFileSync(file, YAML.stringify(data), 'utf8')
+      fs.writeFileSync(file, YAML.stringify(data), { encoding: 'utf8', mode: 0o600 })
     } else {
       // 对象合并后整体序列化（原实现 yaml + ck 字符串拼接会生成非法多文档 YAML，YAML.parse 只取首文档导致前序键丢失）
       Object.assign(ck, data)
-      fs.writeFileSync(file, YAML.stringify(ck), 'utf8')
+      fs.writeFileSync(file, YAML.stringify(ck), { encoding: 'utf8', mode: 0o600 })
     }
   }
 
@@ -124,7 +125,8 @@ class StokenStore {
       if (Object.keys(ck).length === 0) {
         fs.unlinkSync(file)
       } else {
-        fs.writeFileSync(file, YAML.stringify(ck), 'utf8')
+        // 保持 0600 权限写出
+        fs.writeFileSync(file, YAML.stringify(ck), { encoding: 'utf8', mode: 0o600 })
       }
       return true
     } catch {

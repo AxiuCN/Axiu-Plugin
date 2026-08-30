@@ -13,7 +13,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const pluginRoot = path.join(__dirname, '..', '..')
 
-/** MihoyoBBSTools 子模块 config 目录 */
+/** MihoyoBBSTools 子模块 config 目录（含账号 cookie/stoken 明文，目录 0700 / 文件 0600） */
 const BBS_TOOLS_CONFIG_DIR = path.join(
   pluginRoot, 'tool', 'MihoyoBBSTools', 'MihoyoBBSTools', 'config'
 )
@@ -180,12 +180,12 @@ function writeUserConfig (qq, n, stokenEntry, cookie) {
   const config = buildUserConfig(stokenEntry, cookie)
   const filePath = getUserConfigPath(qq, n)
 
-  // 确保目录存在
+  // 确保目录存在（0700，含账号凭据）
   if (!fs.existsSync(BBS_TOOLS_CONFIG_DIR)) {
-    fs.mkdirSync(BBS_TOOLS_CONFIG_DIR, { recursive: true })
+    fs.mkdirSync(BBS_TOOLS_CONFIG_DIR, { recursive: true, mode: 0o700 })
   }
 
-  fs.writeFileSync(filePath, YAML.stringify(config), 'utf8')
+  fs.writeFileSync(filePath, YAML.stringify(config), { encoding: 'utf8', mode: 0o600 })
   return { path: filePath, n }
 }
 
@@ -207,7 +207,8 @@ function refreshUserConfigCookie (filePath, stokenEntry, cookie) {
   existing.account.stoken = String(stokenEntry.stoken || '')
   existing.account.mid = String(stokenEntry.mid || '')
 
-  fs.writeFileSync(filePath, YAML.stringify(existing), 'utf8')
+  // 保持 0600 权限写出
+  fs.writeFileSync(filePath, YAML.stringify(existing), { encoding: 'utf8', mode: 0o600 })
 }
 
 /**
