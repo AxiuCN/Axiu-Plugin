@@ -47,13 +47,17 @@ pnpm install --filter=Axiu-Plugin
 ```bash
 #初始化签到环境
 ```
-自动检查 Python、安装依赖、拉取子模块。
+自动检查 Python、安装依赖、拉取子模块。依赖安装失败时自动处理常见问题，仍失败则透出真实错误便于排查：
+- 未检测到 pip → 自动执行 `ensurepip --upgrade` 后重试
+- 系统 Python 受 PEP 668 保护（Debian 12+ / Ubuntu 23.04+）→ 自动加 `--break-system-packages` 重试
+- 连接 PyPI 失败 → 自动切换清华镜像重试
+- 全部重试仍失败 → 返回错误输出尾部（stderr 不再被吞），并提示手动处理
 
 **命令**：
 
 | 命令 | 说明 |
 |------|------|
-| `#初始化签到环境` | 检查 Python、pip install 依赖、拉取 MihoyoBBSTools 子模块（仅 master） |
+| `#初始化签到环境` | 检查 Python、自动安装依赖、拉取 MihoyoBBSTools 子模块（仅 master） |
 | `#注册自动签到` | 用已绑定的 stoken 注册签到，生成个人签到配置（增量：已有账号更新、新增创建、残留清理） |
 | `#注册本群签到` | 为群内成员增量注册（仅群主/管理员） |
 | `#注册所有群签到` | 为机器人所在全部群的成员增量注册（仅 master） |

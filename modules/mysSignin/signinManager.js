@@ -547,6 +547,72 @@ async function refreshAllUserCookies () {
 // ==================== 环境初始化 ====================
 
 /**
+ * 安装 MihoyoBBSTools Python 依赖（自动处理常见失败并透出真实错误）
+ *
+ * 重试链：
+ *  1. 普通 pip install
+ *  2. pip 缺失（No module named pip）→ 先 ensurepip --upgrade 再重装
+ *  3. 系统 Python 受 PEP 668 保护（externally-managed-environment）→ 加 --break-system-packages 重装
+ *  4. 连接 PyPI 失败 → 切换清华镜像重装
+ * 全部失败时返回最终输出尾部（不吞 stderr），供用户定位问题
+ *
+ * @param {string} pythonCmd - Python 命令
+ * @param {string} reqPath - requirements.txt 路径
+ * @returns {{ok: boolean, notes: string[], error?: string}} notes 为重试动作说明，error 为失败输出尾部
+ */
+function installPythonDeps (pythonCmd, reqPath) {
+  const notes = []
+
+  /** 执行 pip install，返回输出（错误时合并 stdout/stderr/message，不吞 stderr） */
+  const run = (extraArgs = '') => {
+    const cmd = `"${pythonCmd}" -m pip install ${extraArgs}-r "${reqPath}"`
+    try {
+      execSync(cmd, { encoding: 'utf8', timeout: 120000, windowsHide: true })
+      return { ok: true, output: '' }
+    } catch (err) {
+      return { ok: false, output: `${err.stdout || ''}${err.stderr || ''}${err.message || ''}` }
+    }
+  }
+
+  let attempt = run()
+  if (attempt.ok) return { ok: true, notes }
+  let output = attempt.output
+
+  // pip 缺失（部分发行版 python3 默认不带 pip）：用 Python 自带 ensurepip 恢复后重装
+  if (/No module named pip/.test(output)) {
+    notes.push('未检测到 pip，已执行 ensurepip --upgrade 后重试')
+    try {
+      execSync(`"${pythonCmd}" -m ensurepip --upgrade`, {
+        encoding: 'utf8', timeout: 60000, windowsHide: true
+      })
+      attempt = run()
+      if (attempt.ok) return { ok: true, notes }
+      output = attempt.output
+    } catch {
+      notes.push('ensurepip 失败，请先安装 python3-pip（如 apt install python3-pip）')
+    }
+  }
+
+  // PEP 668（Debian 12+ / Ubuntu 23.04+ 系统 Python 禁止 pip 写入系统环境）
+  if (/externally-managed-environment/.test(output)) {
+    notes.push('系统 Python 受 PEP 668 保护，已改用 --break-system-packages 重试')
+    attempt = run('--break-system-packages ')
+    if (attempt.ok) return { ok: true, notes }
+    output = attempt.output
+  }
+
+  // 连接 PyPI 失败（国内服务器常见）：切换清华镜像重试
+  if (/could not reach|could not fetch|timed ?out|connection (refused|reset|error)|getaddrinfo|temporary failure|\[errno 111\]/i.test(output)) {
+    notes.push('连接 PyPI 失败，已切换清华镜像重试')
+    attempt = run('-i https://pypi.tuna.tsinghua.edu.cn/simple ')
+    if (attempt.ok) return { ok: true, notes }
+    output = attempt.output
+  }
+
+  return { ok: false, notes, error: output.slice(-800) }
+}
+
+/**
  * 初始化签到环境
  * @returns {Promise<{ok: boolean, message: string}>}
  */
@@ -579,15 +645,19 @@ async function initEnvironment () {
     parts.push(`子模块更新警告: ${err.message}`)
   }
 
-  // 3. 安装 Python 依赖
-  try {
-    const reqPath = `${pluginRoot}/tool/MihoyoBBSTools/MihoyoBBSTools/requirements.txt`
-    execSync(`"${pythonCmd}" -m pip install -r "${reqPath}" 2>&1`, {
-      encoding: 'utf8', timeout: 120000, windowsHide: true
-    })
-    parts.push('Python 依赖安装完成')
-  } catch (err) {
-    parts.push(`依赖安装警告: ${err.message}`)
+  // 3. 安装 Python 依赖（自动处理 pip 缺失 / PEP 668 / 网络镜像，失败透出真实错误）
+  const reqPath = `${pluginRoot}/tool/MihoyoBBSTools/MihoyoBBSTools/requirements.txt`
+  if (!fs.existsSync(reqPath)) {
+    parts.push('依赖安装未通过: 未找到 requirements.txt（子模块拉取可能失败，请检查网络后重试）')
+  } else {
+    const depRes = installPythonDeps(pythonCmd, reqPath)
+    if (depRes.ok) {
+      parts.push(`Python 依赖安装完成${depRes.notes.length ? `（${depRes.notes.join('；')}）` : ''}`)
+    } else {
+      parts.push(
+        `依赖安装未通过\n${depRes.notes.join('\n')}${depRes.notes.length ? '\n' : ''}错误输出(尾部):\n${depRes.error}`
+      )
+    }
   }
 
   // 4. 确保 MihoyoBBSTools config 目录存在
