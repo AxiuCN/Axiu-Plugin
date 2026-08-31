@@ -17,6 +17,7 @@
  */
 
 import plugin from '../../../lib/plugins/plugin.js'
+import chokidar from 'chokidar'
 import {
   SIGNIN_LOG_PREFIX,
   refreshCookie,
@@ -81,6 +82,35 @@ export class MysSigninApp extends plugin {
     if (cfg.enable && this.task) {
       if (this.task[0]) this.task[0].cron = cfg.refreshSchedule
       if (this.task[1]) this.task[1].cron = cfg.schedule
+    }
+    // 监听 config.yaml（signin 段）：锅巴保存后热更新定时任务 cron，无需重启
+    this._watchSigninConfig()
+  }
+
+  /** 监听 config.yaml 变更 → 重设 task cron 并重建定时任务（锅巴保存后即时生效） */
+  _watchSigninConfig() {
+    try {
+      const configFile = new URL('../../config/config.yaml', import.meta.url)
+      this._cfgWatcher = chokidar.watch(configFile.pathname, {
+        ignoreInitial: true,
+        awaitWriteFinish: { stabilityThreshold: 500, pollInterval: 100 }
+      })
+      this._cfgWatcher.on('change', async () => {
+        const cfg = getSigninConfig()
+        if (this.task) {
+          if (this.task[0]) this.task[0].cron = cfg.refreshSchedule || '0 30 4 * * ? *'
+          if (this.task[1]) this.task[1].cron = cfg.schedule || '0 0 5 * * ? *'
+        }
+        try {
+          const loader = (await import('../../../lib/plugins/loader.js')).default
+          loader.createTask?.()
+          logger?.info(`${SIGNIN_LOG_PREFIX} 配置文件已变更，定时任务已热更新（${cfg.schedule} / ${cfg.refreshSchedule}）`)
+        } catch (err) {
+          logger?.warn(`${SIGNIN_LOG_PREFIX} 定时任务热更新失败，请重启生效:`, err?.message)
+        }
+      })
+    } catch (err) {
+      logger?.warn(`${SIGNIN_LOG_PREFIX} 配置监听启动失败:`, err?.message)
     }
   }
 

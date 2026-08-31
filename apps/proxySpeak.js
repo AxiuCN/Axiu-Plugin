@@ -77,7 +77,7 @@ export class ProxySpeak extends plugin {
     // 后续 segment: 纯文本发言内容
     fakeEvent.message = speechContent
       ? [
-          { type: 'at', qq: String(Bot.uin) },
+          { type: 'at', qq: String(e.self_id || e.bot?.uin || Bot.uin) },
           { type: 'text', text: speechContent }
         ]
       : [{ type: 'text', text: '' }]
@@ -133,7 +133,7 @@ export class ProxySpeak extends plugin {
       let foundAt = false
 
       for (const seg of e.message) {
-        if (!foundAt && seg.type === 'at' && String(seg.qq) !== String(Bot.uin)) {
+        if (!foundAt && seg.type === 'at' && String(seg.qq) !== String(e.self_id || e.bot?.uin || Bot.uin)) {
           // 取第一个非机器人 @ 作为目标
           targetUin = Number(seg.qq)
           foundAt = true

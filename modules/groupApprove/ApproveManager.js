@@ -16,12 +16,13 @@ export function extractAnswer(comment) {
 /**
  * 检查机器人是否在指定群内拥有管理员/群主权限
  * 优先通过 pickMember().getInfo()，失败时降级为 getMemberMap()
- * @param {object} group - Bot.pickGroup() 返回的群对象
+ * @param {object} group - 群对象（来自事件对应的 bot 实例）
+ * @param {string|number} botUin - 当前事件对应的机器人账号
  * @returns {Promise<boolean>}
  */
-export async function checkBotIsAdmin(group) {
+export async function checkBotIsAdmin(group, botUin) {
   try {
-    const member = await group.pickMember(Bot.uin).getInfo()
+    const member = await group.pickMember(botUin).getInfo()
     if (member && (member.role === 'owner' || member.role === 'admin')) {
       return true
     }
@@ -32,7 +33,7 @@ export async function checkBotIsAdmin(group) {
   // 降级方案
   try {
     const memberMap = await group.getMemberMap()
-    const botMember = memberMap.get(Bot.uin)
+    const botMember = memberMap.get(botUin)
     if (botMember && (botMember.role === 'owner' || botMember.role === 'admin')) {
       return true
     }
@@ -46,14 +47,15 @@ export async function checkBotIsAdmin(group) {
 /**
  * 获取群内除机器人外的所有管理员 QQ 号
  * @param {object} group - 群对象
+ * @param {string|number} botUin - 当前事件对应的机器人账号
  * @returns {Promise<string[]>}
  */
-export async function getOtherAdmins(group) {
+export async function getOtherAdmins(group, botUin) {
   try {
     const memberMap = await group.getMemberMap()
     const admins = []
     for (const [uid, member] of memberMap) {
-      if ((member.role === 'admin' || member.role === 'owner') && uid !== Bot.uin) {
+      if ((member.role === 'admin' || member.role === 'owner') && String(uid) !== String(botUin)) {
         admins.push(uid)
       }
     }
@@ -76,13 +78,16 @@ export async function handleRequest({ e, groupConfig }) {
   const comment = e.comment || ''
 
   const rawAnswer = extractAnswer(comment)
-  const group = Bot.pickGroup(groupId)
+  // 使用事件对应的 bot 实例（多 Bot 场景各账号独立判定），而非全局 Bot
+  const botUin = e.self_id || e.bot?.uin || Bot.uin
+  const group = e.group || (e.bot?.pickGroup ? e.bot.pickGroup(groupId) : Bot.pickGroup(groupId))
+  if (!group) return
 
   // 检查机器人权限
-  const botIsAdmin = await checkBotIsAdmin(group)
+  const botIsAdmin = await checkBotIsAdmin(group, botUin)
   if (!botIsAdmin) {
     logger.warn(`${LOG_PREFIX} 机器人在群${groupId}无管理员权限，无法处理申请`)
-    const admins = await getOtherAdmins(group)
+    const admins = await getOtherAdmins(group, botUin)
     if (admins.length > 0) {
       const atList = admins.map(id => segment.at(id))
       const msg = [
@@ -127,7 +132,7 @@ export async function handleRequest({ e, groupConfig }) {
   } else {
     // 未命中，通知管理员人工审核
     logger.info(`${LOG_PREFIX} 用户${applicantId}申请加入群${groupId}，答案不匹配，通知管理员`)
-    const admins = await getOtherAdmins(group)
+    const admins = await getOtherAdmins(group, botUin)
     if (admins.length === 0) {
       logger.warn(`${LOG_PREFIX} 群${groupId}没有其他管理员`)
       return

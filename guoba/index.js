@@ -235,7 +235,8 @@ export function supportGuoba () {
           for (const [field, varName] of Object.entries(TEMPLATE_VARS)) {
             let value = data[field] ?? ''
             if (Array.isArray(value)) value = value.join(',')
-            template = template.replace(new RegExp(`\\$\\{${varName}\\}`, 'g'), String(value))
+            // 函数替换：返回值作为原样替换，避免值中含 $&/$1/$$ 时被 String.replace 特殊语法展开
+            template = template.replace(new RegExp(`\\$\\{${varName}\\}`, 'g'), () => String(value))
           }
           fs.writeFileSync(CONFIG_PATH, template, 'utf8')
 
