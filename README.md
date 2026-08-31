@@ -223,3 +223,4 @@ uvicorn main:app --host 0.0.0.0 --port 9645
 - [TianRu-plugin](https://github.com/HDTianRu/TianRu-plugin) — 提瓦特小助手抽卡记录功能移植自此项目
 - [StarRail-plugin](https://github.com/Nwflower/StarRail-plugin) — 星铁终局挑战功能移植自此项目
 - [miao-plugin](https://github.com/yoimiya-kokomi/miao-plugin) — 原神终局挑战查询模板及 API 调用参考自此项目
+- [FurinaWai77](https://github.com/FurinaWai77) — 代码审查与修复建议（审查基准 e9c4dae + 7fa4b3d - 88affaf）
