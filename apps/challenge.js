@@ -19,8 +19,8 @@ import { getPluginConfig } from '../components/config.js'
 import SrChallengeRank from '../model/srChallengeRank.js'
 import GsChallengeRank from '../model/gsChallengeRank.js'
 import { queryChallenge, recentPeak, getCurrentChallengeType } from '../modules/challenge/srQuery.js'
-import { handleSrRank, handleSrRankReset } from '../modules/challenge/srRank.js'
-import { handleGsRank, handleGsRankReset } from '../modules/challenge/gsRank.js'
+import { handleSrRank, handleSrRankReset, handleSrRankRebuild } from '../modules/challenge/srRank.js'
+import { handleGsRank, handleGsRankReset, handleGsRankRebuild } from '../modules/challenge/gsRank.js'
 import { gsSpiralAbyssQuery, gsRoleCombatQuery, gsHardChallengeQuery } from '../modules/challenge/gsQuery.js'
 
 export class ChallengeApp extends plugin {
@@ -72,6 +72,12 @@ export class ChallengeApp extends plugin {
           fnc: 'challengeRankManage',
           permission: 'master'
         },
+        {
+          reg: '^(#?星铁|[*＊])?刷新(末日幻影|末日|虚构叙事|虚构|叙事|忘却之庭|忘却|混沌回忆|混沌|异相仲裁|异相|仲裁|异乡)?(排名|排行)',
+          fnc: 'challengeRankRebuild',
+          permission: 'master',
+          log: true
+        },
 
         // ===== 原神查询（完整自实现 → 阻断 miao-plugin） =====
         {
@@ -101,6 +107,12 @@ export class ChallengeApp extends plugin {
           reg: '^#(原神)?(开启|关闭)(深渊)(排名|排行)',
           fnc: 'gsAbyssRankManage',
           permission: 'master'
+        },
+        {
+          reg: '^#(原神)?刷新(深境螺旋|深境|深渊|幻想真境剧诗|幻想|剧诗|幽境危战|幽境|危战)(单人|单挑|多人|组队|合作)?(排名|排行)',
+          fnc: 'gsAbyssRankRebuild',
+          permission: 'master',
+          log: true
         }
       ]
     })
@@ -124,12 +136,16 @@ export class ChallengeApp extends plugin {
 
   _reportRanking (data, uid, challengeType, scheduleType, isDetailedSuccess) {
     if (!this.e.isGroup || !isDetailedSuccess || !this._isRankEnabled()) return
-    const scheduleId = SrChallengeRank.getScheduleId(data, challengeType, scheduleType)
-    const qq = this.e.at || this.e.user_id
-    // scheduleType '1'=当期，'2'=上期，'3'=往期（仅当期更新 current 指针）
-    SrChallengeRank.report(uid, qq, this.e.group_id, challengeType, data, scheduleId, scheduleType === '1').catch(
-      err => logger?.error('[Axiu-Plugin][排行] 上报失败', err)
-    )
+    // 群开关关闭时该群不再参与上报（否则关闭群查询仍计入全局榜，__S__Rank 语义为"参与开关"）
+    SrChallengeRank.getGroupCfg(this.e.group_id).then(cfg => {
+      if (cfg?.status === 0) return
+      const scheduleId = SrChallengeRank.getScheduleId(data, challengeType, scheduleType)
+      const qq = this.e.at || this.e.user_id
+      // scheduleType '1'=当期，'2'=上期，'3'=往期（仅当期更新 current 指针）
+      SrChallengeRank.report(uid, qq, this.e.group_id, challengeType, data, scheduleId, scheduleType === '1').catch(
+        err => logger?.error('[Axiu-Plugin][排行] 上报失败', err)
+      )
+    }).catch(() => {})
   }
 
   // ==================== 星铁查询 ====================
@@ -261,6 +277,10 @@ export class ChallengeApp extends plugin {
     return handleSrRankReset(this, e)
   }
 
+  async challengeRankRebuild (e) {
+    return handleSrRankRebuild(this, e)
+  }
+
   async challengeRankManage (e) {
     const enable = e.msg.includes('开启')
     const status = enable ? 1 : 0
@@ -277,6 +297,10 @@ export class ChallengeApp extends plugin {
 
   async gsAbyssRankReset (e) {
     return handleGsRankReset.call(this, e)
+  }
+
+  async gsAbyssRankRebuild (e) {
+    return handleGsRankRebuild(e)
   }
 
   async gsAbyssRankManage (e) {

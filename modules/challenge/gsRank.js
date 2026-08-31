@@ -202,6 +202,23 @@ export async function handleGsRankReset (e) {
   if (challengeType < 0) return true
   const typeName = GsChallengeRank.getTypeName(challengeType)
   await GsChallengeRank.resetRank(e.group_id, challengeType)
-  await e.reply(`已重置本群${typeName}排行数据`)
+  await e.reply(`已重置${typeName}排行数据（全局）`)
+  return true
+}
+
+/** Genshin 排行刷新（重排）handler — 数据错误时用 uid 元数据重建 ZSET */
+export async function handleGsRankRebuild (e) {
+  const challengeType = resolveGsType(e.msg)
+  const onlyType = challengeType >= 0 ? challengeType : null
+  await e.reply(`正在重排原神${onlyType != null ? GsChallengeRank.getTypeName(onlyType) : '全部'}排行数据，可能需要一段时间...`)
+  const result = await GsChallengeRank.rebuildAll(onlyType)
+  const st = result.types
+  let msg = `重排完成：处理 ${result.total} 个 UID 记录`
+  for (const ct of [0, 1, 2, 3]) {
+    if (st[ct]?.schedules > 0 || st[ct]?.uids > 0) {
+      msg += `\n${GsChallengeRank.getTypeName(ct)}: ${st[ct].uids} 个UID / ${st[ct].schedules} 期记录`
+    }
+  }
+  await e.reply(msg)
   return true
 }

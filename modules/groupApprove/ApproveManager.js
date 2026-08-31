@@ -119,7 +119,7 @@ export async function handleRequest({ e, groupConfig }) {
       await e.approve(false, '无关人员，谢绝入内')
       logger.info(`${LOG_PREFIX} 拒绝用户${applicantId}加入群${groupId}`)
       await group.sendMsg(
-        `[自动入群审核]\n用户 ${applicantId} 已被拒绝，其入群问答为\n${comment || '无'}`
+        `[自动入群审核]\n用户 ${applicantId} 已被拒绝，其入群问答为\n${rawAnswer || '无'}`
       )
     } catch (err) {
       logger.error(`${LOG_PREFIX} 拒绝用户${applicantId}失败:`, err)
@@ -135,7 +135,7 @@ export async function handleRequest({ e, groupConfig }) {
     const atList = admins.map(id => segment.at(id))
     const msg = [
       ...atList,
-      `\n【入群申请待人工审核】\n申请人：${applicantId}\n${comment || '无'}\n请管理员处理`
+      `\n【入群申请待人工审核】\n申请人：${applicantId}\n入群问答：${rawAnswer || '无'}\n请管理员处理`
     ]
     await group.sendMsg(msg).catch(err =>
       logger.error(`${LOG_PREFIX} 群内通知管理员失败:`, err))

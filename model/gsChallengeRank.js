@@ -473,7 +473,7 @@ export default class GsChallengeRank {
 
     // UID 信息（QQ + 各 scheduleId 的 scores/extra，全局共享）— 按 scheduleId 隔离，上期上报不覆盖本期展示数据
     // firstTime 沿用首次上报值，不因重复查询更新（首查时间固定，battle 可更新）
-    info[challengeType][slotKey] = { scores, extra, firstTime, time: Date.now() }
+    info[challengeType][slotKey] = { scores, extra, firstTime, startTs, time: Date.now() }
     try {
       await redis.setEx(uidKey(uid), 90 * 24 * 3600, JSON.stringify(info))
     } catch (err) {
@@ -617,20 +617,107 @@ export default class GsChallengeRank {
     try { return await redis.zCard(rankKey(challengeType, dimension, scheduleId)) } catch { return 0 }
   }
 
+  // ==================== 刷新（重排） ====================
+
+  /**
+   * 全量重排行榜：遍历 uid 元数据，用存储的 scores/extra/firstTime/startTs 重算综合分与各维度分，
+   * 重建全部 scheduleId 的 ZSET。用于公式调整或数据异常后的重排修复。
+   * @param {number|null} onlyType 只重排指定类型（null = 全部 0-3）
+   * @returns {Promise<{total: number, types: object}>} 处理的 uid 数 / 各类型 schedule 数
+   */
+  static async rebuildAll (onlyType = null) {
+    const types = onlyType != null ? [onlyType] : [0, 1, 2, 3]
+    const stats = {}
+    for (const ct of types) stats[ct] = { uids: 0, schedules: 0 }
+    let totalUids = 0
+
+    try {
+      const uidKeys = await redis.keys(`${KEY}:uid:*`)
+      for (const key of uidKeys) {
+        const uid = key.split(':').pop()
+        let raw
+        try { raw = await redis.get(key) } catch { continue }
+        if (!raw) continue
+        let info
+        try { info = JSON.parse(raw) } catch { continue }
+
+        for (const ct of types) {
+          const slotMap = info?.[ct]
+          if (!slotMap || typeof slotMap !== 'object') continue
+          stats[ct].uids++
+          totalUids++
+
+          for (const [sid, slot] of Object.entries(slotMap)) {
+            const { scores, extra, firstTime, startTs } = (slot && typeof slot === 'object') ? slot : {}
+            if (!scores || !extra) continue
+            stats[ct].schedules++
+
+            const compound = compoundScore(scores, extra, ct, firstTime || null, startTs || null)
+            if (compound > 0) {
+              try {
+                const ck = rankKey(ct, '__', sid)
+                await redis.zAdd(ck, { score: compound, value: uid })
+                await redis.expire(ck, TTL)
+              } catch (err) {
+                logger?.error(`${LOG_PREFIX}[原神排行] 重排 compound zAdd 失败 uid=${uid}`, err)
+              }
+            }
+            for (const dim of this.getDimensions(ct)) {
+              const val = scores[dim.key]
+              if (val == null) continue
+              try {
+                const rk = rankKey(ct, dim.key, sid)
+                await redis.zAdd(rk, { score: val, value: uid })
+                await redis.expire(rk, TTL)
+              } catch (err) {
+                logger?.error(`${LOG_PREFIX}[原神排行] 重排 zAdd 失败 uid=${uid}`, err)
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      logger?.error(`${LOG_PREFIX}[原神排行] 重排失败`, err)
+    }
+    return { total: totalUids, types: stats }
+  }
+
   // ==================== 管理 ====================
 
   static async resetRank (groupId, challengeType = null) {
     const types = challengeType != null ? [challengeType] : [0, 1, 2, 3]
+    const delKeys = []
     for (const ct of types) {
-      const pattern = `${KEY}:${ct}:*`
+      // 排行 ZSET（含综合 __ 与各维度；单人/多人共享 base type key）
+      const rankCt = this._baseType(ct)
+      const zsetPattern = `${KEY}:${rankCt}:*`
       try {
-        const keys = await redis.keys(pattern)
-        if (keys?.length) await redis.del(...keys)
+        const keys = await redis.keys(zsetPattern)
+        if (keys?.length) delKeys.push(...keys)
       } catch (err) {
-        logger?.error(`${LOG_PREFIX}[原神排行] 重置 ZSET 失败`, err)
+        logger?.error(`${LOG_PREFIX}[原神排行] 扫描 ZSET 失败`, err)
+      }
+      // 当前赛季指针（共享 base type）
+      try {
+        const cur = await redis.get(currentKey(rankCt)) || null
+        if (cur) delKeys.push(currentKey(rankCt))
+      } catch {}
+    }
+    // 赛季元信息与 UID 元信息（跨类型共享，SCAN 扫描后删除）
+    try {
+      const seasonKeys = await redis.keys(`${KEY}:season:*`)
+      if (seasonKeys?.length) delKeys.push(...seasonKeys)
+      const uidKeys = await redis.keys(`${KEY}:uid:*`)
+      if (uidKeys?.length) delKeys.push(...uidKeys)
+    } catch (err) {
+      logger?.error(`${LOG_PREFIX}[原神排行] 扫描赛季/UID 元信息失败`, err)
+    }
+    if (delKeys.length) {
+      try { await redis.del(...delKeys) } catch (err) {
+        logger?.error(`${LOG_PREFIX}[原神排行] 删除排行数据失败`, err)
       }
     }
-    logger?.mark(`${LOG_PREFIX}[原神排行] 已重置排行数据`)
+    logger?.mark(`${LOG_PREFIX}[原神排行] 已重置排行数据（含赛季/UID 元信息）`)
   }
 
   // ==================== 群配置 ====================

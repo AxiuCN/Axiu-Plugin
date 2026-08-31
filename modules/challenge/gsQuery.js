@@ -55,6 +55,21 @@ function isGsEnabled () {
   try { return getPluginConfig()?.gsAbyss?.enabled !== false } catch { return true }
 }
 
+/**
+ * 排行上报守卫：仅群聊且群开关开启（status=1）时上报
+ * 私聊查询不上报；群开关关闭 = 退出参与排行（不再静默采数）
+ * @returns {Promise<void>}
+ */
+async function reportGsIfEnabled (e, uid, challengeType, rawData, scheduleId, isCurrent, label) {
+  if (!e?.isGroup) return
+  try {
+    const cfg = (await GsChallengeRank.getGroupCfg(e.group_id)) || { status: 1 }
+    if (cfg?.status === 0) return
+  } catch { /* 群配置读取失败时默认上报 */ }
+  await GsChallengeRank.report(uid, e.at || e.user_id, e.group_id, challengeType, rawData, scheduleId, isCurrent)
+    .catch(err => logger?.error(`${LOG_PREFIX}[原神] ${label}上报失败:`, err?.message))
+}
+
 // ==================== Auth 获取 ====================
 
 /**
@@ -455,9 +470,9 @@ export async function gsSpiralAbyssQuery (e) {
       return true
     }
 
-    // 上报排行（上期查询不更新 current 指针，避免覆盖本期）
+    // 上报排行（仅群聊且群开关开启时上报；上期查询不更新 current 指针，避免覆盖本期）
     const scheduleId = GsChallengeRank.getScheduleId(rawData, 0)
-    GsChallengeRank.report(auth.uid, e.at || e.user_id, e.group_id, 0, rawData, scheduleId, !isLast)
+    await reportGsIfEnabled(e, auth.uid, 0, rawData, scheduleId, !isLast, '深渊')
       .catch(err => logger?.error(`${LOG_PREFIX}[原神] 深渊上报失败:`, err?.message))
 
     // 收集所有角色 ID（排行统计 + 各间出战）
@@ -530,9 +545,9 @@ export async function gsRoleCombatQuery (e) {
       return true
     }
 
-    // 上报排行（上期查询不更新 current 指针，避免覆盖本期）
+    // 上报排行（仅群聊且群开关开启时上报；上期查询不更新 current 指针，避免覆盖本期）
     const scheduleId = GsChallengeRank.getScheduleId(rawData, 1)
-    GsChallengeRank.report(auth.uid, e.at || e.user_id, e.group_id, 1, rawData, scheduleId, !isLast)
+    await reportGsIfEnabled(e, auth.uid, 1, rawData, scheduleId, !isLast, '剧诗')
       .catch(err => logger?.error(`${LOG_PREFIX}[原神] 剧诗上报失败:`, err?.message))
 
     // 收集角色 ID（含 fight_statisic 中的统计角色）
@@ -620,13 +635,14 @@ export async function gsHardChallengeQuery (e) {
     }
 
     // 上报排行（单人和多人均上报，串行避免 Redis 竞态覆盖；上期查询不更新 current 指针）
+    // 仅群聊且群开关开启时上报（关闭=退出参与，不再静默采数；私聊不上报）
     const scheduleId = GsChallengeRank.getScheduleId(rawData, 2)
     if (hasSingle) {
-      await GsChallengeRank.report(auth.uid, e.at || e.user_id, e.group_id, 2, rawData, scheduleId, !isLast)
+      await reportGsIfEnabled(e, auth.uid, 2, rawData, scheduleId, !isLast, '危战单人')
         .catch(err => logger?.error(`${LOG_PREFIX}[原神] 危战单人上报失败:`, err?.message))
     }
     if (hasMp) {
-      await GsChallengeRank.report(auth.uid, e.at || e.user_id, e.group_id, 3, rawData, scheduleId, !isLast)
+      await reportGsIfEnabled(e, auth.uid, 3, rawData, scheduleId, !isLast, '危战多人')
         .catch(err => logger?.error(`${LOG_PREFIX}[原神] 危战多人上报失败:`, err?.message))
     }
 
