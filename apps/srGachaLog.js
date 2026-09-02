@@ -56,7 +56,7 @@ export class srGachaLog extends plugin {
       e.uid = msgMatch?.[0] || await getUidFromNoteUser(e, 'sr')
     }
     if (!e.uid) {
-      e.reply('未绑定星铁UID\n请先发送【*绑定uid 你的星铁UID】或提供UID')
+      e.reply('未找到星铁UID\n请先发送【#扫码登录】绑定星铁账号后重试')
       return true
     }
     e.region = getSrServer(e.uid)
@@ -126,7 +126,7 @@ export class srGachaLog extends plugin {
       if (err?.retcode === -100 || /登录|login|cookie|token/i.test(String(err?.message))) {
         e.reply(`星铁抽卡记录更新失败：${err?.message}\n账号 cookie 可能已失效，请重新发送【#扫码登录】`)
       } else if (/角色不存在|等级不符/i.test(String(err?.message))) {
-        e.reply(`星铁抽卡记录更新失败：${err?.message}\n请确认目标 UID（${e.uid}）属于已绑定账号，或发送【*绑定uid 你的星铁UID】`)
+        e.reply(`星铁抽卡记录更新失败：${err?.message}\n请确认目标 UID（${e.uid}）属于已绑定账号，或发送【#扫码登录】重新绑定`)
       } else {
         e.reply(`星铁抽卡记录更新失败：${err?.message}`)
       }
