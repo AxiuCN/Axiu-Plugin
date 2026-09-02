@@ -27,7 +27,7 @@ export class gsGachaLog extends plugin {
       name: '[Axiu-Plugin] 原神抽卡记录管理',
       dsc: '原神更新抽卡记录、提瓦特小助手全历史导入、获取抽卡链接',
       event: 'message',
-      priority: 500,
+      priority: -1000000,
       rule: [
         // 命令1: #更新抽卡记录（从 qrLogin 迁移，精简为仅更新）
         {

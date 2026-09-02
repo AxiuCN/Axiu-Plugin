@@ -20,7 +20,7 @@ export class srGachaLog extends plugin {
       name: '[Axiu-Plugin] 星铁抽卡记录管理',
       dsc: '星铁更新抽卡记录、获取抽卡链接',
       event: 'message',
-      priority: 500,
+      priority: -1000000,
       rule: [
         // 命令1: 更新星铁抽卡记录（荷花 badge login 方案）
         // 兼容两种输入：*更新星铁抽卡记录（标准化为 #星铁更新星铁抽卡记录）与 #星铁更新抽卡记录
