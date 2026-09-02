@@ -1,16 +1,18 @@
-/** 星铁抽卡记录管理
- *  命令1: *更新星铁抽卡记录 — 官方 API 全量拉取（stoken→authkey→genshin GachaLog isSr 模式）
- *  命令2: *获取星铁抽卡链接 — stoken→authkey→生成抽卡 URL（仅私聊）
+/** 星铁抽卡记录管理 — 方案1（荷花 badge login + rpg_gacha_record）
+ *  命令1: *更新星铁抽卡记录 — cookie → badge login → 五星/垫抽/池统计 → 镜像 genshin srJson
+ *  命令2: *获取星铁抽卡链接 — 星铁外部 authkey 不可用，提示改用自动更新或手动导入
  *
- *  复用 genshin gcLog 查询/统计/渲染体系（*角色记录 / *光锥记录 / *全部记录 等），
- *  本文件只负责数据获取（官方 authkey 链路，星铁 game_biz=hkrpg_cn）。
- *  参考荷花重制版（Lotus-ReFactor）星铁抽卡同步思路，但采用 authkey 全量方案。
+ *  查询/统计/渲染复用 genshin gcLog（*角色记录 / *光锥记录 / *全部记录 等）。
+ *  数据完整度：官方小程序接口仅五星 + 垫抽 + 池统计（无每抽明细），
+ *              每抽全量需手动星铁 authkey 链接走 genshin 导入。
  */
 
 import plugin from '../../../lib/plugins/plugin.js'
+import QrUser from '../model/qrUser.js'
+import stokenStore from '../model/stokenStore.js'
 import { getSrServer } from '../model/mys/passportUtils.js'
-import { LOG_PREFIX } from '../components/constants.js'
-import { tryAcquireGachaLock, gachaLockRemaining, getUidFromNoteUser, getAuthKey } from '../components/gachaUtils.js'
+import { StarRailGachaService } from '../model/srGacha.js'
+import { tryAcquireGachaLock, gachaLockRemaining, getUidFromNoteUser } from '../components/gachaUtils.js'
 
 export class srGachaLog extends plugin {
   constructor () {
@@ -20,7 +22,7 @@ export class srGachaLog extends plugin {
       event: 'message',
       priority: 500,
       rule: [
-        // 命令1: 更新星铁抽卡记录（官方 authkey 全量拉取）
+        // 命令1: 更新星铁抽卡记录（荷花 badge login 方案）
         // 兼容两种输入：*更新星铁抽卡记录（标准化为 #星铁更新星铁抽卡记录）与 #星铁更新抽卡记录
         {
           reg: '^#星铁(更新)?(星铁)?(抽卡|祈愿)?(记录|历史)$',
@@ -28,7 +30,7 @@ export class srGachaLog extends plugin {
           permission: 'all',
           log: true
         },
-        // 命令2: 获取星铁抽卡链接（仅私聊）
+        // 命令2: 获取星铁抽卡链接（提示不可用）
         {
           reg: '^#星铁获取(星铁)?(抽卡|祈愿)?链接$',
           fnc: 'getSrGachaUrl',
@@ -59,22 +61,65 @@ export class srGachaLog extends plugin {
     }
     e.region = getSrServer(e.uid)
 
-    // stoken → authkey（星铁 game_biz=hkrpg_cn）
-    const authkey = await getAuthKey(e, 'hkrpg_cn')
-    if (!authkey) {
-      e.reply('星铁 authkey 获取失败\n请确认已绑定stoken，发送【#扫码登录】绑定后重试')
+    // 获取账号 cookie：优先 NoteUser 已有 CK（扫码登录已绑定），回退 stoken→bbsGetCookie
+    let cookie = null
+    try {
+      const user = new QrUser(e)
+      await user.cookie(e)
+      if (e.cookie) cookie = e.cookie
+    } catch {}
+
+    if (!cookie) {
+      // 回退：从 stoken 条目换 cookie
+      try {
+        const stokenData = await stokenStore.getUserStoken(e.user_id)
+        const entry = Object.values(stokenData || {}).find(s => s?.stoken)
+        if (entry) {
+          const qrUser = new QrUser({ user_id: e.user_id, uid: e.uid, region: e.region })
+          const cookies = `uid=${entry.stuid}&stoken=${entry.stoken}${entry.mid ? `&mid=${entry.mid}` : ''}`
+          const res = await qrUser.getData('bbsGetCookie', { cookies }, false)
+          if (res?.data?.cookie_token) {
+            cookie = `ltoken=${entry.ltoken};ltuid=${entry.stuid};cookie_token=${res.data.cookie_token};account_id=${entry.stuid};`
+          }
+        }
+      } catch {}
+    }
+
+    if (!cookie) {
+      e.reply('未获取到星铁账号 cookie\n请先发送【#扫码登录】绑定后重试')
       return true
     }
 
-    // 构造星铁抽卡 URL → 委托 genshin GachaLog（isSr 模式全量拉取）
-    e.msg = `https://public-operation-hkrpg.mihoyo.com/common/gacha_record/api/getGachaLog?authkey_ver=1&sign_type=2&auth_appid=webview_gacha&game_biz=hkrpg_cn&gacha_type=11&page=1&size=5&end_id=0&region=${e.region}&lang=zh-cn&authkey=${encodeURIComponent(authkey)}`
-
+    // 拉取并镜像 srJson
+    const service = new StarRailGachaService()
     try {
-      const GachaLog = (await import('../../genshin/model/gachaLog.js')).default
-      await (new GachaLog(e)).logUrl()
+      const result = await service.updateByCookie({
+        qq: e.user_id,
+        uid: e.uid,
+        region: e.region,
+        cookie
+      })
+      const pools = result.pools
+      const totalStars = pools.reduce((s, p) => s + p.total, 0)
+      const hasData = pools.some(p => p.total > 0 || p.totalDraws > 0)
+      if (!hasData) {
+        e.reply('星铁抽卡记录更新完成：暂无抽卡数据\n可查看【*角色记录】等查询命令')
+        return true
+      }
+      const lines = pools
+        .filter(p => p.total > 0 || p.totalDraws > 0)
+        .map(p => `${p.name}: 五星 ${p.total}${p.added > 0 ? `（新增${p.added}）` : ''} · 已抽 ${p.totalDraws} · 垫 ${p.pity ?? '?'}`)
+      e.reply(
+        `星铁抽卡记录更新完成\n${lines.join('\n')}\n` +
+        `共 ${totalStars} 个五星${result.added > 0 ? `，新增 ${result.added}` : ''}\n` +
+        '可查看【*角色记录】【*光锥记录】【*全部记录】等'
+      )
     } catch (err) {
-      logger.error(`${LOG_PREFIX} 星铁更新抽卡记录失败: ${err.message}`)
-      e.reply(`更新星铁抽卡记录失败：${err.message}`)
+      logger?.error(`[Axiu-Plugin][星铁抽卡] 更新失败: ${err?.message}`)
+      // 登录失效（retcode -100 / 登录字样）提示重绑
+      e.reply(/登录|login|cookie|token/i.test(String(err?.message))
+        ? `星铁抽卡记录更新失败：${err?.message}\n账号 cookie 可能已失效，请重新发送【#扫码登录】`
+        : `星铁抽卡记录更新失败：${err?.message}`)
     }
     return true
   }
@@ -82,35 +127,7 @@ export class srGachaLog extends plugin {
   // ==================== 命令2: *获取星铁抽卡链接 ====================
 
   async getSrGachaUrl (e) {
-    if (!e.isPrivate) {
-      e.reply('请私聊发送该指令')
-      return true
-    }
-
-    const lockKey = `Axiu-Plugin:gachaLog:sr:getUrl:${e.user_id}`
-    if (!await tryAcquireGachaLock(lockKey)) {
-      e.reply(`请求过快，请${await gachaLockRemaining(lockKey) || 5 * 60}秒后重试...`)
-      return true
-    }
-
-    if (!e.uid || !/^[1-9]\d{8}$/.test(String(e.uid))) {
-      const msgMatch = e.msg.match(/\d{9,10}/)
-      e.uid = msgMatch?.[0] || await getUidFromNoteUser(e, 'sr')
-    }
-    if (!e.uid) {
-      e.reply('未绑定星铁UID\n请先发送【*绑定uid 你的星铁UID】或提供UID')
-      return true
-    }
-    e.region = getSrServer(e.uid)
-
-    const authkey = await getAuthKey(e, 'hkrpg_cn')
-    if (!authkey) {
-      e.reply('获取星铁 authkey 失败，请先绑定stoken\n发送【#扫码登录】进行绑定')
-      return true
-    }
-
-    const url = `https://public-operation-hkrpg.mihoyo.com/common/gacha_record/api/getGachaLog?authkey_ver=1&sign_type=2&auth_appid=webview_gacha&game_biz=hkrpg_cn&gacha_type=11&page=1&size=5&end_id=0&region=${e.region}&lang=zh-cn&authkey=${encodeURIComponent(authkey)}`
-    e.reply(`uid:${e.uid}\n星铁抽卡链接：\n${url}`)
+    e.reply('星铁暂不支持外部 authkey 获取链接\n请直接发送【*更新星铁抽卡记录】自动更新，或粘贴游戏内星铁抽卡链接导入')
     return true
   }
 }
