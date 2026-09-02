@@ -385,66 +385,110 @@ function normalizeHistoricalStar (r) {
     item: r?.item || { name: r?.name, item_type: r?.item_type },
     is_up: Boolean(r?.is_up),
     got_item: r?.got_item || null,
-    gacha_count: nonNegativeInt(r?.gacha_count)
+    gacha_count: nonNegativeInt(r?.gacha_count),
+    time: String(r?.time || '')
   }
 }
 
+/** 判断是否为角色（兼容官方 ItemType_Avatar 与已转换的「角色」） */
+function isAvatarItem (item) {
+  return item?.item_type === 'ItemType_Avatar' || item?.item_type === '角色'
+}
+
+/** 五星时间：优先显式 time，否则 id 前 10 位 Unix 时间戳，最后兜底 */
+function fiveStarTime (record) {
+  const explicit = String(record?.time || record?.legacy_time || '')
+  if (explicit) return explicit
+  const seconds = String(record?.id || '').slice(0, 10)
+  if (/^\d{10}$/.test(seconds)) {
+    return new Date(Number(seconds) * 1000).toISOString().replace('T', ' ').slice(0, 19)
+  }
+  return '1970-01-01 00:00:00'
+}
+
+/** 数字/字符串混合降序（官方 id 数字随时间递增，大 = 新） */
+function compareNumericTextDesc (a, b) {
+  const aNum = /^\d+$/.test(a)
+  const bNum = /^\d+$/.test(b)
+  if (aNum && bNum) return Number(b) - Number(a)
+  return String(b).localeCompare(String(a))
+}
+
+/**
+ * 构造 miao 兼容的星铁抽卡记录（每池）——对齐荷花重制版 buildMiaoPoolRecords
+ * 官方接口只有五星列表+垫抽+总抽数，无每抽明细：
+ *   - 五星合并：以接口返回为权威（覆盖历史 gacha_count），按 id 降序 = 新在前
+ *   - 开头补当前垫抽（pity），每条五星后补 (gacha_count-1) 占位（与前一条五星的间隔）
+ *   - 末尾以 totalDraws 补齐总抽数
+ * 记录字段对齐 genshin GachaLog 渲染所需（id/uid/name/item_type/rank_type/gacha_type/time）
+ * @param {object} param
+ * @param {Array} param.fiveStars - 远端五星（含 gacha_count）
+ * @param {number} [param.pity] - 当前垫抽
+ * @param {number} [param.totalDraws] - 池总抽数
+ * @param {string|number} param.uid - 星铁 UID
+ * @param {number} param.type - gacha_type
+ * @param {Array} [param.prevRecords] - 已保存的该池记录（含占位）
+ * @returns {Array} 记录数组（五星真实 + 占位补抽数）
+ */
 export function buildMiaoPoolRecords ({ fiveStars = [], pity, totalDraws, uid, type, prevRecords = [] } = {}) {
   const numericType = Number(type)
   const output = []
 
-  // 历史五星（仅保留真实五星，旧占位舍去由本池重建）
-  const prevStars = (Array.isArray(prevRecords) ? prevRecords : [])
-    .filter(r => r?.rank_type === '5' && r?.name && r.name !== '占位记录')
-    .map(normalizeHistoricalStar)
-  const prevIds = new Set(prevStars.map(r => String(r.id || r.uuid || '')))
-  const seen = new Set(prevIds)
-
-  // 顺序：list 语义为最新在前（gacha_count 递减，首条最新）。
-  // all = 历史（旧）在前 + 远端（列表序：新→旧），输出需由旧→新 → 远端部分反转
-  const historical = prevStars
-  const fresh = []
+  // 合并历史 + 远端五星：以接口为权威（远端记录覆盖历史同名条目，保 gacha_count 正确）
+  const merged = new Map()
+  for (const r of Array.isArray(prevRecords) ? prevRecords : []) {
+    if (r?.rank_type === '5' && r?.name && r.name !== '占位记录') {
+      const norm = normalizeHistoricalStar(r)
+      const key = recordKey(norm)
+      if (key) merged.set(key, norm)
+    }
+  }
   for (const raw of fiveStars) {
     const norm = normalizeFiveStar(raw)
     const key = recordKey(norm)
-    if (!key || seen.has(key)) continue
-    seen.add(key)
-    fresh.push(norm)
+    if (!key) continue
+    merged.set(key, norm) // 接口权威覆盖
   }
-  fresh.reverse() // 新→旧 → 旧→新
-  const all = [...historical, ...fresh]
+  // 新在前（id 数值大 = 更新；非数字 uuid 保持字符串降序）
+  const all = [...merged.values()].sort((a, b) => compareNumericTextDesc(recordKey(a), recordKey(b)))
 
-  const fallbackTime = new Date().toISOString().replace('T', ' ').slice(0, 19)
   let seq = 0
-  const pushFillers = (count, time) => {
-    for (let i = 0; i < Math.max(0, count); i++) {
-      seq += 1
-      output.push({
-        id: `lotus-${numericType}-${seq}`, uid: String(uid), name: '占位记录',
-        item_type: '光锥', rank_type: '3', gacha_type: String(numericType), time: time || fallbackTime
-      })
-    }
-  }
-
-  // 由旧到新：每个五星前补 (gacha_count-1) 条占位（该五星发生前的普通抽），再放五星
-  for (const star of all) {
-    pushFillers(Math.max(0, (star.gacha_count || 0) - 1), star.time)
+  const pushFiller = (time) => {
+    seq += 1
     output.push({
-      id: String(star.id || star.uuid || `lotus-five-${numericType}-${seq++}`),
-      uid: String(uid),
-      name: String(star.item?.name || '未知'),
-      item_type: star.item?.item_type === 'ItemType_Avatar' ? '角色' : '光锥',
-      rank_type: '5',
-      gacha_type: String(numericType),
-      time: String(star.time || fallbackTime)
+      id: `lotus-${numericType}-${seq}`, uid: String(uid), name: '占位记录',
+      item_type: '光锥', rank_type: '3', gacha_type: String(numericType), time: time || fallbackTime
     })
   }
-
-  // 末尾当前垫抽（接口 pity；无则推断）
-  const currentPityVal = pity != null ? pity : currentPity(output)
-  if (currentPityVal > 0) {
-    pushFillers(currentPityVal - 1, fallbackTime)
+  const pushFillers = (count, time) => {
+    for (let i = 0; i < Math.max(0, count); i++) pushFiller(time || fallbackTime)
   }
+
+  const fallbackTime = new Date().toISOString().replace('T', ' ').slice(0, 19)
+
+  // 开头：当前垫抽（距最近一次五星的抽数）
+  pushFillers(nonNegativeInt(pity), fiveStarTime(all[0]))
+
+  // 五星 + 该五星后与前一条五星的间隔占位（gacha_count-1）
+  for (const star of all) {
+    const time = fiveStarTime(star)
+    output.push({
+      id: String(star.id || star.uuid || `lotus-five-${numericType}-${seq}`),
+      uid: String(uid),
+      name: String(star.item?.name || '未知'),
+      item_type: isAvatarItem(star.item) ? '角色' : '光锥',
+      rank_type: '5',
+      gacha_type: String(numericType),
+      time,
+      // 持久化 gacha_count（供下次更新从 srJson 重建间隔）
+      gacha_count: nonNegativeInt(star.gacha_count)
+    })
+    pushFillers(Math.max(0, nonNegativeInt(star.gacha_count) - 1), time)
+  }
+
+  // 末尾：totalDraws 补齐（保证序列总条数 = 池总抽数）
+  const accounted = output.length
+  pushFillers(Math.max(0, nonNegativeInt(totalDraws) - accounted), fiveStarTime(all.at(-1)))
   return output
 }
 
