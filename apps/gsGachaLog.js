@@ -1,16 +1,17 @@
-/** 抽卡记录管理
+/** 原神抽卡记录管理
  *  命令1: #更新抽卡记录 — Mihoyo 官方 API（从 qrLogin 迁移，精简为仅更新）
  *  命令2: #更新小助手抽卡记录 [链接] — lelaer.com 全历史导入（从天如移植）
  *  命令3: #获取抽卡链接 — stoken→authkey→返回 URL（仅私聊）
  *
  *  三个命令各有独立的 5 分钟频率限制锁。
+ *  星铁抽卡记录见 apps/srGachaLog.js（stoken→authkey→genshin GachaLog 全量拉取）
  */
 
 import plugin from '../../../lib/plugins/plugin.js'
 import fetch from 'node-fetch'
-import QrUser from '../model/qrUser.js'
 import { getServer } from '../model/mys/passportUtils.js'
 import { LOG_PREFIX } from '../components/constants.js'
+import { tryAcquireGachaLock, gachaLockRemaining, getUidFromNoteUser, getAuthKey } from '../components/gachaUtils.js'
 
 /** 卡池类型 → 中文名 */
 const TYPE_NAME = {
@@ -20,11 +21,11 @@ const TYPE_NAME = {
   200: '常驻'
 }
 
-export class GachaLogApp extends plugin {
+export class gsGachaLog extends plugin {
   constructor () {
     super({
-      name: '[Axiu-Plugin] 抽卡记录管理',
-      dsc: '更新抽卡记录、提瓦特小助手全历史导入、获取抽卡链接',
+      name: '[Axiu-Plugin] 原神抽卡记录管理',
+      dsc: '原神更新抽卡记录、提瓦特小助手全历史导入、获取抽卡链接',
       event: 'message',
       priority: 500,
       rule: [
@@ -273,68 +274,6 @@ export class GachaLogApp extends plugin {
 }
 
 // ==================== 工具函数 ====================
-
-/** 原子占锁（SET NX EX）：任务开始前调用，防并发重复请求 */
-async function tryAcquireGachaLock (lockKey) {
-  const lockEx = 5 * 60
-  const ok = await redis.set(lockKey, JSON.stringify({ expire: Date.now() / 1000 + lockEx }), {
-    EX: lockEx,
-    NX: true
-  })
-  return ok === 'OK'
-}
-
-/** 读取锁剩余秒数（容错：旧格式/损坏值返回 0） */
-async function gachaLockRemaining (lockKey) {
-  try {
-    const lockData = await redis.get(lockKey)
-    if (!lockData) return 0
-    const expire = JSON.parse(lockData).expire
-    if (typeof expire !== 'number') return 0
-    return Math.ceil(expire - Date.now() / 1000)
-  } catch {
-    return 0
-  }
-}
-
-/** 通过 NoteUser 获取绑定的 UID */
-async function getUidFromNoteUser (e) {
-  try {
-    const NoteUser = (await import('../../genshin/model/mys/NoteUser.js')).default
-    const user = await NoteUser.create(e.user_id || e)
-    return user?.uid || null
-  } catch {
-    return null
-  }
-}
-
-/** 获取 authkey（优先 stoken→passportApi，降级 Redis 缓存） */
-async function getAuthKey (e) {
-  // 方式1：通过 stoken → passportApi
-  try {
-    const user = new QrUser(e)
-    await user.cookie(e)
-    const res = await user.getData('authKey', { auth_appid: 'webview_gacha' })
-    if (res?.data) {
-      return res.data.authkey
-    }
-  } catch (err) {
-    logger?.error(`${LOG_PREFIX}[小助手] stoken获取authkey失败: ${err.message}`)
-  }
-
-  // 方式2：Redis 缓存（之前通过 URL 提交过的）
-  if (e.uid) {
-    try {
-      const GachaLog = (await import('../../genshin/model/gachaLog.js')).default
-      const gacha = new GachaLog(e)
-      gacha.uid = e.uid
-      const cached = await redis.get(`${gacha.urlKey}${gacha.uid}`)
-      if (cached) return cached
-    } catch {}
-  }
-
-  return null
-}
 
 /** 去重合并：以 id 为键，remote 覆盖 local，按 id 降序 */
 function mergeJson (local, remote) {

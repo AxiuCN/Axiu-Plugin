@@ -96,12 +96,15 @@ pnpm install --filter=Axiu-Plugin
 
 | 命令 | 说明 |
 |------|------|
-| `#更新抽卡记录` | 通过 Mihoyo 官方 API 增量更新抽卡记录（可获取近 12 个月数据） |
+| `#更新抽卡记录` | 通过 Mihoyo 官方 API 增量更新原神抽卡记录（可获取近 12 个月数据） |
 | `#更新小助手抽卡记录 [链接]` | 从提瓦特小助手（lelaer.com）导入全历史 UIGF 记录 |
 | `#获取抽卡链接` | 生成米游社抽卡链接供手动使用（仅私聊） |
+| `*更新星铁抽卡记录` | 通过 Mihoyo 官方 API 全量更新星铁跃迁记录（stoken→authkey→全量拉取） |
+| `*获取星铁抽卡链接` | 生成星铁跃迁链接供手动使用（仅私聊） |
 
-- 三个命令各有独立的 5 分钟 CD
-- 已绑定 stoken 的用户无需提供链接，自动获取 authkey
+- 各命令有独立的 5 分钟 CD
+- 已绑定 stoken 的用户无需提供链接，自动获取 authkey（原神/星铁通用，星铁沿用 authkey 全量方案，参考荷花重制版抽卡同步思路）
+- 星铁查询/统计/渲染复用 genshin gcLog 体系（`*角色记录` / `*光锥记录` / `*全部记录` / `*星铁统计` / `*导出记录`）
 - 小助手数据与 Mihoyo 官方数据共用同一本地存储，自动去重
 
 ### 终局挑战
@@ -224,3 +227,4 @@ uvicorn main:app --host 0.0.0.0 --port 9645
 - [StarRail-plugin](https://github.com/Nwflower/StarRail-plugin) — 星铁终局挑战功能移植自此项目
 - [miao-plugin](https://github.com/yoimiya-kokomi/miao-plugin) — 原神终局挑战查询模板及 API 调用参考自此项目
 - [FurinaWai77](https://github.com/FurinaWai77) — 代码审查与修复建议（审查基准 e9c4dae + 7fa4b3d - 88affaf）
+- [Lotus-ReFactor](https://github.com/MOPELotus/Lotus-Plugin) — 星铁抽卡记录同步思路参考自荷花重制版

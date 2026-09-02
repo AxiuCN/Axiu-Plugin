@@ -67,3 +67,28 @@ export function getServer (uid) {
   }
   return 'cn_gf01'
 }
+
+/**
+ * 星铁 UID → 服务器标识（对齐 genshin gachaLog.getServer 星铁分支）
+ * @param {string|number} uid 星铁 UID
+ * @returns {string} server 标识（prod_*）
+ */
+export function getSrServer (uid) {
+  switch (String(uid).slice(0, -8)) {
+    case '1':
+    case '2':
+      return 'prod_gf_cn' // 官服
+    case '5':
+      return 'prod_qd_cn' // B 服
+    case '6':
+      return 'prod_official_usa' // 美服
+    case '7':
+      return 'prod_official_euro' // 欧服
+    case '8':
+    case '18':
+      return 'prod_official_asia' // 亚服
+    case '9':
+      return 'prod_official_cht' // 港澳台服
+  }
+  return 'prod_gf_cn'
+}

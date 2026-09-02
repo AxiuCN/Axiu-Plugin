@@ -218,14 +218,14 @@ export default class PassportApi {
         query: `${data?.cookies?.replace(/;/g, '&')}`
       },
 
-      // === AuthKey（抽卡记录用）===
+      // === AuthKey（抽卡记录用，原神+星铁通用：game_biz 按游戏传，默认原神）===
       authKey: {
         url: `${this.apiMap.apiWeb}/binding/api/genAuthKey`,
         body: {
           auth_appid: data.auth_appid ?? 'webview_gacha',
-          game_biz: this.isOs ? 'hk4e_global' : 'hk4e_cn',
-          game_uid: this.e.uid * 1,
-          region: this.e.region
+          game_biz: data.gameBiz ?? (this.isOs ? 'hk4e_global' : 'hk4e_cn'),
+          game_uid: (data.uid ?? this.e.uid) * 1,
+          region: data.region ?? this.e.region
         },
         types: 'authKey'
       }

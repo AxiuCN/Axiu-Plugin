@@ -30,20 +30,14 @@ const files = await readdir('./plugins/Axiu-Plugin/apps').catch((err) => {
   logger.error(err);
 });
 
-let ret = [];
-if (files) {
-  files.forEach((file) => {
-    if (file.endsWith('.js')) {
-      ret.push(import(`./apps/${file}`));
-    }
-  });
-}
+// 仅保留 .js，且 import 与 apps 赋值遍历同一数组，避免非 JS 文件导致索引错位
+const appFiles = Array.isArray(files) ? files.filter((file) => file.endsWith('.js')) : [];
 
-ret = await Promise.allSettled(ret);
+const ret = await Promise.allSettled(appFiles.map((file) => import(`./apps/${file}`)));
 
-let apps = {};
-for (let i in files) {
-  const name = files[i].replace('.js', '');
+const apps = {};
+for (let i in appFiles) {
+  const name = appFiles[i].replace('.js', '');
 
   if (ret[i].status !== 'fulfilled') {
     logger.error(`载入插件错误：${logger.red(name)}`);
