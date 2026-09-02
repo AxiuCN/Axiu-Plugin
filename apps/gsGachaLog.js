@@ -9,6 +9,7 @@
 
 import plugin from '../../../lib/plugins/plugin.js'
 import fetch from 'node-fetch'
+import QrUser from '../model/qrUser.js'
 import { getServer } from '../model/mys/passportUtils.js'
 import { LOG_PREFIX } from '../components/constants.js'
 import { tryAcquireGachaLock, gachaLockRemaining, getUidFromNoteUser, getAuthKey } from '../components/gachaUtils.js'
