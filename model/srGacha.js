@@ -93,6 +93,19 @@ export class StarRailGachaService {
 
     const typeEntries = Object.entries(STAR_RAIL_GACHA_TYPES)
     for (const [index, [, type]] of typeEntries.entries()) {
+      const prevPool = Array.isArray(previous?.[String(type)]) ? previous[String(type)] : []
+
+      // 池级保护：该池已有非本插件占位的完整数据（真实 3/4 星记录）→ 保留原数据，不覆盖
+      if (hasGenuineRecords(prevPool)) {
+        poolResults.push({
+          type,
+          name: POOL_NAME[type] || String(type),
+          kept: true,
+          total: prevPool.filter(r => r?.rank_type === '5').length
+        })
+        continue
+      }
+
       const [poolStat, fiveStarPage] = await Promise.all([
         this.requestGacha('pool_stat', context, { gacha_type: type }).catch(() => null),
         this.fetchFiveStars(context, type)
@@ -315,6 +328,20 @@ function collectFiveStars (existing) {
       : []
   }
   return map
+}
+
+/**
+ * 判断该池 srJson 是否已含真实（非本插件占位）抽卡数据。
+ * 本插件生成的占位恒为 name='占位记录' 的 3 星记录；真实导入（authkey/genshin gcLog）会有真实名字的 3/4 星。
+ * @param {Array} records - 单池 srJson 记录
+ * @returns {boolean} true = 已有完整真实数据，不应被本插件覆盖
+ */
+function hasGenuineRecords (records) {
+  return Array.isArray(records) && records.some(r => {
+    const rank = String(r?.rank_type || '')
+    const name = String(r?.name || '')
+    return (rank === '3' || rank === '4') && name && name !== '占位记录'
+  })
 }
 
 // ==================== srJson 读写（genshin gcLog 兼容格式） ====================
