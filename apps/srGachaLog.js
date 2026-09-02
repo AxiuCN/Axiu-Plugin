@@ -61,27 +61,33 @@ export class srGachaLog extends plugin {
     }
     e.region = getSrServer(e.uid)
 
-    // 获取账号 cookie：优先 NoteUser 已有 CK（扫码登录已绑定），回退 stoken→bbsGetCookie
+    // 获取账号 cookie：优先按目标星铁 UID 反查 stoken 条目（保证 cookie 与 UID 配套）
     let cookie = null
     try {
-      const user = new QrUser(e)
-      await user.cookie(e)
-      if (e.cookie) cookie = e.cookie
+      const stokenData = await stokenStore.getUserStoken(e.user_id)
+      // stoken 数据顶层键即游戏 UID
+      let entry = stokenData?.[String(e.uid)] || null
+      if (!entry) {
+        entry = Object.values(stokenData || {}).find(s =>
+          String(s?.uid) === String(e.uid) || String(s?.stuid) === String(s?.uid) && s?.stoken
+        ) || Object.values(stokenData || {}).find(s => s?.stoken)
+      }
+      if (entry?.stoken) {
+        const qrUser = new QrUser({ user_id: e.user_id, uid: e.uid, region: e.region })
+        const cookies = `uid=${entry.stuid}&stoken=${entry.stoken}${entry.mid ? `&mid=${entry.mid}` : ''}`
+        const res = await qrUser.getData('bbsGetCookie', { cookies }, false)
+        if (res?.data?.cookie_token) {
+          cookie = `ltoken=${entry.ltoken};ltuid=${entry.stuid};cookie_token=${res.data.cookie_token};account_id=${entry.stuid};`
+        }
+      }
     } catch {}
 
+    // 回退：NoteUser 已有 CK（账号级，扫码登录已绑定）
     if (!cookie) {
-      // 回退：从 stoken 条目换 cookie
       try {
-        const stokenData = await stokenStore.getUserStoken(e.user_id)
-        const entry = Object.values(stokenData || {}).find(s => s?.stoken)
-        if (entry) {
-          const qrUser = new QrUser({ user_id: e.user_id, uid: e.uid, region: e.region })
-          const cookies = `uid=${entry.stuid}&stoken=${entry.stoken}${entry.mid ? `&mid=${entry.mid}` : ''}`
-          const res = await qrUser.getData('bbsGetCookie', { cookies }, false)
-          if (res?.data?.cookie_token) {
-            cookie = `ltoken=${entry.ltoken};ltuid=${entry.stuid};cookie_token=${res.data.cookie_token};account_id=${entry.stuid};`
-          }
-        }
+        const user = new QrUser(e)
+        await user.cookie(e)
+        if (e.cookie) cookie = e.cookie
       } catch {}
     }
 
@@ -115,11 +121,15 @@ export class srGachaLog extends plugin {
         '可查看【*角色记录】【*光锥记录】【*全部记录】等'
       )
     } catch (err) {
-      logger?.error(`[Axiu-Plugin][星铁抽卡] 更新失败: ${err?.message}`)
-      // 登录失效（retcode -100 / 登录字样）提示重绑
-      e.reply(/登录|login|cookie|token/i.test(String(err?.message))
-        ? `星铁抽卡记录更新失败：${err?.message}\n账号 cookie 可能已失效，请重新发送【#扫码登录】`
-        : `星铁抽卡记录更新失败：${err?.message}`)
+      logger?.error(`[Axiu-Plugin][星铁抽卡] 更新失败: retcode=${err?.retcode} msg=${err?.message}`)
+      // 登录失效（retcode -100 / 登录字样）提示重绑；角色不存在提示检查 UID
+      if (err?.retcode === -100 || /登录|login|cookie|token/i.test(String(err?.message))) {
+        e.reply(`星铁抽卡记录更新失败：${err?.message}\n账号 cookie 可能已失效，请重新发送【#扫码登录】`)
+      } else if (/角色不存在|等级不符/i.test(String(err?.message))) {
+        e.reply(`星铁抽卡记录更新失败：${err?.message}\n请确认目标 UID（${e.uid}）属于已绑定账号，或发送【*绑定uid 你的星铁UID】`)
+      } else {
+        e.reply(`星铁抽卡记录更新失败：${err?.message}`)
+      }
     }
     return true
   }
