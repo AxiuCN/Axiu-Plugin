@@ -540,8 +540,9 @@ export class MysSigninApp extends plugin {
           const segments = [{ type: 'text', text: header }]
           for (const u of failedUsers) {
             if (isMember(u.qq)) {
+              segments.push({ type: 'text', text: '\n' })
               segments.push({ type: 'at', qq: Number(u.qq) })
-              segments.push({ type: 'text', text: '\n' + u.lines.join('\n') })
+              segments.push({ type: 'text', text: u.lines.join('\n') })
             } else {
               segments.push({ type: 'text', text: `\nQQ:${u.qq}\n${u.lines.join('\n')}` })
             }
