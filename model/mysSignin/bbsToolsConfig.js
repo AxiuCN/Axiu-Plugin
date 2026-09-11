@@ -23,11 +23,19 @@ function getUserConfigPath (qq, n) {
   return path.join(BBS_TOOLS_CONFIG_DIR, `${qq}_${n}.yaml`)
 }
 
-/** 列出指定 QQ 的所有签到配置文件 */
-function listUserConfigs (qq) {
+/** 转义正则特殊字符（用户 ID 可能为非纯数字串，如微信自定义 ID） */
+function escapeRegExp (text) {
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/** 签到配置文件名解析：{userId}_{n}.yaml（前缀贪心，兼容含下划线的非数字 ID） */
+const CONFIG_FILE_PATTERN = /^(.+)_(\d+)\.yaml$/
+
+/** 列出指定用户（QQ / 微信等平台 ID）的所有签到配置文件 */
+function listUserConfigs (user) {
   if (!fs.existsSync(BBS_TOOLS_CONFIG_DIR)) return []
   const files = fs.readdirSync(BBS_TOOLS_CONFIG_DIR)
-  const pattern = new RegExp(`^${qq}_(\\d+)\\.yaml$`)
+  const pattern = new RegExp(`^${escapeRegExp(user)}_(\\d+)\\.yaml$`)
   return files
     .filter(f => pattern.test(f))
     .map(f => {
@@ -40,17 +48,16 @@ function listUserConfigs (qq) {
     .sort((a, b) => a.n - b.n)
 }
 
-/** 列出所有已注册签到的 QQ 号 */
+/** 列出所有已注册签到的用户 ID（QQ / 微信等平台 ID） */
 function listAllRegisteredQQ () {
   if (!fs.existsSync(BBS_TOOLS_CONFIG_DIR)) return []
   const files = fs.readdirSync(BBS_TOOLS_CONFIG_DIR)
-  const qqSet = new Set()
-  const pattern = /^(\d+)_\d+\.yaml$/
+  const userSet = new Set()
   for (const f of files) {
-    const match = f.match(pattern)
-    if (match) qqSet.add(match[1])
+    const match = f.match(CONFIG_FILE_PATTERN)
+    if (match) userSet.add(match[1])
   }
-  return [...qqSet]
+  return [...userSet]
 }
 
 /** 确定下一个可用的 n (从 1 开始递增) */

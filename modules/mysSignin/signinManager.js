@@ -301,7 +301,7 @@ async function registerAllGroups () {
 async function signinForUser (userId, isAuto = false) {
   const configs = listUserConfigs(userId)
   if (configs.length === 0) {
-    return { ok: false, results: [], message: `QQ=${userId}: 未注册签到` }
+    return { ok: false, results: [], message: `用户=${userId}: 未注册签到` }
   }
 
   const signinCfg = getSigninConfig()
@@ -541,7 +541,7 @@ async function refreshAllUserCookies () {
     success,
     failedUsers,
     message: `刷新完成: ${success}/${qqList.length} 成功` +
-      (failedUsers.length > 0 ? `\n失败:\n${failedUsers.map(u => `QQ=${u.userId}: ${u.failed.map(f => `账号${f.n} ${f.reason}`).join('; ')}`).join('\n')}` : '')
+      (failedUsers.length > 0 ? `\n失败:\n${failedUsers.map(u => `用户=${u.userId}: ${u.failed.map(f => `账号${f.n} ${f.reason}`).join('; ')}`).join('\n')}` : '')
   }
 }
 
@@ -776,7 +776,7 @@ function formatSummaryReport (summary) {
   const { header, failedUsers } = buildSigninReport(summary)
   let msg = header
   for (const u of failedUsers) {
-    msg += `\n@${u.qq}\n${u.lines.join('\n')}`
+    msg += `\n用户:${u.qq}\n${u.lines.join('\n')}`
   }
   return msg
 }

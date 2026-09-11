@@ -269,7 +269,7 @@ export class MysSigninApp extends plugin {
     let msg = `已注册签到用户 (共 ${qqList.length} 人):`
     for (const qq of qqList.slice(0, 30)) {
       const configs = listUserConfigs(qq)
-      msg += `\n  QQ=${qq}: ${configs.length} 个账号`
+      msg += `\n  用户=${qq}: ${configs.length} 个账号`
     }
     if (qqList.length > 30) {
       msg += `\n  ...及其他 ${qqList.length - 30} 人`
@@ -503,20 +503,20 @@ export class MysSigninApp extends plugin {
    * 发送结构化汇总报告（带失败用户分组与版权行）
    * @param {string} header - 报告头（含统计）
    * @param {Array<{qq: string, lines: string[]}>} failedUsers - 失败用户分组明细
-   * 群聊：失败用户在通知群内用 @，否则显示 QQ 号；主人在私聊，一律用 QQ 号文本
+   * 群聊：失败用户为数字 ID 且在群内时用 @，否则（微信等非数字 ID）显示用户 ID 文本；主人在私聊，一律用 ID 文本
    */
   async _sendReport (header, failedUsers) {
     const cfg = getSigninConfig()
     const footer = `\n\nCreated By TRSS-Yunzai v${yunzaiVersion} & Axiu-Plugin v${pluginVersion}`
 
-    // 主人私聊：一律 QQ 号文本（不用 @）
+    // 主人私聊：一律 ID 文本（不用 @）
     try {
       const masterQQ = (await import('../../../lib/config/config.js')).default?.masterQQ
       if (masterQQ && masterQQ.length > 0) {
         const friend = Bot.pickFriend(masterQQ[0])
         let msg = header
         for (const u of failedUsers) {
-          msg += `\nQQ:${u.qq}\n${u.lines.join('\n')}`
+          msg += `\n用户:${u.qq}\n${u.lines.join('\n')}`
         }
         await friend.sendMsg(msg + footer)
       }
@@ -524,7 +524,7 @@ export class MysSigninApp extends plugin {
       logger?.warn(`${SIGNIN_LOG_PREFIX} 发送master报告失败: ${err.message}`)
     }
 
-    // 通知配置的群聊：失败用户在群内 @，不在群内显示 QQ 号
+    // 通知配置的群聊：失败用户为数字 ID 且在群内时 @，否则显示用户 ID
     if (cfg.reportGroups) {
       const groupIds = String(cfg.reportGroups).split(/[,，\s]+/).filter(Boolean)
       for (const groupId of groupIds) {
@@ -533,18 +533,20 @@ export class MysSigninApp extends plugin {
           if (!group) continue
           // 群成员集合（判断 @ 是否有效）：key 类型各适配器可能不同（number/string），统一规范化为字符串 Set
           let memberMap = null
-          try { memberMap = await group.getMemberMap() } catch { /* 成员拉取失败降级为 QQ 号 */ }
+          try { memberMap = await group.getMemberMap() } catch { /* 成员拉取失败降级为 ID 文本 */ }
           const memberSet = memberMap ? new Set([...memberMap.keys()].map(String)) : null
-          const isMember = memberSet ? (qq) => memberSet.has(String(qq)) : () => false
+          const isMember = (qq) => memberSet ? memberSet.has(String(qq)) : false
+          // @ 仅适用于数字 ID（QQ）；微信等非数字 ID 及非群成员一律文本
+          const canAt = (qq) => /^\d+$/.test(String(qq)) && isMember(qq)
 
           const segments = [{ type: 'text', text: header }]
           for (const u of failedUsers) {
-            if (isMember(u.qq)) {
+            if (canAt(u.qq)) {
               segments.push({ type: 'text', text: '\n' })
               segments.push({ type: 'at', qq: Number(u.qq) })
               segments.push({ type: 'text', text: u.lines.join('\n') })
             } else {
-              segments.push({ type: 'text', text: `\nQQ:${u.qq}\n${u.lines.join('\n')}` })
+              segments.push({ type: 'text', text: `\n用户:${u.qq}\n${u.lines.join('\n')}` })
             }
           }
           segments.push({ type: 'text', text: footer })
