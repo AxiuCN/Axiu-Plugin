@@ -106,22 +106,26 @@ export class srGachaLog extends plugin {
         cookie
       })
       const pools = result.pools
-      const updated = pools.filter(p => !p.kept)
+      // 三类池：常规更新 / 已有真实数据追加新记录 / 已有真实数据无新增
+      const rebuilt = pools.filter(p => !p.kept && !p.merged)
+      const mergedPools = pools.filter(p => p.merged)
       const keptPools = pools.filter(p => p.kept)
-      const totalStars = updated.reduce((s, p) => s + p.total, 0)
-      const hasData = updated.some(p => p.total > 0 || p.totalDraws > 0)
-      const lines = updated
+      const totalStars = rebuilt.reduce((s, p) => s + p.total, 0) + mergedPools.reduce((s, p) => s + p.total, 0)
+      const hasData = rebuilt.some(p => p.total > 0 || p.totalDraws > 0)
+      const lines = rebuilt
         .filter(p => p.total > 0 || p.totalDraws > 0)
         .map(p => `${p.name}: 五星 ${p.total}${p.added > 0 ? `（新增${p.added}）` : ''} · 已抽 ${p.totalDraws} · 垫 ${p.pity ?? '?'}`)
-      const keptLines = keptPools.map(p => `${p.name}: 已有完整数据，已保留`)
-      const header = !hasData
+      const mergedLines = mergedPools.map(p => `${p.name}: 已追加 ${p.added} 个五星（保留原有导入数据）· 垫 ${p.pity ?? '?'}`)
+      const keptLines = keptPools.map(p => `${p.name}: 已有完整数据，暂无新增`)
+      const header = (!hasData && !mergedPools.length)
         ? '星铁抽卡记录更新完成（暂无新抽卡数据）\n'
         : '星铁抽卡记录更新完成\n'
       e.reply(
         header +
         (lines.length ? lines.join('\n') + '\n' : '') +
+        (mergedLines.length ? mergedLines.join('\n') + '\n' : '') +
         (keptLines.length ? keptLines.join('\n') + '\n' : '') +
-        (hasData ? `共 ${totalStars} 个五星${result.added > 0 ? `，新增 ${result.added}` : ''}\n` : '') +
+        ((hasData || mergedPools.length) ? `共 ${totalStars} 个五星${result.added > 0 ? `，新增 ${result.added}` : ''}\n` : '') +
         '可查看【*角色记录】【*光锥记录】【*全部记录】等'
       )
     } catch (err) {

@@ -94,30 +94,49 @@ export class StarRailGachaService {
     const typeEntries = Object.entries(STAR_RAIL_GACHA_TYPES)
     for (const [index, [, type]] of typeEntries.entries()) {
       const prevPool = Array.isArray(previous?.[String(type)]) ? previous[String(type)] : []
-
-      // 池级保护：该池已有非本插件占位的完整数据（真实 3/4 星记录）→ 保留原数据，不覆盖
-      if (hasGenuineRecords(prevPool)) {
-        poolResults.push({
-          type,
-          name: POOL_NAME[type] || String(type),
-          kept: true,
-          total: prevPool.filter(r => r?.rank_type === '5').length
-        })
-        continue
-      }
+      const genuine = hasGenuineRecords(prevPool)
 
       const [poolStat, fiveStarPage] = await Promise.all([
         this.requestGacha('pool_stat', context, { gacha_type: type }).catch(() => null),
         this.fetchFiveStars(context, type)
       ])
       const fiveStars = fiveStarPage.records
-      const oldIds = new Set((oldFiveMap[type] || []).map(recordKey))
-      const addedInPool = fiveStars.filter(item => !oldIds.has(recordKey(item))).length
-      added += addedInPool
-
       const cards = Array.isArray(poolStat?.cards) ? poolStat.cards.map(normalizeCard) : []
       const totalDraws = cards.reduce((sum, card) => sum + nonNegativeInt(card.total_count), 0)
       const pity = fiveStarPage.pity != null ? fiveStarPage.pity : undefined
+
+      // 池级保护：该池已有导入的真实完整数据 → 只在其后（时间更新方向）追加新记录，不覆盖原数据
+      if (genuine) {
+        const { records, added: addedInPool } = appendNewRecordsToGenuinePool({
+          prevRecords: prevPool,
+          fiveStars,
+          pity,
+          uid,
+          type
+        })
+        if (records.length !== prevPool.length) writeSrJson(qq, uid, type, records)
+        added += addedInPool
+
+        poolResults.push({
+          type,
+          name: POOL_NAME[type] || String(type),
+          merged: addedInPool > 0,
+          kept: addedInPool === 0,
+          added: addedInPool,
+          total: countFiveStarRecords(records),
+          totalDraws,
+          pity: pity != null ? pity : currentPity(records)
+        })
+
+        if (this.poolDelayMs > 0 && index < typeEntries.length - 1) {
+          await this.sleep(this.poolDelayMs)
+        }
+        continue
+      }
+
+      const oldIds = new Set((oldFiveMap[type] || []).map(recordKey))
+      const addedInPool = fiveStars.filter(item => !oldIds.has(recordKey(item))).length
+      added += addedInPool
 
       // 构造 genshin srJson 每池记录（五星 + 占位补抽数）
       const records = buildMiaoPoolRecords({
@@ -422,15 +441,21 @@ function isAvatarItem (item) {
   return item?.item_type === 'ItemType_Avatar' || item?.item_type === '角色'
 }
 
+/** 星铁记录时间基准偏移（米游社 time/id 时间戳均为 UTC+8 本地时间） */
+const SR_TIME_OFFSET_SECONDS = 8 * 3600
+
+/** 由 id 前 10 位 Unix 时间戳推导本地时间（UTC+8，格式与米游社 time 字段一致） */
+function deriveTimeFromId (id) {
+  const seconds = String(id || '').slice(0, 10)
+  if (!/^\d{10}$/.test(seconds)) return ''
+  return new Date((Number(seconds) + SR_TIME_OFFSET_SECONDS) * 1000).toISOString().replace('T', ' ').slice(0, 19)
+}
+
 /** 五星时间：优先显式 time，否则 id 前 10 位 Unix 时间戳，最后兜底 */
 function fiveStarTime (record) {
   const explicit = String(record?.time || record?.legacy_time || '')
   if (explicit) return explicit
-  const seconds = String(record?.id || '').slice(0, 10)
-  if (/^\d{10}$/.test(seconds)) {
-    return new Date(Number(seconds) * 1000).toISOString().replace('T', ' ').slice(0, 19)
-  }
-  return '1970-01-01 00:00:00'
+  return deriveTimeFromId(record?.id) || '1970-01-01 00:00:00'
 }
 
 /** 数字/字符串混合降序（官方 id 数字随时间递增，大 = 新） */
@@ -439,6 +464,137 @@ function compareNumericTextDesc (a, b) {
   const bNum = /^\d+$/.test(b)
   if (aNum && bNum) return Number(b) - Number(a)
   return String(b).localeCompare(String(a))
+}
+
+/** 记录时间（优先 time 字段，回退 id 前 10 位时间戳；无法解析返回空串） */
+function recordTime (record) {
+  const explicit = String(record?.time || '')
+  if (explicit) return explicit
+  return deriveTimeFromId(record?.id)
+}
+
+/** 五星计数 */
+function countFiveStarRecords (records) {
+  return (Array.isArray(records) ? records : []).filter(r => String(r?.rank_type) === '5').length
+}
+
+/** 生成时间严格晚于基准的「现在」时间（保证再次更新时能被统计为已记录的垫抽） */
+function nextTailTime (records) {
+  let max = ''
+  for (const r of (Array.isArray(records) ? records : [])) {
+    const t = recordTime(r)
+    if (t > max) max = t
+  }
+  const now = new Date()
+  now.setSeconds(now.getSeconds() + 1)
+  const nowStr = now.toISOString().replace('T', ' ').slice(0, 19)
+  return nowStr > max ? nowStr : max
+}
+
+/** 生成占位记录（id 带运行标记，避免与已有记录冲突） */
+function buildFillerRecords (count, numericType, uid, time, tag) {
+  const out = []
+  for (let i = 0; i < Math.max(0, count); i++) {
+    out.push({
+      id: `axiu-${numericType}-${tag}-${i + 1}`,
+      uid: String(uid),
+      name: '占位记录',
+      item_type: '光锥',
+      rank_type: '3',
+      gacha_type: String(numericType),
+      time: time || '1970-01-01 00:00:00'
+    })
+  }
+  return out
+}
+
+/**
+ * 在已有真实（导入）数据的池上追加新抽卡数据——不覆盖、不删除原记录
+ *
+ * 官方小程序接口只有五星 + 垫抽 + 池统计，因此追加内容为：
+ *   1. 当前垫抽占位（最新，位于数组最新方向）
+ *   2. 新增五星（时间晚于原数据最新五星，且「名称 + 时间」未出现过）及其与上一个五星的间隔占位
+ * 判定「新增」采用时间比较（两侧 id 均内嵌时间戳，格式一致），并用「名称+时间」去重，
+ * 兼容导入数据与小程序数据 id 命名空间不同的情况。
+ * 最旧的那个新增五星的间隔会扣除原数据中「最新五星之后已记录的抽数」，避免重复计数。
+ *
+ * @param {object} param
+ * @param {Array} param.prevRecords - 该池已有记录（真实导入数据）
+ * @param {Array} param.fiveStars - 接口返回五星（最新在前）
+ * @param {number} [param.pity] - 当前垫抽
+ * @param {string|number} param.uid - 星铁 UID
+ * @param {number} param.type - gacha_type
+ * @returns {{records: Array, added: number, order: string}} 合并后记录（保持原文件新旧方向）、新增五星数
+ */
+export function appendNewRecordsToGenuinePool ({ prevRecords = [], fiveStars = [], pity, uid, type } = {}) {
+  const numericType = Number(type)
+  const existing = (Array.isArray(prevRecords) ? prevRecords : []).filter(Boolean)
+  if (existing.length === 0) return { records: existing, added: 0, order: 'newest' }
+
+  const existingStars = existing.filter(r => String(r?.rank_type) === '5')
+  const newestFiveTime = existingStars.reduce((max, r) => {
+    const t = recordTime(r)
+    return t > max ? t : max
+  }, '')
+
+  // 原数据中「最新五星之后已记录的抽数」（不含五星本身）——用于避免间隔重复计数
+  const recordedAfterLastFive = newestFiveTime
+    ? existing.filter(r => String(r?.rank_type) !== '5' && recordTime(r) > newestFiveTime).length
+    : 0
+
+  const known = new Set(existingStars.map(r => `${r?.name || ''}|${recordTime(r)}`))
+  const candidates = []
+  for (const raw of fiveStars) { // 接口顺序：最新在前
+    const time = fiveStarTime(raw)
+    const name = String(raw?.item?.name || '')
+    if (!time || time <= newestFiveTime) continue
+    const key = `${name}|${time}`
+    if (known.has(key)) continue
+    known.add(key)
+    candidates.push({ raw, name, time, gachaCount: nonNegativeInt(raw?.gacha_count) })
+  }
+
+  // 文件时间方向：genshin 写入为新在前；兼容旧在前
+  const order = recordTime(existing[0]) >= recordTime(existing[existing.length - 1]) ? 'newest' : 'oldest'
+  const tag = Date.now().toString(36)
+
+  if (candidates.length === 0) {
+    // 无新五星：仅按当前垫抽差额补占位（差额 = 接口垫抽 - 原数据已记录的垫抽）
+    const delta = nonNegativeInt(pity) - recordedAfterLastFive
+    if (delta <= 0) return { records: existing, added: 0, order }
+    const pad = buildFillerRecords(delta, numericType, uid, nextTailTime(existing), tag)
+    return {
+      records: order === 'newest' ? [...pad, ...existing] : [...existing, ...pad],
+      added: 0,
+      order
+    }
+  }
+
+  // 有新增五星：构造「新在前」方向的新段，再按文件方向拼接
+  const segment = buildFillerRecords(nonNegativeInt(pity), numericType, uid, nextTailTime(existing), `${tag}p`)
+  for (let i = 0; i < candidates.length; i++) {
+    const c = candidates[i]
+    segment.push({
+      id: String(c.raw.id || c.raw.uuid || `axiu-five-${numericType}-${tag}-${i}`),
+      uid: String(uid),
+      name: c.name,
+      item_type: isAvatarItem(c.raw.item) ? '角色' : '光锥',
+      rank_type: '5',
+      gacha_type: String(numericType),
+      time: c.time,
+      gacha_count: c.gachaCount
+    })
+    let gap = Math.max(0, c.gachaCount - 1)
+    // 最旧的新增五星：其与上一个五星（原数据最新五星）之间的间隔已部分记录在原数据中
+    if (i === candidates.length - 1) gap = Math.max(0, gap - recordedAfterLastFive)
+    segment.push(...buildFillerRecords(gap, numericType, uid, c.time, `${tag}-${i}`))
+  }
+
+  return {
+    records: order === 'newest' ? [...segment, ...existing] : [...existing, ...[...segment].reverse()],
+    added: candidates.length,
+    order
+  }
 }
 
 /**
