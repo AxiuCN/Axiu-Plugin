@@ -542,9 +542,10 @@ export class MysSigninApp extends plugin {
           const segments = [{ type: 'text', text: header }]
           for (const u of failedUsers) {
             if (canAt(u.qq)) {
+              // @ 独占一行：前置换行分隔上一条，后置换行让明细另起一行
               segments.push({ type: 'text', text: '\n' })
               segments.push({ type: 'at', qq: Number(u.qq) })
-              segments.push({ type: 'text', text: u.lines.join('\n') })
+              segments.push({ type: 'text', text: '\n' + u.lines.join('\n') })
             } else {
               segments.push({ type: 'text', text: `\n用户:${u.qq}\n${u.lines.join('\n')}` })
             }
