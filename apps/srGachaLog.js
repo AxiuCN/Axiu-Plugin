@@ -25,7 +25,7 @@ export class srGachaLog extends plugin {
         // 命令1: 更新星铁抽卡记录（荷花 badge login 方案）
         // 兼容两种输入：*更新星铁抽卡记录（标准化为 #星铁更新星铁抽卡记录）与 #星铁更新抽卡记录
         {
-          reg: '^#星铁(更新)?(星铁)?(抽卡|祈愿)?(记录|历史)$',
+          reg: '^#星铁(星铁)?更新(星铁)?(抽卡|祈愿)?(记录|历史)$',
           fnc: 'srGachaLog',
           permission: 'all',
           log: true
