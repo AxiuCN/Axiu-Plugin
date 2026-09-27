@@ -40,6 +40,7 @@ import {
 } from '../modules/mysSignin/signinManager.js'
 import { getSigninConfig, listAllRegisteredQQ, listUserConfigs } from '../model/mysSignin/bbsToolsConfig.js'
 import { pluginVersion, yunzaiVersion } from '../components/pluginVersion.js'
+import { configFile } from '../components/config.js'
 
 export class MysSigninApp extends plugin {
   constructor () {
@@ -90,8 +91,7 @@ export class MysSigninApp extends plugin {
   /** 监听 config.yaml 变更 → 重设 task cron 并重建定时任务（锅巴保存后即时生效） */
   _watchSigninConfig() {
     try {
-      const configFile = new URL('../../config/config.yaml', import.meta.url)
-      this._cfgWatcher = chokidar.watch(configFile.pathname, {
+      this._cfgWatcher = chokidar.watch(configFile, {
         ignoreInitial: true,
         awaitWriteFinish: { stabilityThreshold: 500, pollInterval: 100 }
       })

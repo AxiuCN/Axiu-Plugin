@@ -478,16 +478,18 @@ function countFiveStarRecords (records) {
   return (Array.isArray(records) ? records : []).filter(r => String(r?.rank_type) === '5').length
 }
 
-/** 生成时间严格晚于基准的「现在」时间（保证再次更新时能被统计为已记录的垫抽） */
+/** 生成时间严格晚于基准的「现在」时间（保证再次更新时能被统计为已记录的垫抽）
+ *  记录 time 与米游社抽卡时间同为 UTC+8 本地时间，此处按同一偏移生成：
+ *  否则占位时间会比同批记录早 8 小时，再次同步时被判为「未记录」而重复追加
+ */
 function nextTailTime (records) {
   let max = ''
   for (const r of (Array.isArray(records) ? records : [])) {
     const t = recordTime(r)
     if (t > max) max = t
   }
-  const now = new Date()
-  now.setSeconds(now.getSeconds() + 1)
-  const nowStr = now.toISOString().replace('T', ' ').slice(0, 19)
+  const nowStr = new Date(Date.now() + (SR_TIME_OFFSET_SECONDS + 1) * 1000)
+    .toISOString().replace('T', ' ').slice(0, 19)
   return nowStr > max ? nowStr : max
 }
 
@@ -542,6 +544,12 @@ export function appendNewRecordsToGenuinePool ({ prevRecords = [], fiveStars = [
     ? existing.filter(r => String(r?.rank_type) !== '5' && recordTime(r) > newestFiveTime).length
     : 0
 
+  // 该池尚无五星时，本地已记录的抽数（含本插件占位）全部落在当前垫抽窗口内，
+  // 否则每次同步都会把垫抽重复追加一遍
+  const recordedPity = newestFiveTime
+    ? recordedAfterLastFive
+    : existing.filter(r => String(r?.rank_type) !== '5').length
+
   const known = new Set(existingStars.map(r => `${r?.name || ''}|${recordTime(r)}`))
   const candidates = []
   for (const raw of fiveStars) { // 接口顺序：最新在前
@@ -560,7 +568,7 @@ export function appendNewRecordsToGenuinePool ({ prevRecords = [], fiveStars = [
 
   if (candidates.length === 0) {
     // 无新五星：仅按当前垫抽差额补占位（差额 = 接口垫抽 - 原数据已记录的垫抽）
-    const delta = nonNegativeInt(pity) - recordedAfterLastFive
+    const delta = nonNegativeInt(pity) - recordedPity
     if (delta <= 0) return { records: existing, added: 0, order }
     const pad = buildFillerRecords(delta, numericType, uid, nextTailTime(existing), tag)
     return {

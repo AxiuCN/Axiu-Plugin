@@ -195,14 +195,13 @@ export default class MysApi {
     let response = {}
     let start = Date.now()
 
+    // 过码平台接口：仅替换请求方式与内容类型，保留上面统一的超时 signal 与 agent
     if (type == 'recognize' || type == 'results') {
-      param = {
-        method: 'post',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: config
+      param.method = 'post'
+      param.headers = {
+        'Content-Type': 'application/x-www-form-urlencoded'
       }
+      param.body = config
     }
 
     try {
