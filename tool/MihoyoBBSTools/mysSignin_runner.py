@@ -71,6 +71,20 @@ def _install_captcha_bridge(captcha_dir: str, timeout: int):
 
 # ==================== 主流程 ====================
 
+# 依赖库在失败分支（如 HTTP 429 重试失败）只把失败说明写进结果文本，
+# status_code 仍为 SUCCESS(0)，因此不能只凭 status_code 判定签到成功
+FAILURE_MARKS = (
+    "本次签到失败",
+    "脚本签到失败",
+    "脚本签到发生异常",
+)
+
+
+def _find_failure_marks(text: str) -> list:
+    """返回结果文本中命中的失败标记（空列表表示未发现失败）"""
+    return [mark for mark in FAILURE_MARKS if mark in (text or "")]
+
+
 def run(args: argparse.Namespace) -> int:
     module_dir = Path(args.module_dir).resolve()
     config_file = Path(args.config).resolve()
@@ -95,7 +109,13 @@ def run(args: argparse.Namespace) -> int:
 
     try:
         status_code, message = main()
-        result = {"ok": status_code == 0, "statusCode": status_code, "message": message}
+        failed_marks = _find_failure_marks(message)
+        result = {
+            "ok": status_code == 0 and not failed_marks,
+            "statusCode": status_code,
+            "message": message,
+            "failedMarks": failed_marks,
+        }
     except CookieError as e:
         result = {"ok": False, "statusCode": 1, "message": "Cookie 已失效", "error": str(e)}
     except StokenError as e:

@@ -12,6 +12,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { LOG_PREFIX } from '../components/constants.js'
+import { withKeyLock } from '../components/asyncLock.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const pluginRoot = path.resolve(__dirname, '..')
@@ -322,13 +323,17 @@ export default class SrChallengeRank {
     } catch {}
 
     // UID 信息（QQ + 各 scheduleId 的 scores/extra，全局共享）— 按 scheduleId 隔离，上期上报不覆盖本期展示数据
+    // 同一 uid 的并发上报（如 *深渊 并发查询三种挑战）会读写同一 key，
+    // 非原子读改写会互相覆盖 → 按 uidKey 串行化
     try {
-      const existing = await redis.get(uidKey(uid))
-      const info = existing ? JSON.parse(existing) : {}
-      info.qq = String(qq || '')
-      if (!info[challengeType] || typeof info[challengeType] !== 'object') info[challengeType] = {}
-      info[challengeType][String(scheduleId)] = { scores, extra, time: Date.now() }
-      await redis.setEx(uidKey(uid), 90 * 24 * 3600, JSON.stringify(info))
+      await withKeyLock(uidKey(uid), async () => {
+        const existing = await redis.get(uidKey(uid))
+        const info = existing ? JSON.parse(existing) : {}
+        info.qq = String(qq || '')
+        if (!info[challengeType] || typeof info[challengeType] !== 'object') info[challengeType] = {}
+        info[challengeType][String(scheduleId)] = { scores, extra, time: Date.now() }
+        await redis.setEx(uidKey(uid), TTL, JSON.stringify(info))
+      })
     } catch {}
   }
 
@@ -526,22 +531,56 @@ export default class SrChallengeRank {
         const cur = await redis.get(currentKey(ct)) || null
         if (cur) delKeys.push(currentKey(ct))
       } catch {}
+      // 赛季元信息（按本次目标类型精确清理，不波及其他类型）
+      try {
+        const seasonKeys = await redis.keys(`${KEY}:season:${ct}:*`)
+        if (seasonKeys?.length) delKeys.push(...seasonKeys)
+      } catch (err) {
+        logger?.error(`${LOG_PREFIX}[排行] 扫描赛季元信息失败`, err)
+      }
     }
-    // 赛季元信息与 UID 元信息（跨类型共享，SCAN 扫描后删除）
-    try {
-      const seasonKeys = await redis.keys(`${KEY}:season:*`)
-      if (seasonKeys?.length) delKeys.push(...seasonKeys)
-      const uidKeys = await redis.keys(`${KEY}:uid:*`)
-      if (uidKeys?.length) delKeys.push(...uidKeys)
-    } catch (err) {
-      logger?.error(`${LOG_PREFIX}[排行] 扫描赛季/UID 元信息失败`, err)
-    }
+    // UID 元信息一个 key 含所有类型，只能按类型修剪槽位，不能整键删除
+    await this._pruneUidInfo(types)
     if (delKeys.length) {
       try { await redis.del(...delKeys) } catch (err) {
         logger?.error(`${LOG_PREFIX}[排行] 删除排行数据失败`, err)
       }
     }
-    logger?.mark(`${LOG_PREFIX}[排行] 已重置排行数据（含赛季/UID 元信息）`)
+    logger?.mark(`${LOG_PREFIX}[排行] 已重置排行数据（类型: ${types.join('/')}）`)
+  }
+
+  /**
+   * 定向重置时修剪 UID 元信息：仅移除目标挑战类型的槽位，其他类型的成绩明细保留；
+   * 全部类型槽位清空后才删除整个 key
+   * @param {number[]} types - 本次重置的挑战类型
+   */
+  static async _pruneUidInfo (types) {
+    try {
+      const uidKeys = await redis.keys(`${KEY}:uid:*`)
+      for (const key of uidKeys || []) {
+        let info = null
+        try {
+          const raw = await redis.get(key)
+          if (!raw) continue
+          info = JSON.parse(raw)
+        } catch { continue }
+        if (!info || typeof info !== 'object') continue
+
+        let changed = false
+        for (const ct of types) {
+          if (info[ct] != null) { delete info[ct]; changed = true }
+        }
+        if (!changed) continue
+
+        if (Object.keys(info).filter(k => k !== 'qq').length === 0) {
+          await redis.del(key)
+        } else {
+          await redis.setEx(key, TTL, JSON.stringify(info))
+        }
+      }
+    } catch (err) {
+      logger?.error(`${LOG_PREFIX}[排行] 修剪 UID 元信息失败`, err)
+    }
   }
 
   // ==================== 群配置 ====================

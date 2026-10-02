@@ -19,6 +19,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { LOG_PREFIX } from '../components/constants.js'
+import { withKeyLock } from '../components/asyncLock.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const pluginRoot = path.resolve(__dirname, '..')
@@ -395,27 +396,40 @@ export default class GsChallengeRank {
    */
   static async report (uid, qq, groupId, challengeType, data, scheduleId, isCurrent = true) {
     const { scores, extra } = this.extractScores(data, challengeType)
-
-    // 读取已有 uidKey，取该期首次查询时间（首次上报后固定，供排序 + 展示）
-    let existing = null
-    try { existing = await redis.get(uidKey(uid)) } catch {}
-    const info = existing ? JSON.parse(existing) : {}
-    info.qq = String(qq || '')
-    if (!info[challengeType] || typeof info[challengeType] !== 'object') info[challengeType] = {}
     const slotKey = String(scheduleId)
-    const prevSlot = info[challengeType][slotKey]
-    // 首查时间：首次查询记录；层数/星数上升（成绩提升，层优先同层比星）时更新为本次；否则沿用 — 防重复战斗稀释排名
-    const curFloor = scores.floor || 0
-    const curStar = scores.star || 0
-    const prevFloor = prevSlot?.scores?.floor || 0
-    const prevStar = prevSlot?.scores?.star || 0
-    const upgraded = curFloor > prevFloor || (curFloor === prevFloor && curStar > prevStar)
-    const firstTime = !prevSlot || upgraded ? Date.now() : (prevSlot.firstTime || Date.now())
-
-    // 首查时间注入 extra 供展示（不入排序分）
-    if (challengeType === 0) extra.first_query_time = firstTime
-
     const startTs = data?.start_time || data?.schedule?.start_time || null
+
+    // 同一 uid 的并发上报会读写同一 uidKey，非原子读改写会互相覆盖 → 按 uidKey 串行化。
+    // 段内完成「读已有信息 → 计算首查时间 → 写回本类型本期槽位」
+    const firstTime = await withKeyLock(uidKey(uid), async () => {
+      let existing = null
+      try { existing = await redis.get(uidKey(uid)) } catch {}
+      let info = {}
+      if (existing) {
+        try { info = JSON.parse(existing) || {} } catch { info = {} }
+      }
+      info.qq = String(qq || '')
+      if (!info[challengeType] || typeof info[challengeType] !== 'object') info[challengeType] = {}
+      const prevSlot = info[challengeType][slotKey]
+      // 首查时间：首次查询记录；层数/星数上升（成绩提升，层优先同层比星）时更新为本次；否则沿用 — 防重复战斗稀释排名
+      const curFloor = scores.floor || 0
+      const curStar = scores.star || 0
+      const prevFloor = prevSlot?.scores?.floor || 0
+      const prevStar = prevSlot?.scores?.star || 0
+      const upgraded = curFloor > prevFloor || (curFloor === prevFloor && curStar > prevStar)
+      const ft = !prevSlot || upgraded ? Date.now() : (prevSlot.firstTime || Date.now())
+
+      // 首查时间注入 extra 供展示（不入排序分）— 必须在序列化写入之前赋值
+      if (challengeType === 0) extra.first_query_time = ft
+      info[challengeType][slotKey] = { scores, extra, firstTime: ft, startTs, time: Date.now() }
+      try {
+        await redis.setEx(uidKey(uid), 90 * 24 * 3600, JSON.stringify(info))
+      } catch (err) {
+        logger?.error(`${LOG_PREFIX}[原神排行] 设置 UID 信息失败`, err)
+      }
+      return ft
+    })
+
     const compound = compoundScore(scores, extra, challengeType, firstTime, startTs)
     if (compound > 0) {
       try {
@@ -471,14 +485,7 @@ export default class GsChallengeRank {
       logger?.error(`${LOG_PREFIX}[原神排行] 设置赛季元信息失败`, err)
     }
 
-    // UID 信息（QQ + 各 scheduleId 的 scores/extra，全局共享）— 按 scheduleId 隔离，上期上报不覆盖本期展示数据
-    // firstTime 沿用首次上报值，不因重复查询更新（首查时间固定，battle 可更新）
-    info[challengeType][slotKey] = { scores, extra, firstTime, startTs, time: Date.now() }
-    try {
-      await redis.setEx(uidKey(uid), 90 * 24 * 3600, JSON.stringify(info))
-    } catch (err) {
-      logger?.error(`${LOG_PREFIX}[原神排行] 设置 UID 信息失败`, err)
-    }
+    // UID 信息已在上面按 uidKey 串行化的段内写回（含首查时间与本期槽位）
 
     logger?.mark(`${LOG_PREFIX}[原神排行] ${TYPE_NAMES[challengeType] || challengeType} uid:${uid} 上报完成, scheduleId:${scheduleId}, compound:${compound}`)
   }
@@ -688,36 +695,69 @@ export default class GsChallengeRank {
     const types = challengeType != null ? [challengeType] : [0, 1, 2, 3]
     const delKeys = []
     for (const ct of types) {
-      // 排行 ZSET（含综合 __ 与各维度；单人/多人共享 base type key）
-      const rankCt = this._baseType(ct)
-      const zsetPattern = `${KEY}:${rankCt}:*`
+      // 排行 ZSET 按真实 type 存储（危战单/多人各自独立）
+      const zsetPattern = `${KEY}:${ct}:*`
       try {
         const keys = await redis.keys(zsetPattern)
         if (keys?.length) delKeys.push(...keys)
       } catch (err) {
         logger?.error(`${LOG_PREFIX}[原神排行] 扫描 ZSET 失败`, err)
       }
-      // 当前赛季指针（共享 base type）
+      // 当前赛季指针与赛季元信息按 base type 共享（危战单/多人共用一个 key，重置其一会一并清除，下次上报重建）
+      const baseT = this._baseType(ct)
       try {
-        const cur = await redis.get(currentKey(rankCt)) || null
-        if (cur) delKeys.push(currentKey(rankCt))
+        const cur = await redis.get(currentKey(baseT)) || null
+        if (cur) delKeys.push(currentKey(baseT))
       } catch {}
+      try {
+        const seasonKeys = await redis.keys(`${KEY}:season:${baseT}:*`)
+        if (seasonKeys?.length) delKeys.push(...seasonKeys)
+      } catch (err) {
+        logger?.error(`${LOG_PREFIX}[原神排行] 扫描赛季元信息失败`, err)
+      }
     }
-    // 赛季元信息与 UID 元信息（跨类型共享，SCAN 扫描后删除）
-    try {
-      const seasonKeys = await redis.keys(`${KEY}:season:*`)
-      if (seasonKeys?.length) delKeys.push(...seasonKeys)
-      const uidKeys = await redis.keys(`${KEY}:uid:*`)
-      if (uidKeys?.length) delKeys.push(...uidKeys)
-    } catch (err) {
-      logger?.error(`${LOG_PREFIX}[原神排行] 扫描赛季/UID 元信息失败`, err)
-    }
+    // UID 元信息一个 key 含所有类型，只能按类型修剪槽位，不能整键删除
+    await this._pruneUidInfo(types)
     if (delKeys.length) {
       try { await redis.del(...delKeys) } catch (err) {
         logger?.error(`${LOG_PREFIX}[原神排行] 删除排行数据失败`, err)
       }
     }
-    logger?.mark(`${LOG_PREFIX}[原神排行] 已重置排行数据（含赛季/UID 元信息）`)
+    logger?.mark(`${LOG_PREFIX}[原神排行] 已重置排行数据（类型: ${types.join('/')}）`)
+  }
+
+  /**
+   * 定向重置时修剪 UID 元信息：仅移除目标挑战类型的槽位，其他类型的成绩明细保留；
+   * 全部类型槽位清空后才删除整个 key
+   * @param {number[]} types - 本次重置的挑战类型
+   */
+  static async _pruneUidInfo (types) {
+    try {
+      const uidKeys = await redis.keys(`${KEY}:uid:*`)
+      for (const key of uidKeys || []) {
+        let info = null
+        try {
+          const raw = await redis.get(key)
+          if (!raw) continue
+          info = JSON.parse(raw)
+        } catch { continue }
+        if (!info || typeof info !== 'object') continue
+
+        let changed = false
+        for (const ct of types) {
+          if (info[ct] != null) { delete info[ct]; changed = true }
+        }
+        if (!changed) continue
+
+        if (Object.keys(info).filter(k => k !== 'qq').length === 0) {
+          await redis.del(key)
+        } else {
+          await redis.setEx(key, TTL, JSON.stringify(info))
+        }
+      }
+    } catch (err) {
+      logger?.error(`${LOG_PREFIX}[原神排行] 修剪 UID 元信息失败`, err)
+    }
   }
 
   // ==================== 群配置 ====================

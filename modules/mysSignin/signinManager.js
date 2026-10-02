@@ -752,12 +752,12 @@ function formatUserSigninResult (userId, results) {
 }
 
 /**
- * 构建自动签到汇总报告（结构化：头部统计 + 失败用户分组）
+ * 构建自动签到汇总报告（结构化：头部统计 + 失败用户分组 + 成功账号明细）
  * @param {{total: number, success: number, details: Array}} summary
- * @returns {{header: string, failedUsers: Array<{qq: string, lines: string[]}>}}
+ * @returns {{header: string, failedUsers: Array<{qq: string, lines: string[]}>, successUsers: Array<{qq: string, lines: string[]}>}}
  */
 function buildSigninReport (summary) {
-  if (summary.total === 0) return { header: '没有已注册的签到用户', failedUsers: [] }
+  if (summary.total === 0) return { header: '没有已注册的签到用户', failedUsers: [], successUsers: [] }
 
   const failedUsers = summary.details
     .filter(d => d.results?.some(r => !r.ok))
@@ -768,9 +768,20 @@ function buildSigninReport (summary) {
         .map(r => `账号${r.n}: ${r.message || '未知错误'}`)
     }))
 
+  // 成功账号的实际签到内容（依赖库仅在成功时输出天数与奖励），供主人核对
+  const successUsers = summary.details
+    .map(d => ({
+      qq: String(d.userId),
+      lines: (d.results || [])
+        .filter(r => r.ok)
+        .map(r => `账号${r.n}: ${r.message || '完成'}`)
+    }))
+    .filter(u => u.lines.length > 0)
+
   return {
     header: `--- 自动签到报告 ---\n签到成功: ${summary.success}/${summary.total} 用户\n签到失败: ${failedUsers.length}/${summary.total} 用户`,
-    failedUsers
+    failedUsers,
+    successUsers
   }
 }
 

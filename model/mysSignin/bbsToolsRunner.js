@@ -126,8 +126,12 @@ function runSingleSignin (options) {
       try {
         if (fs.existsSync(resultFile)) {
           const result = JSON.parse(fs.readFileSync(resultFile, 'utf8'))
+          // failedMarks：依赖库把失败写进文本而 statusCode 仍为 0，命中标记时已判定 ok=false
+          const marks = Array.isArray(result.failedMarks) && result.failedMarks.length
+            ? ` marks=${result.failedMarks.join('|')}`
+            : ''
           logger?.info(
-            `${SIGNIN_LOG_PREFIX} 签到完成: QQ=${userId} n=${profileN} ok=${result.ok} code=${result.statusCode}`
+            `${SIGNIN_LOG_PREFIX} 签到完成: QQ=${userId} n=${profileN} ok=${result.ok} code=${result.statusCode}${marks}`
           )
           settleOnce(result)
         } else if (code === 0) {

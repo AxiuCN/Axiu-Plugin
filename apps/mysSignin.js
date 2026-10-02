@@ -455,8 +455,8 @@ export class MysSigninApp extends plugin {
 
       // 发送签到汇总通知
       if (cfg.notifyGroup && summary.details.length > 0) {
-        const { header, failedUsers } = buildSigninReport(summary)
-        await this._sendReport(header, failedUsers)
+        const { header, failedUsers, successUsers } = buildSigninReport(summary)
+        await this._sendReport(header, failedUsers, successUsers)
       }
 
       logger?.info(
@@ -503,13 +503,14 @@ export class MysSigninApp extends plugin {
    * 发送结构化汇总报告（带失败用户分组与版权行）
    * @param {string} header - 报告头（含统计）
    * @param {Array<{qq: string, lines: string[]}>} failedUsers - 失败用户分组明细
+   * @param {Array<{qq: string, lines: string[]}>} [successUsers] - 成功账号明细，仅发主人私聊（群内不刷屏）
    * 群聊：失败用户为数字 ID 且在群内时用 @，否则（微信等非数字 ID）显示用户 ID 文本；主人在私聊，一律用 ID 文本
    */
-  async _sendReport (header, failedUsers) {
+  async _sendReport (header, failedUsers, successUsers = []) {
     const cfg = getSigninConfig()
     const footer = `\n\nCreated By TRSS-Yunzai v${yunzaiVersion} & Axiu-Plugin v${pluginVersion}`
 
-    // 主人私聊：一律 ID 文本（不用 @）
+    // 主人私聊：一律 ID 文本（不用 @），并附成功账号明细供核对
     try {
       const masterQQ = (await import('../../../lib/config/config.js')).default?.masterQQ
       if (masterQQ && masterQQ.length > 0) {
@@ -517,6 +518,12 @@ export class MysSigninApp extends plugin {
         let msg = header
         for (const u of failedUsers) {
           msg += `\n用户:${u.qq}\n${u.lines.join('\n')}`
+        }
+        if (successUsers.length > 0) {
+          msg += '\n--- 成功明细 ---'
+          for (const u of successUsers) {
+            msg += `\n用户:${u.qq}\n${u.lines.join('\n')}`
+          }
         }
         await friend.sendMsg(msg + footer)
       }
