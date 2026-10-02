@@ -484,27 +484,34 @@ async function deleteUserSigninConfigs (userId) {
 
 /**
  * 删除指定 QQ 的全部 stoken（#删除stoken）
- * 遍历 stoken 文件所有条目逐个删除（同 stoken 合并删除），文件清空后删除文件本身
+ * 遍历 stoken 文件所有条目逐个删除（同 stoken 合并删除），文件清空后删除文件本身；
+ * 同时删除该用户的签到配置——配置文件内含 cookie/stoken 明文副本，
+ * 只清 stoken 会让自动签到继续使用副本，凭据实际未被删除
  * @param {string} userId - QQ 号
- * @returns {{ok: boolean, count: number, message: string}}
+ * @returns {{ok: boolean, count: number, configCount: number, message: string}}
  */
 async function deleteUserStoken (userId) {
   const stokenData = await stokenStore.getUserStoken(userId)
   const uids = Object.keys(stokenData)
   if (uids.length === 0) {
-    return { ok: false, count: 0, message: '未绑定 stoken' }
+    return { ok: false, count: 0, configCount: 0, message: '未绑定 stoken\n如需清除签到配置请发送【#删除签到】' }
   }
 
-  let deleted = 0
+  // deleteStokenEntry 一次调用会连带删除同 stoken 的多个游戏角色条目，
+  // 按其返回值累加会少报，故按删除前后的条目数差统计
+  const beforeCount = uids.length
   for (const uid of uids) {
-    if (stokenStore.deleteStokenEntry(userId, uid)) deleted++
+    stokenStore.deleteStokenEntry(userId, uid)
   }
-  logger?.info(`${SIGNIN_LOG_PREFIX} 删除stoken: QQ=${userId} 删除${deleted}个条目`)
-  return {
-    ok: true,
-    count: deleted,
-    message: `已删除 ${deleted} 个 stoken 条目\n删除后需重新发送【#扫码登录】绑定`
-  }
+  const deleted = Math.max(0, beforeCount - Object.keys(await stokenStore.getUserStoken(userId)).length)
+
+  const configCount = deleteUserConfigs(userId)
+
+  logger?.info(`${SIGNIN_LOG_PREFIX} 删除stoken: QQ=${userId} 删除${deleted}个条目、${configCount}个签到配置`)
+  const lines = [`已删除 ${deleted} 个 stoken 条目`]
+  if (configCount > 0) lines.push(`已同时删除 ${configCount} 个签到配置（含 cookie/stoken 副本）`)
+  lines.push('如需继续签到，请重新发送【#扫码登录】绑定后重新【#注册自动签到】')
+  return { ok: true, count: deleted, configCount, message: lines.join('\n') }
 }
 
 /**

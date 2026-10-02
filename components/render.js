@@ -4,9 +4,18 @@
 
 import path from 'node:path'
 import fs from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
 
 const pluginRoot = path.join(process.cwd(), 'plugins/Axiu-Plugin')
+
+/** 渲染名（宿主按此名建立子目录存放生成的 HTML） */
+const nameOf = (app, tpl) => `Axiu-Plugin/${app}/${tpl}`
+
+/** 宿主生成的 HTML 落地路径：./temp/html/<name>/<saveId>.html（见 lib/renderer/Renderer.js dealTpl） */
+function generatedHtmlPath (app, tpl, saveId) {
+  return path.join(process.cwd(), 'temp', 'html', nameOf(app, tpl), `${saveId}.html`)
+}
 
 /**
  * 渲染 HTML 模板为图片并返回 segment.image
@@ -25,11 +34,10 @@ export async function render (app, tpl, data = {}, imgType = 'jpeg') {
   }
   data.imgType = imgType
 
-  // 创建缓存目录
-  const dataDir = path.join(process.cwd(), 'data', 'html', 'Axiu-Plugin', app, tpl)
-  fs.mkdirSync(dataDir, { recursive: true })
-
-  data.saveId = data.saveId || data.save_id || tpl
+  // 缓存标识必须逐次唯一：宿主先同步写入 HTML、之后才 page.goto 读取，
+  // 同一标识的并发渲染会写到同一文件，截图可能取到另一次渲染的数据
+  // （如把他人二维码、他人榜单数据发给当前用户）
+  data.saveId = data.saveId || data.save_id || randomUUID()
   data.tplFile = `./plugins/Axiu-Plugin/resources/${app}/${tpl}.html`
   data.pluResPath = data._res_path
   data.pageGotoParams = { waitUntil: 'networkidle0' }
@@ -57,5 +65,10 @@ export async function render (app, tpl, data = {}, imgType = 'jpeg') {
     createdby: 'Created By TRSS-yunzai & Axiu-Plugin'
   }
 
-  return await puppeteer.screenshot(`Axiu-Plugin/${app}/${tpl}`, data)
+  // 唯一标识使 HTML 不再被复用，截图结束后清理；失败仅遗留一个临时文件
+  try {
+    return await puppeteer.screenshot(nameOf(app, tpl), data)
+  } finally {
+    try { fs.unlinkSync(generatedHtmlPath(app, tpl, data.saveId)) } catch { /* 忽略清理失败 */ }
+  }
 }

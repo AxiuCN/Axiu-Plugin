@@ -59,22 +59,25 @@ export class CaptchaBridge {
     this._poll()
   }
 
-  /** 停止监控 */
+  /** 停止监控：先取走 controller 再 abort，进行中的任务已各自持有 signal，不受置空影响 */
   stop () {
     this._running = false
     if (this._timer) {
       clearTimeout(this._timer)
       this._timer = null
     }
-    // 中断进行中的 fetch 与轮询 sleep（_solveCaptcha 各 fetch 已传 signal）
-    this._abort?.abort()
+    const controller = this._abort
     this._abort = null
+    controller?.abort()
     this._captchaDir = null
   }
 
   /** 轮询循环 */
   async _poll () {
     if (!this._running || !this._captchaDir) return
+
+    // 本轮任务持有自己的 signal：stop() 置空 this._abort 后仍能正确判定取消
+    const signal = this._abort?.signal
 
     try {
       if (!fs.existsSync(this._captchaDir)) {
@@ -86,6 +89,8 @@ export class CaptchaBridge {
       for (const file of files) {
         if (!file.endsWith('.request.json')) continue
         if (this._processed.has(file)) continue
+        // 已停止：不再开始新的求解
+        if (signal?.aborted) break
 
         this._processed.add(file)
         const requestPath = path.join(this._captchaDir, file)
@@ -94,7 +99,7 @@ export class CaptchaBridge {
 
         try {
           const request = JSON.parse(fs.readFileSync(requestPath, 'utf8'))
-          const result = await this._solveCaptcha(request)
+          const result = await this._solveCaptcha(request, signal)
           fs.writeFileSync(responsePath, JSON.stringify(result), 'utf8')
 
           logger?.info(
@@ -120,9 +125,10 @@ export class CaptchaBridge {
   /**
    * 求解验证码
    * @param {{id: string, kind: string, gt: string, challenge: string}} request
+   * @param {AbortSignal} [signal] - 本轮任务的取消信号（stop 时中断请求与轮询）
    * @returns {Promise<{ok: boolean, challenge: string, validate: string}>}
    */
-  async _solveCaptcha (request) {
+  async _solveCaptcha (request, signal) {
     const { gt, challenge } = request
     if (!gt || !challenge) {
       return { ok: false, challenge: '', validate: '' }
@@ -133,11 +139,11 @@ export class CaptchaBridge {
 
     try {
       if (type === 0) {
-        return await this._solveViaTestNine(gt, challenge, apiCfg)
+        return await this._solveViaTestNine(gt, challenge, apiCfg, signal)
       } else if (type === 1) {
-        return await this._solveViaTtocr(gt, challenge, apiCfg)
+        return await this._solveViaTtocr(gt, challenge, apiCfg, signal)
       } else if (type === 2) {
-        return await this._solveVia2captcha(gt, challenge, apiCfg)
+        return await this._solveVia2captcha(gt, challenge, apiCfg, signal)
       } else {
         logger?.warn(`${SIGNIN_LOG_PREFIX} [过码] 未知平台类型: ${type}`)
         return { ok: false, challenge: '', validate: '' }
@@ -149,10 +155,10 @@ export class CaptchaBridge {
   }
 
   /** test_nine 本地 AI */
-  async _solveViaTestNine (gt, challenge, apiCfg) {
+  async _solveViaTestNine (gt, challenge, apiCfg, signal) {
     const url = `${apiCfg.api}?gt=${encodeURIComponent(gt)}&challenge=${encodeURIComponent(challenge)}`
     logger?.info(`${SIGNIN_LOG_PREFIX} [过码] test_nine 请求: ${url}`)
-    const res = await fetch(url, { timeout: 30000, signal: this._abort?.signal })
+    const res = await fetch(url, { timeout: 30000, signal })
     const data = await res.json()
     if (data?.data?.validate) {
       return { ok: true, challenge, validate: data.data.validate }
@@ -162,14 +168,14 @@ export class CaptchaBridge {
   }
 
   /** ttocr.com */
-  async _solveViaTtocr (gt, challenge, apiCfg) {
+  async _solveViaTtocr (gt, challenge, apiCfg, signal) {
     const config = `${apiCfg.key}&${apiCfg.query}&gt=${gt}&challenge=${challenge}`
     const recognizeRes = await fetch(apiCfg.api, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: config,
       timeout: 30000,
-      signal: this._abort?.signal
+      signal
     })
     const recognizeData = await recognizeRes.json()
     if (!recognizeData?.resultid) {
@@ -179,10 +185,10 @@ export class CaptchaBridge {
 
     // 轮询结果（最多 10 次，每次 5s）
     for (let i = 0; i < 10; i++) {
-      await sleep(5000, this._abort?.signal)
-      if (this._abort?.signal?.aborted) break
+      await sleep(5000, signal)
+      if (signal?.aborted) break
       const resultUrl = `${apiCfg.resapi}?${apiCfg.key}&resultid=${recognizeData.resultid}`
-      const resultRes = await fetch(resultUrl, { timeout: 10000, signal: this._abort?.signal })
+      const resultRes = await fetch(resultUrl, { timeout: 10000, signal })
       const resultData = await resultRes.json()
       if (resultData?.status === 1) {
         // status 1 = 成功
@@ -195,9 +201,9 @@ export class CaptchaBridge {
   }
 
   /** 2captcha.com */
-  async _solveVia2captcha (gt, challenge, apiCfg) {
+  async _solveVia2captcha (gt, challenge, apiCfg, signal) {
     const inUrl = `${apiCfg.api}?${apiCfg.key}&${apiCfg.query}&gt=${gt}&challenge=${challenge}`
-    const inRes = await fetch(inUrl, { timeout: 30000, signal: this._abort?.signal })
+    const inRes = await fetch(inUrl, { timeout: 30000, signal })
     const inData = await inRes.json()
     if (!inData?.request) {
       logger?.warn(`${SIGNIN_LOG_PREFIX} [过码] 2captcha in 无 request: ${JSON.stringify(inData)}`)
@@ -206,10 +212,10 @@ export class CaptchaBridge {
 
     // 轮询结果（最多 10 次，每次 5s）
     for (let i = 0; i < 10; i++) {
-      await sleep(5000, this._abort?.signal)
-      if (this._abort?.signal?.aborted) break
+      await sleep(5000, signal)
+      if (signal?.aborted) break
       const resUrl = `${apiCfg.resapi}?${apiCfg.key}&${apiCfg.resquery}&id=${inData.request}`
-      const resRes = await fetch(resUrl, { timeout: 10000, signal: this._abort?.signal })
+      const resRes = await fetch(resUrl, { timeout: 10000, signal })
       const resData = await resRes.json()
       if (resData?.request === 'CAPCHA_NOT_READY') continue
       if (resData?.request?.geetest_validate) {
