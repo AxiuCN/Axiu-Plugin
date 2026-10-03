@@ -515,40 +515,72 @@ async function deleteUserStoken (userId) {
 }
 
 /**
+ * 汇总批量刷新的用户级结果（纯函数，便于回归测试）
+ *
+ * 用户级口径：账号全部成功 = 成功；部分账号成功 = 部分成功；无账号成功 = 失败。
+ * 部分成功的用户**同时**计入失败明细——否则「有账号刷新成功」会让其余账号的失败被丢掉，
+ * 配置已被自动删除的用户在报告里完全消失（见第三轮 P2-4）
+ * @param {Array<{userId: string, ok: boolean, failed?: Array<{n: number, reason: string}>}>} results
+ * @returns {{total: number, success: number, partial: number, fullFail: number, failedUsers: Array<{userId: string, ok: boolean, failed: Array}>}}
+ */
+function summarizeCookieRefresh (results = []) {
+  let success = 0
+  let partial = 0
+  const failedUsers = []
+
+  for (const r of results) {
+    const failed = Array.isArray(r?.failed) ? r.failed : []
+    if (failed.length === 0) {
+      success++
+      continue
+    }
+    if (r?.ok) partial++
+    failedUsers.push({ userId: String(r?.userId ?? ''), ok: !!r?.ok, failed })
+  }
+
+  return { total: results.length, success, partial, fullFail: failedUsers.length - partial, failedUsers }
+}
+
+/**
  * 刷新所有已注册用户的签到 cookie
  * 每日 4:30 自动执行，确保 5:00 签到前 cookie 有效
- * @returns {Promise<{total: number, success: number, failedUsers: Array<{userId: string, failed: Array<{n: number, reason: string}>}>, message: string}>}
+ * @returns {Promise<{total: number, success: number, partial: number, fullFail: number, failedUsers: Array<{userId: string, ok: boolean, failed: Array<{n: number, reason: string}>}>, message: string}>}
  */
 async function refreshAllUserCookies () {
   const qqList = listAllRegisteredQQ()
   if (qqList.length === 0) {
     logger?.info(`${SIGNIN_LOG_PREFIX} 无已注册用户，跳过刷新`)
-    return { total: 0, success: 0, failedUsers: [], message: '无已注册用户' }
+    return { total: 0, success: 0, partial: 0, fullFail: 0, failedUsers: [], message: '无已注册用户' }
   }
 
   logger?.info(`${SIGNIN_LOG_PREFIX} 开始批量刷新cookie: ${qqList.length} 个用户`)
-  let success = 0
-  const failedUsers = []
+  const results = []
 
   for (const userId of qqList) {
-    const result = await refreshUserCookies(userId)
-    if (result.ok) {
-      success++
-    } else if (result.failed?.length > 0) {
-      failedUsers.push({ userId, failed: result.failed })
-    }
+    results.push({ userId, ...(await refreshUserCookies(userId)) })
     await randomDelay(2000, 5000)
   }
 
+  const { total, success, partial, fullFail, failedUsers } = summarizeCookieRefresh(results)
+
   logger?.info(
-    `${SIGNIN_LOG_PREFIX} 批量刷新cookie完成: ${success}/${qqList.length} 成功`
+    `${SIGNIN_LOG_PREFIX} 批量刷新cookie完成: 全部成功 ${success}/${total}，部分成功 ${partial}，失败 ${fullFail}`
   )
+
+  const parts = [`刷新完成: 全部成功 ${success}/${total}`]
+  if (partial > 0) parts.push(`部分成功 ${partial}`)
+  if (fullFail > 0) parts.push(`失败 ${fullFail}`)
+  const detail = failedUsers.length > 0
+    ? `\n失败明细:\n${failedUsers.map(u => `用户=${u.userId}${u.ok ? '（部分成功）' : ''}: ${u.failed.map(f => `账号${f.n} ${f.reason}`).join('; ')}`).join('\n')}`
+    : ''
+
   return {
-    total: qqList.length,
+    total,
     success,
+    partial,
+    fullFail,
     failedUsers,
-    message: `刷新完成: ${success}/${qqList.length} 成功` +
-      (failedUsers.length > 0 ? `\n失败:\n${failedUsers.map(u => `用户=${u.userId}: ${u.failed.map(f => `账号${f.n} ${f.reason}`).join('; ')}`).join('\n')}` : '')
+    message: parts.join(' / ') + detail
   }
 }
 
@@ -801,21 +833,36 @@ function formatSummaryReport (summary) {
 
 /**
  * 构建自动刷新Cookie汇总报告
- * @param {{total: number, success: number, failedUsers: Array<{userId: string, failed: Array<{n: number, reason: string}>}>}} result
+ *
+ * 用户级口径分三档展示；部分成功的用户同样列出其失败账号（否则这些账号的失败与
+ * 「配置已自动删除、需重新扫码绑定」的提示都不会出现在报告里）
+ * @param {{total: number, success: number, partial?: number, fullFail?: number, failedUsers: Array<{userId: string, ok?: boolean, failed: Array<{n: number, reason: string}>}>}} result
  * @returns {{header: string, failedUsers: Array<{qq: string, lines: string[]}>}}
  */
 function buildRefreshReport (result) {
   if (result.total === 0) return { header: '无已注册用户，未执行刷新', failedUsers: [] }
 
-  const failedUsers = result.failedUsers.map(u => ({
+  const failedUsers = (result.failedUsers || []).map(u => ({
     qq: String(u.userId),
-    lines: u.failed.map(f => `账号${f.n} ${f.reason}`)
+    lines: [
+      ...(u.ok ? ['（部分账号刷新成功）'] : []),
+      ...(u.failed || []).map(f => `账号${f.n} ${f.reason}`)
+    ]
   }))
 
-  return {
-    header: `--- 自动刷新Cookie报告 ---\n刷新Cookie成功: ${result.success}/${result.total}\n刷新Cookie失败: ${failedUsers.length}/${result.total}`,
-    failedUsers
+  const rawUsers = result.failedUsers || []
+  const partial = result.partial ?? rawUsers.filter(u => u.ok).length
+  const fullFail = result.fullFail ?? (rawUsers.length - partial)
+
+  const headerLines = [
+    '--- 自动刷新Cookie报告 ---',
+    `全部成功: ${result.success}/${result.total} 用户`
+  ]
+  if (partial > 0 || fullFail > 0) {
+    headerLines.push(`部分成功: ${partial}/${result.total} 用户`, `失败: ${fullFail}/${result.total} 用户`)
   }
+
+  return { header: headerLines.join('\n'), failedUsers }
 }
 
 // ==================== 自动签到锁 ====================
@@ -846,6 +893,7 @@ export {
   signinForAll,
   refreshUserCookies,
   refreshAllUserCookies,
+  summarizeCookieRefresh,
   deleteUserSigninConfigs,
   deleteUserStoken,
   initEnvironment,

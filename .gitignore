@@ -18,3 +18,6 @@ AGENTS.md
 
 # 日志
 log/
+
+# 回归套件临时产物
+test/.test-tmp/

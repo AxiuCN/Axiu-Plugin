@@ -458,11 +458,19 @@ function fiveStarTime (record) {
   return deriveTimeFromId(record?.id) || '1970-01-01 00:00:00'
 }
 
+/** 数字文本升序比较（先比长度再比字典序：抽卡 id 为 19 位，超出 Number 精度不能用减法） */
+function compareNumericTextAsc (a, b) {
+  const x = String(a ?? '')
+  const y = String(b ?? '')
+  if (x.length !== y.length) return x.length - y.length
+  return x < y ? -1 : x > y ? 1 : 0
+}
+
 /** 数字/字符串混合降序（官方 id 数字随时间递增，大 = 新） */
 function compareNumericTextDesc (a, b) {
   const aNum = /^\d+$/.test(a)
   const bNum = /^\d+$/.test(b)
-  if (aNum && bNum) return Number(b) - Number(a)
+  if (aNum && bNum) return compareNumericTextAsc(b, a)
   return String(b).localeCompare(String(a))
 }
 
@@ -534,14 +542,44 @@ export function appendNewRecordsToGenuinePool ({ prevRecords = [], fiveStars = [
   if (existing.length === 0) return { records: existing, added: 0, order: 'newest' }
 
   const existingStars = existing.filter(r => String(r?.rank_type) === '5')
-  const newestFiveTime = existingStars.reduce((max, r) => {
-    const t = recordTime(r)
-    return t > max ? t : max
-  }, '')
 
-  // 原数据中「最新五星之后已记录的抽数」（不含五星本身）——用于避免间隔重复计数
-  const recordedAfterLastFive = newestFiveTime
-    ? existing.filter(r => String(r?.rank_type) !== '5' && recordTime(r) > newestFiveTime).length
+  // 文件时间方向：genshin 写入为新在前；兼容旧在前
+  const order = recordTime(existing[0]) >= recordTime(existing[existing.length - 1]) ? 'newest' : 'oldest'
+
+  /** 同源数字 id（米游社抽卡 id 为时间戳前缀的长数字串），可精确表示抽取先后 */
+  const isNumericId = (id) => /^\d{10,}$/.test(String(id || ''))
+
+  /** 同一批记录内 a 是否比 b 更新：先比时间，同秒再比同源数字 id，最后退化为数组顺序 */
+  const isNewerRecord = (a, ia, b, ib) => {
+    const ta = recordTime(a)
+    const tb = recordTime(b)
+    if (ta !== tb) return ta > tb
+    if (isNumericId(a?.id) && isNumericId(b?.id)) return compareNumericTextAsc(a.id, b.id) > 0
+    if (ia >= 0 && ib >= 0) return order === 'newest' ? ia < ib : ia > ib
+    return false
+  }
+
+  // 最新五星：十连同秒时不能只看 time，需借助同源 id 或数组顺序
+  let newestFiveIdx = -1
+  for (let i = 0; i < existing.length; i++) {
+    if (String(existing[i]?.rank_type) !== '5') continue
+    if (newestFiveIdx < 0 || isNewerRecord(existing[i], i, existing[newestFiveIdx], newestFiveIdx)) newestFiveIdx = i
+  }
+  const newestFive = newestFiveIdx >= 0 ? existing[newestFiveIdx] : null
+  const newestFiveTime = newestFive ? recordTime(newestFive) : ''
+
+  /** 本地记录 r 是否早于接口返回的新五星 c（先比时间，同秒再用同源数字 id 判定） */
+  const isOlderThanStar = (r, c) => {
+    const t = recordTime(r)
+    if (t !== c.time) return t < c.time
+    if (isNumericId(r?.id) && isNumericId(c.raw?.id)) return compareNumericTextAsc(r.id, c.raw.id) < 0
+    return false
+  }
+
+  // 原数据中「最新五星之后已记录的抽数」（不含五星本身）——用于避免间隔重复计数。
+  // 判定按记录先后而非秒级时间：十连内同秒的多条记录用 `time > 最新五星时间` 会全部漏计
+  const recordedAfterLastFive = newestFive
+    ? existing.filter((r, i) => String(r?.rank_type) !== '5' && isNewerRecord(r, i, newestFive, newestFiveIdx)).length
     : 0
 
   // 该池尚无五星时，本地已记录的抽数（含本插件占位）全部落在当前垫抽窗口内，
@@ -562,8 +600,6 @@ export function appendNewRecordsToGenuinePool ({ prevRecords = [], fiveStars = [
     candidates.push({ raw, name, time, gachaCount: nonNegativeInt(raw?.gacha_count) })
   }
 
-  // 文件时间方向：genshin 写入为新在前；兼容旧在前
-  const order = recordTime(existing[0]) >= recordTime(existing[existing.length - 1]) ? 'newest' : 'oldest'
   const tag = Date.now().toString(36)
 
   if (candidates.length === 0) {
@@ -592,9 +628,19 @@ export function appendNewRecordsToGenuinePool ({ prevRecords = [], fiveStars = [
       time: c.time,
       gacha_count: c.gachaCount
     })
-    let gap = Math.max(0, c.gachaCount - 1)
-    // 最旧的新增五星：其与上一个五星（原数据最新五星）之间的间隔已部分记录在原数据中
-    if (i === candidates.length - 1) gap = Math.max(0, gap - recordedAfterLastFive)
+    // 该五星与上一个五星之间的间隔已部分记录在原数据中，需扣除以免重复补数。
+    // 上一个五星：更旧的下一个候选（接口按新在前返回）；没有更旧候选时取本地最新五星；
+    // 两者都没有（该池首次出五星）则不设下界，区间即「早于该五星的全部本地记录」
+    const olderStar = i < candidates.length - 1 ? candidates[i + 1] : null
+    const overlap = existing.reduce((n, r, ri) => {
+      if (String(r?.rank_type) === '5') return n
+      if (!isOlderThanStar(r, c)) return n
+      if (olderStar) return isOlderThanStar(r, olderStar) ? n : n + 1
+      if (newestFive) return isNewerRecord(r, ri, newestFive, newestFiveIdx) ? n + 1 : n
+      return n + 1
+    }, 0)
+
+    const gap = Math.max(0, c.gachaCount - 1 - overlap)
     segment.push(...buildFillerRecords(gap, numericType, uid, c.time, `${tag}-${i}`))
   }
 
