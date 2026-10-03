@@ -15,6 +15,11 @@ import { LOG_PREFIX } from '../../components/constants.js'
 /** 每个 ltuid 一个互斥锁，防止星铁侧并发请求重复刷新同一 CK */
 const _srRefreshLocks = new Map()
 
+/** 请求超时（毫秒）— 宿主 fetch 为 undici，timeout 选项被静默忽略，统一用 AbortSignal
+ *  普通请求与设备指纹/设备注册等前置请求共用同一时限，冷缓存时辅助请求不会无限拖住查询
+ */
+const REQUEST_TIMEOUT_MS = 10000
+
 export default class MysSrApi extends MysApi {
   constructor (uid, cookie, option = {}) {
     super(uid, cookie, { game: 'sr', ...option })
@@ -164,7 +169,7 @@ export default class MysSrApi extends MysApi {
         } catch { bindInfo = null }
       }
 
-      // 获取设备指纹
+      // 获取设备指纹（其内部请求自带与普通请求相同的超时，无响应时走兜底值）
       const { deviceFp } = await this._getDeviceFp(ltuid, data)
       if (deviceFp) data.deviceFp = deviceFp
 
@@ -200,7 +205,7 @@ export default class MysSrApi extends MysApi {
       headers,
       agent: await this.getAgent(),
       // 宿主 fetch 为自实现（undici），timeout 选项会被静默忽略，改用 AbortSignal 超时
-      signal: AbortSignal.timeout(10000)
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
     }
     if (body) {
       param.method = 'post'
@@ -250,7 +255,13 @@ export default class MysSrApi extends MysApi {
 
     let res
     try {
-      res = await fetch(sdk.url, { headers: sdk.headers, method: 'POST', body: sdk.body })
+      // 与普通请求同口径的超时：指纹接口无响应时按失败走兜底值，不拖住本轮查询
+      res = await fetch(sdk.url, {
+        headers: sdk.headers,
+        method: 'POST',
+        body: sdk.body,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+      })
     } catch {
       // fetch 失败时使用兜底值
       deviceFp = /^(18|[6-9])[0-9]{8}/i.test(this.uid) ? '38d805c20d53d' : '38d7f4c72b736'
@@ -272,8 +283,18 @@ export default class MysSrApi extends MysApi {
       if (deviceLogin && saveDevice) {
         try {
           await Promise.all([
-            fetch(deviceLogin.url, { headers: deviceLogin.headers, method: 'POST', body: deviceLogin.body }),
-            fetch(saveDevice.url, { headers: saveDevice.headers, method: 'POST', body: saveDevice.body })
+            fetch(deviceLogin.url, {
+              headers: deviceLogin.headers,
+              method: 'POST',
+              body: deviceLogin.body,
+              signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+            }),
+            fetch(saveDevice.url, {
+              headers: saveDevice.headers,
+              method: 'POST',
+              body: saveDevice.body,
+              signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+            })
           ])
         } catch { /* 设备登录非关键 */ }
       }
