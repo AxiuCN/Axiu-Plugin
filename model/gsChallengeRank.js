@@ -75,8 +75,11 @@ const DIMENSIONS = {
 
 const DEFAULT_DIMENSION = { 0: '__', 1: '__', 2: '__', 3: '__' }
 
-/** 深渊一期最长跨度（秒）— 首查时间倒计时窗口，覆盖 15 天一期 + 余量 */
-const ABYSS_MAX_OFFSET = 20 * 24 * 3600
+/** 深渊一期最长跨度（秒）— 首查时间倒计时窗口
+ *  2024-06-16 起为月期（16 号刷新，最长 31 天），窗口留 32 天余量；
+ *  超出窗口（如赛季结束后查往期）时间项归零，退回战斗次数排序
+ */
+const ABYSS_MAX_OFFSET = 32 * 24 * 3600
 
 /**
  * 综合排序分数 — 多维度加权编码
@@ -96,17 +99,20 @@ function compoundScore (scores, extra, challengeType, firstTs = null, startTs = 
           timeTerm = R(ABYSS_MAX_OFFSET - elapsed, ABYSS_MAX_OFFSET)
         }
       }
-      // 权重: 层(1e11) > 星(1e9) > 首查(×500, 1秒=500分>99) > 战斗(0-99)
+      // 权重阶梯: 层(1e11) > 星(1e9) > 首查(×300) > 战斗(0-99)
+      // 32 天窗口 × 300 = 8.29e8 未越星数权重 1e9，且 300 > 99（战斗跨度）——任一级都不被下级反超
       return (scores.floor || 0) * 100000000000
         + (scores.star || 0) * 1000000000
-        + timeTerm * 500
+        + timeTerm * 300
         + (99 - R(extra.battle_num || 0, 99))
     }
     case 1: // 幻想真境剧诗: 模式 > 幕 > 花 > 用时(少) > 借出(多)
-      return (scores.mode || 0) * 10000000000
-        + (scores.floor || 0) * 100000000
-        + (scores.flower || 0) * 1000000
-        + (999999 - R(extra.time_second || 0, 999999))
+      // 权重阶梯（自底向上留满跨度）: 借出(0-99) < 用时(每秒 100，合计 9.99e7) < 星章(1e8) < 幕数(1e10) < 模式(1e12)
+      // 原实现时间项与借出项同为 1 倍，1 次借出即可抵消 1 秒用时（第三轮 P2-5）
+      return (scores.mode || 0) * 1000000000000
+        + (scores.floor || 0) * 10000000000
+        + (scores.flower || 0) * 100000000
+        + (999999 - R(extra.time_second || 0, 999999)) * 100
         + R(extra.borrow_num || 0, 99)
     case 2:
     case 3: // 幽境危战: 难度 > 用时(少)
@@ -735,25 +741,29 @@ export default class GsChallengeRank {
     try {
       const uidKeys = await redis.keys(`${KEY}:uid:*`)
       for (const key of uidKeys || []) {
-        let info = null
-        try {
-          const raw = await redis.get(key)
-          if (!raw) continue
-          info = JSON.parse(raw)
-        } catch { continue }
-        if (!info || typeof info !== 'object') continue
+        // 与 report() 共用同一把 key 锁，且读取必须在锁内：
+        // 否则锁外取的旧快照会覆盖并发上报刚写入的其他玩法明细（第三轮 P2-2）
+        await withKeyLock(key, async () => {
+          let info = null
+          try {
+            const raw = await redis.get(key)
+            if (!raw) return
+            info = JSON.parse(raw)
+          } catch { return }
+          if (!info || typeof info !== 'object') return
 
-        let changed = false
-        for (const ct of types) {
-          if (info[ct] != null) { delete info[ct]; changed = true }
-        }
-        if (!changed) continue
+          let changed = false
+          for (const ct of types) {
+            if (info[ct] != null) { delete info[ct]; changed = true }
+          }
+          if (!changed) return
 
-        if (Object.keys(info).filter(k => k !== 'qq').length === 0) {
-          await redis.del(key)
-        } else {
-          await redis.setEx(key, TTL, JSON.stringify(info))
-        }
+          if (Object.keys(info).filter(k => k !== 'qq').length === 0) {
+            await redis.del(key)
+          } else {
+            await redis.setEx(key, TTL, JSON.stringify(info))
+          }
+        })
       }
     } catch (err) {
       logger?.error(`${LOG_PREFIX}[原神排行] 修剪 UID 元信息失败`, err)

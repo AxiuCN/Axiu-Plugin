@@ -558,25 +558,29 @@ export default class SrChallengeRank {
     try {
       const uidKeys = await redis.keys(`${KEY}:uid:*`)
       for (const key of uidKeys || []) {
-        let info = null
-        try {
-          const raw = await redis.get(key)
-          if (!raw) continue
-          info = JSON.parse(raw)
-        } catch { continue }
-        if (!info || typeof info !== 'object') continue
+        // 与 report() 共用同一把 key 锁，且读取必须在锁内：
+        // 否则锁外取的旧快照会覆盖并发上报刚写入的其他玩法明细（第三轮 P2-2）
+        await withKeyLock(key, async () => {
+          let info = null
+          try {
+            const raw = await redis.get(key)
+            if (!raw) return
+            info = JSON.parse(raw)
+          } catch { return }
+          if (!info || typeof info !== 'object') return
 
-        let changed = false
-        for (const ct of types) {
-          if (info[ct] != null) { delete info[ct]; changed = true }
-        }
-        if (!changed) continue
+          let changed = false
+          for (const ct of types) {
+            if (info[ct] != null) { delete info[ct]; changed = true }
+          }
+          if (!changed) return
 
-        if (Object.keys(info).filter(k => k !== 'qq').length === 0) {
-          await redis.del(key)
-        } else {
-          await redis.setEx(key, TTL, JSON.stringify(info))
-        }
+          if (Object.keys(info).filter(k => k !== 'qq').length === 0) {
+            await redis.del(key)
+          } else {
+            await redis.setEx(key, TTL, JSON.stringify(info))
+          }
+        })
       }
     } catch (err) {
       logger?.error(`${LOG_PREFIX}[排行] 修剪 UID 元信息失败`, err)

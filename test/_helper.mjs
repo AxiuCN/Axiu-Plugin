@@ -50,32 +50,71 @@ export function requireFile (relPath, label = relPath) {
   if (!fs.existsSync(mod(relPath))) skip(`缺少 ${label}`)
 }
 
-/** 框架全局桩：仅内存实现，测试不触真实 Redis / 不联网 */
-export function installFrameworkStubs () {
+/**
+ * 框架全局桩：仅内存实现，测试不触真实 Redis / 不联网
+ * @param {{beforeWrite?: (key: string, value: string) => Promise<void>}} [options]
+ *   beforeWrite 在每次写入（set/setEx）前 await，供套件制造确定的异步交错
+ * @returns {{strings: Map<string,string>, zsets: Map<string,Map<string,number>>}} 内存存储，便于断言原始数据
+ */
+export function installFrameworkStubs (options = {}) {
+  const { beforeWrite = null } = options
   const noop = () => {}
   globalThis.logger = {
     info: noop, warn: noop, error: noop, mark: noop, debug: noop,
     green: s => s, red: s => s, yellow: s => s
   }
 
-  const store = new Map()
+  const strings = new Map()
+  const zsets = new Map()
   const toRegex = (p) => new RegExp('^' + String(p).replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$')
+  const allKeys = () => [...new Set([...strings.keys(), ...zsets.keys()])]
+  const sorted = (key) => [...(zsets.get(key) || new Map()).entries()]
+    .map(([value, score]) => ({ value, score }))
+    .sort((a, b) => a.score - b.score)
+
+  const write = async (k, v) => {
+    if (beforeWrite) await beforeWrite(k, String(v))
+    strings.set(k, String(v))
+    return 'OK'
+  }
+
   globalThis.redis = {
-    get: async (k) => (store.has(k) ? store.get(k) : null),
-    set: async (k, v) => { store.set(k, String(v)); return 'OK' },
-    setEx: async (k, ttl, v) => { store.set(k, String(v)); return 'OK' },
+    get: async (k) => (strings.has(k) ? strings.get(k) : null),
+    set: (k, v) => write(k, v),
+    setEx: (k, ttl, v) => write(k, v),
     del: async (...keys) => {
       let n = 0
-      for (const k of keys.flat()) if (store.delete(k)) n++
+      for (const k of keys.flat()) {
+        if (strings.delete(k)) n++
+        if (zsets.delete(k)) n++
+      }
       return n
     },
-    keys: async (p) => [...store.keys()].filter(k => toRegex(p).test(k)),
-    zAdd: async () => 1,
+    keys: async (p) => allKeys().filter(k => toRegex(p).test(k)),
+    zAdd: async (k, { score, value }) => {
+      if (!zsets.has(k)) zsets.set(k, new Map())
+      const m = zsets.get(k)
+      const existed = m.has(String(value))
+      m.set(String(value), score)
+      return existed ? 0 : 1
+    },
     expire: async () => 1,
-    zRangeWithScores: async () => [],
-    zRevRank: async () => null,
-    zScore: async () => null,
-    zCard: async () => 0
+    zRangeWithScores: async (k, start, end) => {
+      const arr = sorted(k)
+      const from = start < 0 ? Math.max(0, arr.length + start) : start
+      const to = end < 0 ? arr.length + end : end
+      return arr.slice(from, to + 1)
+    },
+    zRevRank: async (k, v) => {
+      const arr = sorted(k).reverse()
+      const i = arr.findIndex(x => x.value === String(v))
+      return i < 0 ? null : i
+    },
+    zScore: async (k, v) => {
+      const m = zsets.get(k)
+      return m?.has(String(v)) ? m.get(String(v)) : null
+    },
+    zCard: async (k) => (zsets.get(k) || new Map()).size
   }
 
   globalThis.segment = {
@@ -88,6 +127,8 @@ export function installFrameworkStubs () {
     pickFriend: () => ({ sendMsg: async () => {} }),
     pickGroup: () => ({ sendMsg: async () => {}, getMemberMap: async () => new Map() })
   }
+
+  return { strings, zsets }
 }
 
 /**
