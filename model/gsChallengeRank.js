@@ -195,6 +195,31 @@ function cfgKey (groupId) {
   return `${KEY}:${groupId}:cfg`
 }
 
+/**
+ * 重置互斥锁的键 —— 上报与重置共用一把**按玩法**的锁
+ *
+ * 上报与重置写的是同一批键（uid 元信息 + 各维度 ZSET + current/赛季指针），只按 uid 加锁管不到
+ * ZSET 与重置的删键，两边没有共同互斥点就会交错出「ZSET 有成员但元信息无槽位」这类残留。
+ * 粒度取 base type：危战单人/多人共用一把（两者的赛季键本来就共用一套），与其他玩法互不阻塞。
+ * 获取顺序统一为 **resetLock → uidLock**，不得反向获取（见 report / resetRank）。
+ */
+function resetLockKey (type) {
+  return `${KEY}:lock:reset:${type}`
+}
+
+/**
+ * 依次取多个玩法的重置锁后执行 fn —— 重置可能一次覆盖多个玩法
+ *
+ * 按 base type 升序获取：并发重置若各持一把再互相等待会形成环形等待，升序可避免。
+ * @param {number[]} bases - 本次涉及的 base type 列表
+ * @param {function(): Promise<any>} fn - 锁内任务
+ */
+function withResetLocks (bases, fn) {
+  const order = [...new Set(bases)].sort((a, b) => a - b)
+  const run = (i) => (i >= order.length ? fn() : withKeyLock(resetLockKey(order[i]), () => run(i + 1)))
+  return run(0)
+}
+
 export default class GsChallengeRank {
   // ==================== 维度工具 ====================
 
@@ -436,97 +461,101 @@ export default class GsChallengeRank {
    * @param {boolean} [isCurrent=true] 是否当期数据 — 仅当期才更新 current 指针与赛季指针，防止上期/往期查询污染
    */
   static async report (uid, qq, groupId, challengeType, data, scheduleId, isCurrent = true) {
-    const { scores, extra } = this.extractScores(data, challengeType)
-    const slotKey = String(scheduleId)
-    const startTs = data?.start_time || data?.schedule?.start_time || null
+    // 整个方法体都在本玩法的重置锁内：元信息合并、各维度 ZSET、current 指针、赛季元信息要么全在
+    // 重置之前、要么全在之后，不会与重置的删键交错（锁序 resetLock → uidLock，不得反向）
+    return withKeyLock(resetLockKey(this._baseType(challengeType)), async () => {
+      const { scores, extra } = this.extractScores(data, challengeType)
+      const slotKey = String(scheduleId)
+      const startTs = data?.start_time || data?.schedule?.start_time || null
 
-    // 同一 uid 的并发上报会读写同一 uidKey，非原子读改写会互相覆盖 → 按 uidKey 串行化。
-    // 段内完成「读已有信息 → 合并出本期最优成绩 → 写回本类型本期槽位」，返回要写进 ZSET 的那份成绩
-    const stored = await withKeyLock(uidKey(uid), async () => {
-      let existing = null
-      try { existing = await redis.get(uidKey(uid)) } catch {}
-      let info = {}
-      if (existing) {
-        try { info = JSON.parse(existing) || {} } catch { info = {} }
+      // 同一 uid 的并发上报会读写同一 uidKey，非原子读改写会互相覆盖 → 按 uidKey 串行化。
+      // 段内完成「读已有信息 → 合并出本期最优成绩 → 写回本类型本期槽位」，返回要写进 ZSET 的那份成绩
+      const stored = await withKeyLock(uidKey(uid), async () => {
+        let existing = null
+        try { existing = await redis.get(uidKey(uid)) } catch {}
+        let info = {}
+        if (existing) {
+          try { info = JSON.parse(existing) || {} } catch { info = {} }
+        }
+        info.qq = String(qq || '')
+        if (!info[challengeType] || typeof info[challengeType] !== 'object') info[challengeType] = {}
+        const prevSlot = info[challengeType][slotKey]
+        // 首查时间 = 该期**第一次观测到成绩**的时刻；落定后不再改（成绩提升也不刷新）
+        const ft = Number.isFinite(prevSlot?.firstTime) ? Number(prevSlot.firstTime) : Date.now()
+        // 名次键取本期最优（编码单调 ⇒ 比编码等价于比元组）；不进名次的展示字段取最后一次观测
+        const prevScores = prevSlot?.scores
+        const best = (!prevScores || rankKeyScore(scores, challengeType) > rankKeyScore(prevScores, challengeType))
+          ? scores
+          : { ...prevScores, ...pickDisplayFields(scores, challengeType) }
+        info[challengeType][slotKey] = { scores: best, extra, firstTime: ft, startTs, time: Date.now() }
+        try {
+          await redis.setEx(uidKey(uid), 90 * 24 * 3600, JSON.stringify(info))
+        } catch (err) {
+          logger?.error(`${LOG_PREFIX}[原神排行] 设置 UID 信息失败`, err)
+        }
+        return best
+      })
+
+      // `__` 维度写名次键编码（首查不进分数，并列组内的先后由展示侧按 firstTime 排）
+      const compound = rankKeyScore(stored, challengeType)
+      if (compound > 0) {
+        try {
+          const ck = rankKey(challengeType, '__', scheduleId)
+          await redis.zAdd(ck, { score: compound, value: String(uid) })
+          await redis.expire(ck, TTL)
+        } catch (err) {
+          logger?.error(`${LOG_PREFIX}[原神排行] compound zAdd 失败`, err)
+        }
       }
-      info.qq = String(qq || '')
-      if (!info[challengeType] || typeof info[challengeType] !== 'object') info[challengeType] = {}
-      const prevSlot = info[challengeType][slotKey]
-      // 首查时间 = 该期**第一次观测到成绩**的时刻；落定后不再改（成绩提升也不刷新）
-      const ft = Number.isFinite(prevSlot?.firstTime) ? Number(prevSlot.firstTime) : Date.now()
-      // 名次键取本期最优（编码单调 ⇒ 比编码等价于比元组）；不进名次的展示字段取最后一次观测
-      const prevScores = prevSlot?.scores
-      const best = (!prevScores || rankKeyScore(scores, challengeType) > rankKeyScore(prevScores, challengeType))
-        ? scores
-        : { ...prevScores, ...pickDisplayFields(scores, challengeType) }
-      info[challengeType][slotKey] = { scores: best, extra, firstTime: ft, startTs, time: Date.now() }
+
+      for (const dim of this.getDimensions(challengeType)) {
+        const val = stored[dim.key]
+        if (val == null) continue
+        try {
+          const rk = rankKey(challengeType, dim.key, scheduleId)
+          await redis.zAdd(rk, { score: val, value: String(uid) })
+          await redis.expire(rk, TTL)
+        } catch (err) {
+          logger?.error(`${LOG_PREFIX}[原神排行] zAdd 失败`, err)
+        }
+      }
+
+      // 当前赛季 scheduleId（单人和多人共享）— 仅当期更新，上期/往期上报不污染 current 指针
+      if (isCurrent) {
+        try {
+          await redis.setEx(currentKey(this._baseType(challengeType)), TTL, scheduleId)
+        } catch (err) {
+          logger?.error(`${LOG_PREFIX}[原神排行] 设置当前 scheduleId 失败`, err)
+        }
+      }
+
+      // 赛季元信息（单人和多人共享 base type key，始终更新期数/赛季名）
       try {
-        await redis.setEx(uidKey(uid), 90 * 24 * 3600, JSON.stringify(info))
+        const baseT = this._baseType(challengeType)
+        const periodNum = this.getPeriodNumber(data, challengeType)
+        const seasonName = this._lookupSeasonName(challengeType, data)
+        const fmtTs = (ts) => {
+          if (!ts) return ''
+          const d = new Date(ts * 1000)
+          if (isNaN(d.getTime())) return ''
+          return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
+        }
+        const bt = fmtTs(data?.start_time || data?.schedule?.start_time)
+        const et = fmtTs(data?.end_time || data?.schedule?.end_time)
+        await redis.setEx(seasonKey(baseT, scheduleId), TTL, JSON.stringify({
+          scheduleName: seasonName,
+          beginTime: bt,
+          endTime: et,
+          periodNumber: periodNum
+        }))
       } catch (err) {
-        logger?.error(`${LOG_PREFIX}[原神排行] 设置 UID 信息失败`, err)
+        logger?.error(`${LOG_PREFIX}[原神排行] 设置赛季元信息失败`, err)
       }
-      return best
+
+      // UID 信息已在上面按 uidKey 串行化的段内写回（含首查时间与本期槽位）
+
+      logger?.mark(`${LOG_PREFIX}[原神排行] ${TYPE_NAMES[challengeType] || challengeType} uid:${uid} 上报完成, scheduleId:${scheduleId}, compound:${compound}`)
     })
-
-    // `__` 维度写名次键编码（首查不进分数，并列组内的先后由展示侧按 firstTime 排）
-    const compound = rankKeyScore(stored, challengeType)
-    if (compound > 0) {
-      try {
-        const ck = rankKey(challengeType, '__', scheduleId)
-        await redis.zAdd(ck, { score: compound, value: String(uid) })
-        await redis.expire(ck, TTL)
-      } catch (err) {
-        logger?.error(`${LOG_PREFIX}[原神排行] compound zAdd 失败`, err)
-      }
-    }
-
-    for (const dim of this.getDimensions(challengeType)) {
-      const val = stored[dim.key]
-      if (val == null) continue
-      try {
-        const rk = rankKey(challengeType, dim.key, scheduleId)
-        await redis.zAdd(rk, { score: val, value: String(uid) })
-        await redis.expire(rk, TTL)
-      } catch (err) {
-        logger?.error(`${LOG_PREFIX}[原神排行] zAdd 失败`, err)
-      }
-    }
-
-    // 当前赛季 scheduleId（单人和多人共享）— 仅当期更新，上期/往期上报不污染 current 指针
-    if (isCurrent) {
-      try {
-        await redis.setEx(currentKey(this._baseType(challengeType)), TTL, scheduleId)
-      } catch (err) {
-        logger?.error(`${LOG_PREFIX}[原神排行] 设置当前 scheduleId 失败`, err)
-      }
-    }
-
-    // 赛季元信息（单人和多人共享 base type key，始终更新期数/赛季名）
-    try {
-      const baseT = this._baseType(challengeType)
-      const periodNum = this.getPeriodNumber(data, challengeType)
-      const seasonName = this._lookupSeasonName(challengeType, data)
-      const fmtTs = (ts) => {
-        if (!ts) return ''
-        const d = new Date(ts * 1000)
-        if (isNaN(d.getTime())) return ''
-        return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
-      }
-      const bt = fmtTs(data?.start_time || data?.schedule?.start_time)
-      const et = fmtTs(data?.end_time || data?.schedule?.end_time)
-      await redis.setEx(seasonKey(baseT, scheduleId), TTL, JSON.stringify({
-        scheduleName: seasonName,
-        beginTime: bt,
-        endTime: et,
-        periodNumber: periodNum
-      }))
-    } catch (err) {
-      logger?.error(`${LOG_PREFIX}[原神排行] 设置赛季元信息失败`, err)
-    }
-
-    // UID 信息已在上面按 uidKey 串行化的段内写回（含首查时间与本期槽位）
-
-    logger?.mark(`${LOG_PREFIX}[原神排行] ${TYPE_NAMES[challengeType] || challengeType} uid:${uid} 上报完成, scheduleId:${scheduleId}, compound:${compound}`)
   }
 
   // ==================== 查询 ====================
@@ -761,37 +790,41 @@ export default class GsChallengeRank {
 
   static async resetRank (groupId, challengeType = null) {
     const types = challengeType != null ? [challengeType] : [0, 1, 2, 3]
-    const delKeys = []
-    for (const ct of types) {
-      // 排行 ZSET 按真实 type 存储（危战单/多人各自独立）
-      const zsetPattern = `${KEY}:${ct}:*`
-      try {
-        const keys = await redis.keys(zsetPattern)
-        if (keys?.length) delKeys.push(...keys)
-      } catch (err) {
-        logger?.error(`${LOG_PREFIX}[原神排行] 扫描 ZSET 失败`, err)
+    // 整个方法体在本玩法（base type）的重置锁内：与 report 共用同一把锁，删键与上报不再交错；
+    // 锁序 resetLock → uidLock（_pruneUidInfo 内部再取 uid 锁），不得反向
+    return withResetLocks(types.map(t => this._baseType(t)), async () => {
+      const delKeys = []
+      for (const ct of types) {
+        // 排行 ZSET 按真实 type 存储（危战单/多人各自独立）
+        const zsetPattern = `${KEY}:${ct}:*`
+        try {
+          const keys = await redis.keys(zsetPattern)
+          if (keys?.length) delKeys.push(...keys)
+        } catch (err) {
+          logger?.error(`${LOG_PREFIX}[原神排行] 扫描 ZSET 失败`, err)
+        }
+        // 当前赛季指针与赛季元信息按 base type 共享（危战单/多人共用一个 key，重置其一会一并清除，下次上报重建）
+        const baseT = this._baseType(ct)
+        try {
+          const cur = await redis.get(currentKey(baseT)) || null
+          if (cur) delKeys.push(currentKey(baseT))
+        } catch {}
+        try {
+          const seasonKeys = await redis.keys(`${KEY}:season:${baseT}:*`)
+          if (seasonKeys?.length) delKeys.push(...seasonKeys)
+        } catch (err) {
+          logger?.error(`${LOG_PREFIX}[原神排行] 扫描赛季元信息失败`, err)
+        }
       }
-      // 当前赛季指针与赛季元信息按 base type 共享（危战单/多人共用一个 key，重置其一会一并清除，下次上报重建）
-      const baseT = this._baseType(ct)
-      try {
-        const cur = await redis.get(currentKey(baseT)) || null
-        if (cur) delKeys.push(currentKey(baseT))
-      } catch {}
-      try {
-        const seasonKeys = await redis.keys(`${KEY}:season:${baseT}:*`)
-        if (seasonKeys?.length) delKeys.push(...seasonKeys)
-      } catch (err) {
-        logger?.error(`${LOG_PREFIX}[原神排行] 扫描赛季元信息失败`, err)
+      // UID 元信息一个 key 含所有类型，只能按类型修剪槽位，不能整键删除
+      await this._pruneUidInfo(types)
+      if (delKeys.length) {
+        try { await redis.del(...delKeys) } catch (err) {
+          logger?.error(`${LOG_PREFIX}[原神排行] 删除排行数据失败`, err)
+        }
       }
-    }
-    // UID 元信息一个 key 含所有类型，只能按类型修剪槽位，不能整键删除
-    await this._pruneUidInfo(types)
-    if (delKeys.length) {
-      try { await redis.del(...delKeys) } catch (err) {
-        logger?.error(`${LOG_PREFIX}[原神排行] 删除排行数据失败`, err)
-      }
-    }
-    logger?.mark(`${LOG_PREFIX}[原神排行] 已重置排行数据（类型: ${types.join('/')}）`)
+      logger?.mark(`${LOG_PREFIX}[原神排行] 已重置排行数据（类型: ${types.join('/')}）`)
+    })
   }
 
   /**

@@ -55,12 +55,18 @@ function isGsEnabled () {
   try { return getPluginConfig()?.gsAbyss?.enabled !== false } catch { return true }
 }
 
+/** 排行榜总开关：`gsAbyssRank.enabled=false` = 整条上报链路关闭（配置注释承诺「关闭后不上报」） */
+function isGsRankEnabled () {
+  try { return getPluginConfig()?.gsAbyssRank?.enabled !== false } catch { return true }
+}
+
 /**
- * 排行上报守卫：仅群聊且群开关开启（status=1）时上报
+ * 排行上报守卫：总开关开启，且仅群聊且群开关开启（status=1）时上报
  * 私聊查询不上报；群开关关闭 = 退出参与排行（不再静默采数）
  * @returns {Promise<void>}
  */
-async function reportGsIfEnabled (e, uid, challengeType, rawData, scheduleId, isCurrent, label) {
+export async function reportGsIfEnabled (e, uid, challengeType, rawData, scheduleId, isCurrent, label) {
+  if (!isGsRankEnabled()) return
   if (!e?.isGroup) return
   try {
     const cfg = (await GsChallengeRank.getGroupCfg(e.group_id)) || { status: 1 }

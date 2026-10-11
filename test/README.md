@@ -34,7 +34,7 @@ node test/srGacha-merge.test.mjs  # 单跑（任意 cwd 均可）
 |------|------|------|
 | `srGacha-merge.test.mjs` | 星铁抽卡合并 `appendNewRecordsToGenuinePool`：首次出五星的窗口扣除、十连同秒尾段、远端更旧五星的重叠窗口、重复同步幂等、文件新旧方向、UTC+8 占位时间、同秒同名五星按条数去重（不整类压掉）、新五星按时间归并（不整段前置，数组保持时间单调） | 无（纯函数 + 合成数据） |
 | `signin-refresh-report.test.mjs` | 批量刷新 Cookie 的汇总口径 `summarizeCookieRefresh` 与报告 `buildRefreshReport`：部分成功用户的失败明细不被丢弃、三档统计、`ok:false` 且无失败明细也算失败（第四轮 #6）、报告渲染、边界 | 无（纯函数 + 合成数据） |
-| `rank-order.test.mjs` | 终局挑战排行（原神 + 星铁）：名次键编码与各级不越级（含星铁虚构「分数借位」回归）、并列密集名次（1,1,2）与首查只破并列、首查缺失排末尾、首查冻结、名次键只升不降、展示字段取最后一次、重排幂等、定向重置与上报交错 | 无（内存 Redis） |
+| `rank-order.test.mjs` | 终局挑战排行（原神 + 星铁）：名次键编码与各级不越级（含星铁虚构「分数借位」回归）、并列密集名次（1,1,2）与首查只破并列、首查缺失排末尾、首查冻结、名次键只升不降、展示字段取最后一次、重排幂等、定向重置与上报交错、重置与上报共用重置锁的终态一致性（不存在「ZSET 有成员但元信息无槽位」）与串行化时序、排行榜总开关关闭时不上报（配置目录经 `AXIU_CONFIG_DIR` 重定向） | 无（内存 Redis） |
 | `signin-runner-marks.test.mjs` | 签到 runner 的失败判定（假 module-dir 端到端跑 `run()`）：429 / 脚本失败 / 云游戏 -100 判失败、正常成功与「已签到过」不误报 | `python`（可用 `AXIU_TEST_PYTHON` 指定），缺则跳过 |
 | `sr-device-timeout.test.mjs` | 星铁设备指纹/设备注册请求都带可取消信号（按 signal 判定，**不等**真实 10 秒超时）、指纹缓存命中时请求数减少、响应体阶段失败也走兜底指纹 | genshin 插件（缺失则跳过） |
 | `device-fp-ltuid.test.mjs` | 通用过码设备指纹：缓存键取 cookie 里的 ltuid（不再落到 `undefined` 键）、`getFp` 网络失败与响应体失败都返回 `{deviceFp:null}` 而不抛穿、三处辅助请求都带超时信号 | 无（stub 替换 `globalThis.fetch`，不联网） |

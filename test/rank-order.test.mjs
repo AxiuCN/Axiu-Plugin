@@ -8,7 +8,9 @@
  * - **并列**：名次键相同 ⇒ 同分数 ⇒ 同密集名次（1,1,2）；组内按**首查**（该期第一次观测到成绩的时刻）先后
  * - 首查**不展示、不进分数、落定后不刷新**；名次键取本期最优，展示字段取最后一次观测
  */
-import { importMod, installFrameworkStubs, checker } from './_helper.mjs'
+import fs from 'node:fs'
+import path from 'node:path'
+import { importMod, installFrameworkStubs, checker, tmpDir } from './_helper.mjs'
 
 // 写前钩子：只暂停「第一次对 uid 键的写入」，用于制造确定的交错（仅交错用例会启用）
 let armed = false
@@ -20,7 +22,37 @@ const beforeWrite = async (key) => {
   await new Promise(resolve => { releaseHold = resolve })
 }
 
-const store = installFrameworkStubs({ beforeWrite })
+// 并发用例共用的时序记录：按发生顺序记下 ZSET 写入与删键，用来断言「谁落在谁之后」。
+// 时序一律在**挂起点放行之后**记：即记录的是操作真正落库的时刻，而不是钩子被调用的时刻
+let timeline = []
+let zaddRecord = false
+let zaddHold = false
+let zaddHeld = false
+let releaseZAdd = null
+const beforeZAdd = async (key) => {
+  if (zaddHold && !zaddHeld) {
+    zaddHeld = true
+    await new Promise(resolve => { releaseZAdd = resolve })
+  }
+  if (zaddRecord || zaddHold) timeline.push(`zadd:${key}`)
+}
+
+let delRecord = false
+let delHold = false
+let delHeld = false
+let delHoldPrefix = '' // 只有删除以该前缀开头的键时才挂起（原神/星铁各自指定自己的排行键前缀）
+let releaseDel = null
+const beforeDel = async (keys) => {
+  // 只挂「删除排行键」这一步：uid 元信息修剪里的删键不参与（那一步由 uidLock 管）
+  const isRankDel = delHoldPrefix && keys.some(k => k.startsWith(delHoldPrefix))
+  if (delHold && !delHeld && isRankDel) {
+    delHeld = true
+    await new Promise(resolve => { releaseDel = resolve })
+  }
+  if (delRecord || delHold) for (const k of keys) timeline.push(`del:${k}`)
+}
+
+const store = installFrameworkStubs({ beforeWrite, beforeZAdd, beforeDel })
 
 const { default: Gs } = await importMod('model/gsChallengeRank.js')
 const { default: Sr } = await importMod('model/srChallengeRank.js')
@@ -42,6 +74,14 @@ const waitUntil = async (fn, timeoutMs = 3000) => {
 /** 直接预置 uid 元信息（用于固定 firstTime / 制造缺失首查的老数据） */
 const seedSlot = (uid, ct, slot) => {
   store.strings.set(uidKeyOf(uid), JSON.stringify({ qq: '10001', [ct]: { [SID]: slot } }))
+}
+
+/** 该类型下**任一** ZSET 是否还有该 uid 的成员（含 `__` 与各维度）——「榜上有该项」的判据 */
+const anyZsetMember = async (ct, uid) => {
+  for (const k of await redis.keys(`${KEY}:${ct}:*`)) {
+    if (await redis.zScore(k, uid) != null) return k
+  }
+  return null
 }
 
 /** 剧诗上报数据 */
@@ -77,6 +117,13 @@ const SR_KEY = 'Axiu:challenge:rank'
 const srCompoundKey = (ct) => `${SR_KEY}:${ct}:__:${SID}`
 const srUidKeyOf = (uid) => `${SR_KEY}:uid:${uid}`
 const srScoreOf = (ct, uid) => redis.zScore(srCompoundKey(ct), uid)
+/** 该类型下**任一** ZSET 是否还有该 uid 的成员（星铁侧，同 anyZsetMember） */
+const anySrZsetMember = async (ct, uid) => {
+  for (const k of await redis.keys(`${SR_KEY}:${ct}:*`)) {
+    if (await redis.zScore(k, uid) != null) return k
+  }
+  return null
+}
 const seedSrSlot = (uid, ct, slot) => {
   store.strings.set(srUidKeyOf(uid), JSON.stringify({ qq: '10001', [ct]: { [SID]: slot } }))
 }
@@ -233,6 +280,7 @@ console.log('=== 重排幂等（rebuildAll） ===')
 
 console.log('=== 定向重置与上报交错（第三轮 P2-2） ===')
 {
+  // 本例是「重置类型 0 + 上报类型 1」：两个玩法不共用重置锁，靠 uid 元信息那把锁串行化
   store.strings.clear()
   store.zsets.clear()
   const uid = '100005001'
@@ -267,6 +315,103 @@ console.log('=== 定向重置与上报交错（第三轮 P2-2） ===')
   check('交错后综合分已按新值写入', (await scoreOf(1, uid)) > 0)
 
   armed = false
+}
+
+console.log('=== 重置与上报共用重置锁：上报先开始、重置插进来（第四轮 #4） ===')
+{
+  store.strings.clear()
+  store.zsets.clear()
+  timeline = []
+  const uid = '100010001'
+  const uidKey = uidKeyOf(uid)
+  // 预置类型 0 的旧槽位与旧 ZSET 成员（重置才有键可删）；类型 1 明细不该被顺带清掉
+  store.strings.set(uidKey, JSON.stringify({
+    qq: '10001',
+    0: { [SID]: { scores: { floor: 113, star: 3 }, extra: {}, time: 1 } },
+    1: { [SID]: { scores: {}, extra: { time_second: 100 }, time: 1 } }
+  }))
+  await redis.zAdd(compoundKey(0), { score: 1, value: uid })
+
+  zaddRecord = true; zaddHold = true; zaddHeld = false; releaseZAdd = null
+  delRecord = true; delHold = false
+
+  // 1) 同玩法上报先开始，暂停在 `__` 维度 ZSET 写入前
+  const reportPromise = Gs.report(uid, '10001', '123', 0, abyssData({ star: 3, battles: 20 }), SID)
+  check('前置：上报已暂停在 ZSET 写入前', await waitUntil(() => zaddHeld))
+
+  // 2) 重置同玩法：必须等上报整体结束（含锁外的 ZSET 写入）
+  const resetPromise = Gs.resetRank('123', 0)
+  const resetSettled = await Promise.race([
+    resetPromise.then(() => '重置已完成', () => '重置已完成'),
+    new Promise(r => setTimeout(() => r('仍在等锁'), 50))
+  ])
+  check('串行化：上报未走完时，重置拿不到锁（不删键）', resetSettled === '仍在等锁', resetSettled)
+
+  if (releaseZAdd) releaseZAdd()
+  await Promise.all([reportPromise, resetPromise])
+
+  zaddHold = false; zaddRecord = false; delRecord = false
+
+  const info = JSON.parse(store.strings.get(uidKey) || '{}')
+  const hasSlot = !!info?.[0]?.[SID]
+  const hasScore = (await scoreOf(0, uid)) != null
+  const zsetKey = await anyZsetMember(0, uid)
+  console.log(`  交错后：槽位=${hasSlot} 分数=${hasScore} 仍有成员的 ZSET=${zsetKey || '无'}；时序=${timeline.join(' → ')}`)
+  check('不存在「ZSET 有成员但元信息无该类型槽位」', !(zsetKey && !hasSlot), `zset=${zsetKey} slot=${hasSlot}`)
+  check('终态只能是「槽位在且分数在」或「两者都不在」',
+    (hasSlot && hasScore) || (!hasSlot && !hasScore), `slot=${hasSlot} score=${hasScore}`)
+  const delIdx = timeline.indexOf(`del:${compoundKey(0)}`)
+  const lastZAdd = timeline.reduce((acc, t, i) => (t.startsWith('zadd:') ? i : acc), -1)
+  check('串行化：重置的删键落在上报全部 ZSET 写入之后', delIdx >= 0 && lastZAdd >= 0 && lastZAdd < delIdx, timeline.join(' → '))
+  check('其他玩法明细未被连带清掉', info?.[1]?.[SID]?.extra?.time_second === 100, JSON.stringify(info))
+}
+
+console.log('=== 重置与上报共用重置锁：重置先开始、上报插进来（第四轮 #4） ===')
+{
+  store.strings.clear()
+  store.zsets.clear()
+  timeline = []
+  const uid = '100011001'
+  const uidKey = uidKeyOf(uid)
+  store.strings.set(uidKey, JSON.stringify({
+    qq: '10001',
+    0: { [SID]: { scores: { floor: 113, star: 3 }, extra: {}, time: 1 } }
+  }))
+  await redis.zAdd(compoundKey(0), { score: 1, value: uid })
+
+  delRecord = true; delHold = true; delHeld = false; releaseDel = null
+  delHoldPrefix = `${KEY}:0:`
+  zaddRecord = true; zaddHold = false
+
+  // 1) 同玩法重置先开始，暂停在删键前（uid 元信息修剪已完成）
+  const resetPromise = Gs.resetRank('123', 0)
+  check('前置：重置已进入删键阶段并暂停', await waitUntil(() => delHeld))
+
+  // 2) 重置进行中发起同玩法上报：必须等重置整体结束才写
+  const reportPromise = Gs.report(uid, '10001', '123', 0, abyssData({ star: 3, battles: 20 }), SID)
+  const reportSettled = await Promise.race([
+    reportPromise.then(() => '上报已完成', () => '上报已完成'),
+    new Promise(r => setTimeout(() => r('仍在等锁'), 50))
+  ])
+  check('串行化：重置删键未完成前，上报不结束（被重置锁挡住）', reportSettled === '仍在等锁', reportSettled)
+
+  if (releaseDel) releaseDel()
+  await Promise.all([resetPromise, reportPromise])
+
+  delHold = false; delRecord = false; zaddRecord = false
+
+  const info = JSON.parse(store.strings.get(uidKey) || '{}')
+  const hasSlot = !!info?.[0]?.[SID]
+  const hasScore = (await scoreOf(0, uid)) != null
+  const zsetKey = await anyZsetMember(0, uid)
+  console.log(`  交错后：槽位=${hasSlot} 分数=${hasScore} 仍有成员的 ZSET=${zsetKey || '无'}；时序=${timeline.join(' → ')}`)
+  check('不存在「ZSET 有成员但元信息无该类型槽位」', !(zsetKey && !hasSlot), `zset=${zsetKey} slot=${hasSlot}`)
+  check('终态只能是「槽位在且分数在」或「两者都不在」',
+    (hasSlot && hasScore) || (!hasSlot && !hasScore), `slot=${hasSlot} score=${hasScore}`)
+  const delIdx = timeline.indexOf(`del:${compoundKey(0)}`)
+  const firstZAdd = timeline.findIndex(t => t.startsWith('zadd:'))
+  check('串行化：重置进行中发起的上报，其 ZSET 写入全部落在重置删键之后',
+    delIdx >= 0 && firstZAdd > delIdx, timeline.join(' → '))
 }
 
 console.log('=== 星铁名次键：末日 难度→分（战斗只展示） ===')
@@ -324,6 +469,101 @@ console.log('=== 星铁并列：密集名次 + 首查只破并列 ===')
   check('星铁：更差的上报不覆盖名次键（分数不回退）', (await srScoreOf(0, uid)) === before)
   check('星铁：更差的上报仍刷新展示字段（战斗 99）', slot2.extra.battle_num === 99 && slot2.scores.battle === -99,
     `${slot2.extra.battle_num}/${slot2.scores.battle}`)
+}
+
+console.log('=== 星铁侧对称：重置进行中发起的上报被重置锁挡住（第四轮 #4） ===')
+{
+  store.strings.clear()
+  store.zsets.clear()
+  timeline = []
+  const uid = '200010001'
+  const uidKey = srUidKeyOf(uid)
+  store.strings.set(uidKey, JSON.stringify({
+    qq: '10001',
+    0: { [SID]: { scores: { floor: 12, star: 3, score: 1, round: -9 }, extra: {}, time: 1 } }
+  }))
+  await redis.zAdd(srCompoundKey(0), { score: 1, value: uid })
+
+  delRecord = true; delHold = true; delHeld = false; releaseDel = null
+  delHoldPrefix = `${SR_KEY}:0:`
+  zaddRecord = true; zaddHold = false
+
+  const resetPromise = Sr.resetRank('123', 0)
+  check('前置：星铁重置已进入删键阶段并暂停', await waitUntil(() => delHeld))
+
+  const reportPromise = Sr.report(uid, '10001', '123', 0, srData({ score: 60000, battle: 10 }), SID)
+  const reportSettled = await Promise.race([
+    reportPromise.then(() => '上报已完成', () => '上报已完成'),
+    new Promise(r => setTimeout(() => r('仍在等锁'), 50))
+  ])
+  check('星铁：重置删键未完成前，上报不结束（被重置锁挡住）', reportSettled === '仍在等锁', reportSettled)
+
+  if (releaseDel) releaseDel()
+  await Promise.all([resetPromise, reportPromise])
+
+  delHold = false; delRecord = false; zaddRecord = false; delHoldPrefix = ''
+
+  const info = JSON.parse(store.strings.get(uidKey) || '{}')
+  const hasSlot = !!info?.[0]?.[SID]
+  const hasScore = (await srScoreOf(0, uid)) != null
+  const zsetKey = await anySrZsetMember(0, uid)
+  console.log(`  交错后：槽位=${hasSlot} 分数=${hasScore} 仍有成员的 ZSET=${zsetKey || '无'}；时序=${timeline.join(' → ')}`)
+  check('星铁：不存在「ZSET 有成员但元信息无该类型槽位」', !(zsetKey && !hasSlot), `zset=${zsetKey} slot=${hasSlot}`)
+  check('星铁：终态只能是「槽位在且分数在」或「两者都不在」',
+    (hasSlot && hasScore) || (!hasSlot && !hasScore), `slot=${hasSlot} score=${hasScore}`)
+  const delIdx = timeline.indexOf(`del:${srCompoundKey(0)}`)
+  const firstZAdd = timeline.findIndex(t => t.startsWith('zadd:'))
+  check('星铁：重置进行中发起的上报，其 ZSET 写入全部落在重置删键之后',
+    delIdx >= 0 && firstZAdd > delIdx, timeline.join(' → '))
+}
+
+/* ---------- 排行榜总开关（第四轮 #5）：走真实上报守卫 ---------- */
+console.log('=== 排行榜总开关关闭时不上报（第四轮 #5） ===')
+{
+  // 配置目录经 AXIU_CONFIG_DIR 重定向到 test/.test-tmp/，仓库 config/ 一个字节不碰
+  const cfgDir = path.join(tmpDir, 'rank-order-cfg')
+  fs.rmSync(cfgDir, { recursive: true, force: true })
+  fs.mkdirSync(cfgDir, { recursive: true })
+  const cfgPath = path.join(cfgDir, 'config.yaml')
+  process.env.AXIU_CONFIG_DIR = cfgDir
+  /** 写一份最小配置：只关心两个总开关 */
+  const writeCfg = (gsRankEnabled) => fs.writeFileSync(cfgPath,
+    'gsAbyss:\n  enabled: true\n' +
+    `gsAbyssRank:\n  enabled: ${gsRankEnabled}\n` +
+    'srChallenge:\n  enabled: true\n' +
+    'srChallengeRank:\n  enabled: true\n', 'utf8')
+
+  // 重量级导入（连带 render / miao / genshin），放在最后，不影响前面的用例
+  const { reportGsIfEnabled } = await importMod('modules/challenge/gsQuery.js')
+  const uid = '100030001'
+  const zsetKeys = () => [...store.zsets.keys()].join(',') || '无'
+  /** 每个情形都从空存储 + 指定开关出发，断言互不依赖 */
+  const guardCase = async ({ gsRank, groupStatus, isGroup }) => {
+    store.strings.clear()
+    store.zsets.clear()
+    await Gs.setGroupStatus('123', groupStatus)
+    writeCfg(gsRank)
+    const e = { isGroup, group_id: '123', user_id: '10001', at: '', msg: '#深渊' }
+    await reportGsIfEnabled(e, uid, 0, abyssData(), SID, true, '深渊')
+  }
+
+  // 情形 1：总开关关闭 —— 配置承诺「关闭后不上报」，群开关开着也不写
+  await guardCase({ gsRank: false, groupStatus: 1, isGroup: true })
+  check('总开关关闭：不产生任何排行 ZSET 键', store.zsets.size === 0, zsetKeys())
+  check('总开关关闭：不写 uid 元信息', (await redis.keys(`${KEY}:uid:*`)).length === 0)
+
+  // 情形 2：总开关开启、群开关关闭 —— 该群退出参与，同样不写
+  await guardCase({ gsRank: true, groupStatus: 0, isGroup: true })
+  check('群开关关闭：不产生任何排行 ZSET 键', store.zsets.size === 0, zsetKeys())
+
+  // 情形 3：私聊不上报（原有口径，一并回归）
+  await guardCase({ gsRank: true, groupStatus: 1, isGroup: false })
+  check('私聊不上报', store.zsets.size === 0, zsetKeys())
+
+  // 正向对照：两个开关都开时必须真的写，否则上面三条断言没有意义
+  await guardCase({ gsRank: true, groupStatus: 1, isGroup: true })
+  check('对照：开关全开时写入 ZSET 与 uid 元信息',
+    store.zsets.size > 0 && (await scoreOf(0, uid)) != null && !!store.strings.get(uidKeyOf(uid)), zsetKeys())
 }
 
 finish()

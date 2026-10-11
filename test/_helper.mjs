@@ -52,12 +52,15 @@ export function requireFile (relPath, label = relPath) {
 
 /**
  * 框架全局桩：仅内存实现，测试不触真实 Redis / 不联网
- * @param {{beforeWrite?: (key: string, value: string) => Promise<void>}} [options]
- *   beforeWrite 在每次写入（set/setEx）前 await，供套件制造确定的异步交错
+ * @param {{beforeWrite?: (key: string, value: string) => Promise<void>,
+ *          beforeZAdd?: (key: string, member: {score: number, value: string}) => Promise<void>,
+ *          beforeDel?: (keys: string[]) => Promise<void>}} [options]
+ *   三个钩子在对应写入/删除**真正落库前** await，供套件制造确定的异步交错
+ *   （ZSET 写入与删键的时点也要能挂，否则「上报写到一半、重置插进来」这类交错摆不出来）
  * @returns {{strings: Map<string,string>, zsets: Map<string,Map<string,number>>}} 内存存储，便于断言原始数据
  */
 export function installFrameworkStubs (options = {}) {
-  const { beforeWrite = null } = options
+  const { beforeWrite = null, beforeZAdd = null, beforeDel = null } = options
   const noop = () => {}
   globalThis.logger = {
     info: noop, warn: noop, error: noop, mark: noop, debug: noop,
@@ -83,8 +86,10 @@ export function installFrameworkStubs (options = {}) {
     set: (k, v) => write(k, v),
     setEx: (k, ttl, v) => write(k, v),
     del: async (...keys) => {
+      const flat = keys.flat()
+      if (beforeDel) await beforeDel(flat)
       let n = 0
-      for (const k of keys.flat()) {
+      for (const k of flat) {
         if (strings.delete(k)) n++
         if (zsets.delete(k)) n++
       }
@@ -92,6 +97,7 @@ export function installFrameworkStubs (options = {}) {
     },
     keys: async (p) => allKeys().filter(k => toRegex(p).test(k)),
     zAdd: async (k, { score, value }) => {
+      if (beforeZAdd) await beforeZAdd(k, { score, value })
       if (!zsets.has(k)) zsets.set(k, new Map())
       const m = zsets.get(k)
       const existed = m.has(String(value))
