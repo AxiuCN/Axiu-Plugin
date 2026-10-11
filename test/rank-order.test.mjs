@@ -566,4 +566,71 @@ console.log('=== 排行榜总开关关闭时不上报（第四轮 #5） ===')
     store.zsets.size > 0 && (await scoreOf(0, uid)) != null && !!store.strings.get(uidKeyOf(uid)), zsetKeys())
 }
 
+console.log('=== 重排与上报共用重置锁：上报未写完不得开始重排（rebuildAll 入锁） ===')
+{
+  // 用 `beforeWrite` 把上报钉在「写 uid 键之前」——此刻它已持有本玩法的重置锁。
+  // 重排若也在锁内，就只能等上报整体结束：既不会「重排已完成」，
+  // 数据也要等上报写回 uid 键之后才被重排读到（否则重排会读到空表、什么都没处理）。
+  const waitSettled = async (promise, timeoutMs) => Promise.race([
+    promise.then(() => '已完成', () => '已完成'),
+    new Promise(r => setTimeout(() => r('仍在等锁'), timeoutMs))
+  ])
+
+  /** 单个模型的同一场景：上报挂起在写 uid 键处（持锁）→ 同玩法重排必须等锁 */
+  const interleaveCase = async ({ label, rebuildPromise, reportPromise, scoreReady, uidHasZset }) => {
+    check(`${label}：前置——上报已挂起在写 uid 键处（持有重置锁）`, await waitUntil(() => heldOnce))
+    // 100ms 足够无锁实现把空表遍历完（此刻 uid 键还没落库）；等到了才算「重排被挡住了」。
+    // 顺带说明为什么这里不能只判「尚未结束」：无锁实现也读不到 uid 键，重排会「什么都没处理」，
+    // 所以下面还要判它放行后确实处理了这个 UID
+    const settledBeforeRelease = await waitSettled(rebuildPromise, 100)
+    check(`${label}：重排在放行上报之前没有完成`, settledBeforeRelease === '仍在等锁', settledBeforeRelease)
+
+    if (releaseHold) releaseHold()
+    const [, rebuild] = await Promise.all([reportPromise, rebuildPromise])
+    check(`${label}：放行后上报与重排都正常完成`, !!rebuild && typeof rebuild.total === 'number',
+      JSON.stringify(rebuild))
+    check(`${label}：重排确实处理了这个上报的 UID（读到了上报写回的数据）`,
+      rebuild.total >= 1, `total=${rebuild.total}`)
+    check(`${label}：重排完成后名次键 ZSET 有该 UID 成员`, await uidHasZset(), await scoreReady())
+  }
+
+  /* ---------- 原神 ---------- */
+  store.strings.clear()
+  store.zsets.clear()
+  timeline = []
+  armed = true
+  heldOnce = false
+  releaseHold = null
+  const gsUid = '100040001'
+  const reportPromiseGs = Gs.report(gsUid, '10001', '123', 0, abyssData({ star: 3, battles: 20 }), SID)
+  const rebuildPromiseGs = Gs.rebuildAll(0)
+  await interleaveCase({
+    label: '原神',
+    rebuildPromise: rebuildPromiseGs,
+    reportPromise: reportPromiseGs,
+    scoreReady: async () => `score=${await scoreOf(0, gsUid)}`,
+    uidHasZset: async () => (await scoreOf(0, gsUid)) != null
+  })
+  armed = false; heldOnce = false; releaseHold = null
+
+  /* ---------- 星铁 ---------- */
+  store.strings.clear()
+  store.zsets.clear()
+  timeline = []
+  armed = true
+  heldOnce = false
+  releaseHold = null
+  const srUid = '200040001'
+  const reportPromiseSr = Sr.report(srUid, '10001', '123', 0, srData({ score: 60000, battle: 10 }), SID)
+  const rebuildPromiseSr = Sr.rebuildAll(0)
+  await interleaveCase({
+    label: '星铁',
+    rebuildPromise: rebuildPromiseSr,
+    reportPromise: reportPromiseSr,
+    scoreReady: async () => `score=${await srScoreOf(0, srUid)}`,
+    uidHasZset: async () => (await srScoreOf(0, srUid)) != null
+  })
+  armed = false; heldOnce = false; releaseHold = null
+}
+
 finish()

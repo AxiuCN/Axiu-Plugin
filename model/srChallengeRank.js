@@ -575,61 +575,66 @@ export default class SrChallengeRank {
    */
   static async rebuildAll (onlyType = null) {
     const types = onlyType != null ? [onlyType] : [0, 1, 2, 3]
-    const stats = {}
-    for (const ct of types) stats[ct] = { uids: 0, schedules: 0 }
-    let totalUids = 0
+    // 整个方法体在本玩法（challengeType）的重置锁内：重排遍历全部 uid 元信息后重建 ZSET，
+    // 与上报 / 重置交错会写出「元信息已删但 ZSET 刚被重排写回」这类残留；
+    // 锁序 resetLock → uidLock（本方法内部不取 uid 锁），不得反向
+    return withResetLocks(types, async () => {
+      const stats = {}
+      for (const ct of types) stats[ct] = { uids: 0, schedules: 0 }
+      let totalUids = 0
 
-    try {
-      const uidKeys = await redis.keys(`${KEY}:uid:*`)
-      for (const key of uidKeys) {
-        const uid = key.split(':').pop()
-        let raw
-        try { raw = await redis.get(key) } catch { continue }
-        if (!raw) continue
-        let info
-        try { info = JSON.parse(raw) } catch { continue }
+      try {
+        const uidKeys = await redis.keys(`${KEY}:uid:*`)
+        for (const key of uidKeys) {
+          const uid = key.split(':').pop()
+          let raw
+          try { raw = await redis.get(key) } catch { continue }
+          if (!raw) continue
+          let info
+          try { info = JSON.parse(raw) } catch { continue }
 
-        for (const ct of types) {
-          const slotMap = info?.[ct]
-          if (!slotMap || typeof slotMap !== 'object') continue
-          stats[ct].uids++
-          totalUids++
+          for (const ct of types) {
+            const slotMap = info?.[ct]
+            if (!slotMap || typeof slotMap !== 'object') continue
+            stats[ct].uids++
+            totalUids++
 
-          for (const [sid, slot] of Object.entries(slotMap)) {
-            const { scores } = (slot && typeof slot === 'object') ? slot : {}
-            if (!scores) continue
-            stats[ct].schedules++
+            for (const [sid, slot] of Object.entries(slotMap)) {
+              const { scores } = (slot && typeof slot === 'object') ? slot : {}
+              if (!scores) continue
+              stats[ct].schedules++
 
-            // 重建综合分 ZSET
-            const compound = rankKeyScore(scores, ct)
-            if (compound > 0) {
-              try {
-                const ck = rankKey(ct, '__', sid)
-                await redis.zAdd(ck, { score: compound, value: uid })
-                await redis.expire(ck, TTL)
-              } catch (err) {
-                logger?.error(`${LOG_PREFIX}[排行] 重排 compound zAdd 失败 uid=${uid}`, err)
+              // 重建综合分 ZSET
+              const compound = rankKeyScore(scores, ct)
+              if (compound > 0) {
+                try {
+                  const ck = rankKey(ct, '__', sid)
+                  await redis.zAdd(ck, { score: compound, value: uid })
+                  await redis.expire(ck, TTL)
+                } catch (err) {
+                  logger?.error(`${LOG_PREFIX}[排行] 重排 compound zAdd 失败 uid=${uid}`, err)
+                }
               }
-            }
-            // 重建各维度 ZSET
-            for (const dim of this.getDimensions(ct)) {
-              const val = scores[dim.key]
-              if (val == null) continue
-              try {
-                const rk = rankKey(ct, dim.key, sid)
-                await redis.zAdd(rk, { score: val, value: uid })
-                await redis.expire(rk, TTL)
-              } catch (err) {
-                logger?.error(`${LOG_PREFIX}[排行] 重排 zAdd 失败 uid=${uid}`, err)
+              // 重建各维度 ZSET
+              for (const dim of this.getDimensions(ct)) {
+                const val = scores[dim.key]
+                if (val == null) continue
+                try {
+                  const rk = rankKey(ct, dim.key, sid)
+                  await redis.zAdd(rk, { score: val, value: uid })
+                  await redis.expire(rk, TTL)
+                } catch (err) {
+                  logger?.error(`${LOG_PREFIX}[排行] 重排 zAdd 失败 uid=${uid}`, err)
+                }
               }
             }
           }
         }
+      } catch (err) {
+        logger?.error(`${LOG_PREFIX}[排行] 重排失败`, err)
       }
-    } catch (err) {
-      logger?.error(`${LOG_PREFIX}[排行] 重排失败`, err)
-    }
-    return { total: totalUids, types: stats }
+      return { total: totalUids, types: stats }
+    })
   }
 
   // ==================== 管理 ====================
