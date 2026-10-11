@@ -82,12 +82,13 @@ Axiu-Plugin — 阿修自用 Yunzai-Bot v3 插件，ESM（`"type": "module"`）�
 | `test/signin-runner-marks.test.mjs` | 签到 runner 的失败判定：429/脚本失败/云游戏 -100（国服与国际服两套文案）判失败、正常成功与「已签到过」不误报、status_code 非 0；套件禁用 Python 字节码写入，避免覆写同长 main.py 时复用过期 .pyc |
 | `test/sr-device-timeout.test.mjs` | 星铁设备指纹/设备注册请求**都带可取消信号**（缺信号的桩会把用例挂住）、指纹缓存命中时请求数减少；按 signal 判定，**不等**真实 10 秒超时、**不**逐个验证三个辅助请求 |
 | `test/guoba-write.test.mjs` | 锅巴配置读写：危险值（以 `*` 开头 cron / `#` / `:` / 引号 / 换行）序列化与回读、写前验证拦坏值、表单没提交的键不丢值、群规则映射与数组双形态往返、非法输入被拒且文件零改动、坏配置救回且文案不泄露口令、临时文件不留残渣（配置目录经 `AXIU_CONFIG_DIR` 重定向到 `test/.test-tmp/`） |
+| `test/qr-login-token.test.mjs` | 扫码登录 ltoken 取值：`pickToken` strict 不跨类型兜底（stoken 侧兜底保留）、tokens 只有 stoken 时 ltoken 必须取自 `getLtoken` 接口、具名优先、ltoken 等于 stoken 判为未取到、缺 ltoken / 缺 cookie_token 都不产出凭据 |
 
 约定：命名 `<主题>.test.mjs`（主题写被测行为）；路径一律经 `test/_helper.mjs` 的 `pluginRoot` / `mod()` / `importMod()` 推导，禁止裸相对字面量与盘符绝对路径；框架全局（logger/redis/segment/Bot）用 `installFrameworkStubs()` 的内存实现（不联网、不触真实 Redis）；临时产物只写 `test/.test-tmp/`（已 gitignore）；**断言必须能真的失败**——新增套件应临时还原被修的代码确认转红后再入库。细节见 `test/README.md`。
 
 
 ## 待办：审核跟踪（摘要）
 
-- 第四轮审核（2026-10-04，基准 `e86fca9`）共 11 项 P2 + 1 项 P3，**已逐条回源码核实**；批 A（锅巴 #10 + #11）已落地，B–F 待做 → 明细见 [`docs/待办-审核跟踪.md`](docs/待办-审核跟踪.md)
+- 第四轮审核（2026-10-04，基准 `e86fca9`）共 11 项 P2 + 1 项 P3，**已逐条回源码核实**；批 A（锅巴 #10/#11）、批 B（扫码 #1）已落地，C–F 待做 → 明细见 [`docs/待办-审核跟踪.md`](docs/待办-审核跟踪.md)
 - **并列排名 + 隐藏首查**（2026-10-05）：名次键决定名次（战斗/借出移出、只展示）、同键密集并列（1,1,2）、组内按首查先后、首查冻结不展示、名次键取本期最优；**部署后须执行一次 `#刷新…排行` / `*刷新…排行`** → 见 [`docs/模块-挑战与排行.md`](docs/模块-挑战与排行.md)
 - 未定口径：① #4 的**并发收口**（元信息与 ZSET 不一致；锁粒度按 uid / 按 (type, scheduleId)）——权威成绩口径已随上一条定死；② #7 国际服失败判定的路线；③ 两处设备实现是否合并（属重构，须单独授权）

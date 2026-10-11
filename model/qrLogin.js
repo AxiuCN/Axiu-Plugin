@@ -92,46 +92,75 @@ export default class QrLogin {
       return false
     }
 
-    // 提取 stoken
-    const tokenData = this.pickToken(res.data?.tokens, ['stoken_v2', 'stoken'])
-    const SToken = tokenData?.token
-    const stuid = res.data?.user_info?.aid || res.data?.user_info?.uid || res.data?.user_info?.account_id
-    const mid = res.data?.user_info?.mid
-
-    if (!SToken || !stuid) {
-      await this.e.reply('扫码登录返回信息不完整，未能获取stoken', true)
+    const result = await this._buildLoginResult(res)
+    if (result.error) {
+      await this.e.reply(result.error, true)
       return false
     }
 
-    // 获取 ltoken
+    return { cookie: result.cookie, stoken: result.stoken }
+  }
+
+  /**
+   * 由「扫码已确认」的响应组装 {cookie, stoken}（只取数，不回复、不落盘）
+   *
+   * ltoken 与 stoken 必须分开取：扫码走 passport 登录，响应的 `tokens[]` 通常只有
+   * stoken/stoken_v2；任何「任意非空 token」的兜底都会把 stoken 当成 ltoken 用，
+   * 并短路掉 getLtoken 的正确结果（第四轮 #1）。
+   *
+   * @param {object} res 二维码轮询的 Confirmed 响应
+   * @returns {Promise<{cookie?:string, stoken?:string, ltoken?:string, error?:string}>}
+   */
+  async _buildLoginResult (res) {
+    const SToken = this.pickToken(res?.data?.tokens, ['stoken_v2', 'stoken'])?.token
+    const stuid = res?.data?.user_info?.aid || res?.data?.user_info?.uid || res?.data?.user_info?.account_id
+    const mid = res?.data?.user_info?.mid
+
+    if (!SToken || !stuid) {
+      return { error: '扫码登录返回信息不完整，未能获取stoken' }
+    }
+
     const stokenCookie = [`stuid=${stuid}`, `stoken=${SToken}`, mid ? `mid=${mid}` : ''].filter(Boolean).join(';') + ';'
+
+    // ltoken：只认具名（strict，不兜底）→ getLtoken 接口的返回值
     const ltokenRes = await this.user.getData('getLtoken', { cookies: stokenCookie }, false)
-    const ltoken = this.pickToken(res.data?.tokens, ['ltoken', 'ltoken_v2'])?.token ||
-      ltokenRes?.data?.ltoken || ltokenRes?.data?.token?.token
+    const namedLtoken = this.pickToken(res?.data?.tokens, ['ltoken', 'ltoken_v2'], false)?.token
+    const picked = namedLtoken || ltokenRes?.data?.ltoken || ltokenRes?.data?.token?.token
+    // 防御：取到的值与 stoken 相同 ⇒ 来源错了，按「没取到」处理，绝不写进任何凭据
+    const ltoken = picked && picked !== SToken ? picked : ''
 
     // 获取 cookie_token
     let cookies = `uid=${stuid}&stoken=${SToken}`
     if (mid) cookies += `&mid=${mid}`
     const ck = await this.user.getData('bbsGetCookie', { cookies, cookieHeader: stokenCookie }, false)
 
-    if (!ltoken || !ck?.data?.cookie_token) {
-      await this.e.reply(`获取ck失败：${ck?.message || ltokenRes?.message || '接口返回为空'}`, true)
-      return false
+    if (!ltoken) {
+      const why = picked ? '接口返回的 ltoken 与 stoken 相同' : '接口返回不完整'
+      return { error: `扫码登录未取到 ltoken（${why}），请重试` }
+    }
+    if (!ck?.data?.cookie_token) {
+      return { error: `获取ck失败：${ck?.message || '接口返回为空'}` }
     }
 
     return {
+      ltoken,
       cookie: `ltoken=${ltoken};ltuid=${stuid};cookie_token=${ck.data.cookie_token};account_id=${stuid};`,
       stoken: `stoken=${SToken};stuid=${stuid};ltoken=${ltoken};${mid ? `mid=${mid};` : ''}`
     }
   }
 
-  /** 从 token 数组中按名称优先级匹配 */
-  pickToken (tokens = [], names = []) {
+  /** 从 token 数组中按名称优先级匹配
+   * @param {Array} tokens
+   * @param {string[]} names 名称优先级
+   * @param {boolean} [fallback=true] 无具名匹配时是否兜底取「任意非空 token」
+   *   —— 只有字段名不由我们掌握的场景（stoken）才该兜底；**ltoken 绝不能兜底**（第四轮 #1）
+   */
+  pickToken (tokens = [], names = [], fallback = true) {
     if (!Array.isArray(tokens)) return false
     for (const name of names) {
       const token = tokens.find(item => item?.name === name)
       if (token?.token) return token
     }
-    return tokens.find(item => item?.token)
+    return fallback ? tokens.find(item => item?.token) : false
   }
 }
