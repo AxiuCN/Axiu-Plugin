@@ -39,7 +39,7 @@ import {
   tryAcquireAutoSignin
 } from '../modules/mysSignin/signinManager.js'
 import { getSigninConfig, listAllRegisteredQQ, listUserConfigs } from '../model/mysSignin/bbsToolsConfig.js'
-import { pluginVersion, yunzaiVersion } from '../components/pluginVersion.js'
+import { buildCopyrightText } from '../components/pluginVersion.js'
 import { configFile } from '../components/config.js'
 
 export class MysSigninApp extends plugin {
@@ -508,7 +508,7 @@ export class MysSigninApp extends plugin {
    */
   async _sendReport (header, failedUsers, successUsers = []) {
     const cfg = getSigninConfig()
-    const footer = `\n\nCreated By TRSS-Yunzai v${yunzaiVersion} & Axiu-Plugin v${pluginVersion}`
+    const footer = `\n\n${buildCopyrightText()}`
 
     // 主人私聊：一律 ID 文本（不用 @），并附成功账号明细供核对
     try {
@@ -568,6 +568,6 @@ export class MysSigninApp extends plugin {
 
   /** 报告尾版权行（用户主动命令回复用） */
   _reportFooter () {
-    return `\n\nCreated By TRSS-Yunzai v${yunzaiVersion} & Axiu-Plugin v${pluginVersion}`
+    return `\n\n${buildCopyrightText()}`
   }
 }

@@ -6,6 +6,7 @@ import path from 'node:path'
 import fs from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import puppeteer from '../../../lib/puppeteer/puppeteer.js'
+import { buildCopyright } from './pluginVersion.js'
 
 const pluginRoot = path.join(process.cwd(), 'plugins/Axiu-Plugin')
 
@@ -59,10 +60,10 @@ export async function render (app, tpl, data = {}, imgType = 'jpeg') {
     data.element = data.element || 'sr'
   }
 
-  // 注入系统版权信息
+  // 注入系统版权行（框架名与版本号由 pluginVersion 统一判定，模板用 {{@sys.copyright}} 取）
   data.sys = {
-    copyright: 'Created By TRSS-yunzai & Axiu-Plugin',
-    createdby: 'Created By TRSS-yunzai & Axiu-Plugin'
+    copyright: buildCopyright(),
+    createdby: buildCopyright()
   }
 
   // 唯一标识使 HTML 不再被复用，截图结束后清理；失败仅遗留一个临时文件

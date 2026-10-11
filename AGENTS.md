@@ -84,6 +84,7 @@ Axiu-Plugin — 阿修自用 Yunzai-Bot v3 插件，ESM（`"type": "module"`）�
 | `test/device-fp-ltuid.test.mjs` | 通用过码设备指纹：缓存键取 cookie 里的 ltuid（不再落到 `undefined` 键）、`getFp` 网络失败与响应体失败都返回 `{deviceFp:null}` 而不抛穿、三处辅助请求都带超时信号 |
 | `test/guoba-write.test.mjs` | 锅巴配置读写：危险值（以 `*` 开头 cron / `#` / `:` / 引号 / 换行）序列化与回读、写前验证拦坏值、表单没提交的键不丢值、群规则映射与数组双形态往返、非法输入被拒且文件零改动、坏配置救回且文案不泄露口令、临时文件不留残渣（配置目录经 `AXIU_CONFIG_DIR` 重定向到 `test/.test-tmp/`） |
 | `test/qr-login-token.test.mjs` | 扫码登录 ltoken 取值：`pickToken` strict 不跨类型兜底（stoken 侧兜底保留）、tokens 只有 stoken 时 ltoken 必须取自 `getLtoken` 接口、具名优先、ltoken 等于 stoken 判为未取到、缺 ltoken / 缺 cookie_token 都不产出凭据 |
+| `test/copyright-line.test.mjs` | 版权行：框架名按 bot 根包名判定（TRSS-Yunzai / Yunzai-Bot）且与根包一致、插件版本取插件包、出图版带 `<span class="version">`、聊天版无 HTML 标签、名称与版本号不粘连、版本缺失时不拼版本 |
 
 约定：命名 `<主题>.test.mjs`（主题写被测行为）；路径一律经 `test/_helper.mjs` 的 `pluginRoot` / `mod()` / `importMod()` 推导，禁止裸相对字面量与盘符绝对路径；框架全局（logger/redis/segment/Bot）用 `installFrameworkStubs()` 的内存实现（不联网、不触真实 Redis）；临时产物只写 `test/.test-tmp/`（已 gitignore）；**断言必须能真的失败**——新增套件应临时还原被修的代码确认转红后再入库。细节见 `test/README.md`。
 
