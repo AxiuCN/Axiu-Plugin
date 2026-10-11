@@ -1,0 +1,92 @@
+# AGENTS.md
+
+This file provides project-level guidance to AI coding agents (DSH) when working with code in this repository.
+
+## 项目概况
+
+Axiu-Plugin — 阿修自用 Yunzai-Bot v3 插件，ESM（`"type": "module"`），GPLv3。
+
+> **迁移说明**：MCSM 面板管理功能已迁移到独立插件 [MCSM-Plugin](../MCSM-Plugin/)。
+
+> **鸣谢**：感谢 [FurinaWai77](https://github.com/FurinaWai77) 为本项目提供代码审查与修复建议（审查基准 e9c4dae + 7fa4b3d - 88affaf），详见 `.dsh/Axiu-Plugin-code-review-handled.md` 处理归档；签到架构、过码桥接、计划式调度思路借鉴 [Lotus-Plugin](https://github.com/MOPELotus/Lotus-Plugin)，星铁抽卡记录同步思路参考其重制版 Lotus-ReFactor（本地副本位置见 `docs/private/本机工作区.md`，**该目录不入库**）。
+
+当前提供自动入群审核、代发言、米游社过码、扫码登录、抽卡记录管理、星铁终局挑战、原神终局挑战、米游社签到八个功能，另有 `#Axiu帮助` 帮助图。
+
+**新增功能**：在 `apps/` 下新建一个 `.js` 文件（export 一个继承 `plugin` 的 class），`index.js` 自动发现并加载，无需修改入口文件。
+
+### 快速参考
+
+| 功能 | 文件 | 事件 | 注册方式 | 权限 |
+|------|------|------|---------|------|
+| 星铁终局挑战 | `apps/challenge.js` | `message` | `rule[]`（`*末日` / `*混沌` / `*仲裁` / `*虚构` 6 条 + 排行 `*排名` 3 条） | all |
+| 原神终局挑战 | `apps/challenge.js` | `message` | `rule[]`（`#深渊` / `#剧诗` / `#危战` 等 8 条 + 排行 `#排名` 3 条） | all |
+| 自动入群审核 | `apps/autoGroupApprove.js` | `request.group.add` | `accept()` | — |
+| 代发言 | `apps/proxySpeak.js` | `message` | `rule[]`（`#代`） | master |
+| 米游社过码 | `apps/captchaHandler.js` | `mys.req.err` | `handler[]` | — |
+| 扫码登录 | `apps/qrLogin.js` | `message` | `rule[]`（`#扫码` / `#刷新ck`） | all |
+| 原神抽卡记录 | `apps/gsGachaLog.js` | `message` | `rule[]`（`#更新抽卡记录` / `#更新小助手抽卡记录` / `#获取抽卡链接`） | all |
+| 星铁抽卡记录 | `apps/srGachaLog.js` | `message` | `rule[]`（`*更新星铁抽卡记录` / `*获取星铁抽卡链接`） | all |
+| 米游社签到 | `apps/mysSignin.js` | `message` + `task[]` | `rule[]`（`#签到` 等 9 条命令 + 签到/刷新cookie 2个定时任务） | 见文档 |
+| 插件帮助 | `apps/help.js` | `message` | `rule[]`（`#Axiu帮助` / `#阿修帮助`） | all |
+
+
+**添加新功能最小步骤**：`apps/` 下新建 `.js` → export 继承 `plugin` 的 class → 重启即可（`index.js` 自动发现）。
+
+## 文档索引（按需阅读，别一次全读）
+
+| 想了解 / 要改的东西 | 先读 |
+|---|---|
+| 目录结构、分层职责、入口加载、跨插件依赖、框架全局依赖、Redis 键 | [`docs/架构.md`](docs/架构.md) |
+| 配置三层结构、`TEMPLATE_VARS`、群配置双格式、`AXIU_CONFIG_DIR` 重定向 | [`docs/配置.md`](docs/配置.md) |
+| 米游社过码（captchaHandler / test_nine / GT-Manual） | [`docs/模块-过码.md`](docs/模块-过码.md) |
+| 扫码登录、原神/星铁抽卡记录、星铁 CK 自动刷新 | [`docs/模块-扫码与抽卡.md`](docs/模块-扫码与抽卡.md) |
+| 米游社签到（命令 / 定时任务 / Python 桥接） | [`docs/模块-签到.md`](docs/模块-签到.md) |
+| 星铁终局挑战、原神终局挑战与两套排行榜 | [`docs/模块-挑战与排行.md`](docs/模块-挑战与排行.md) |
+| 入群审核、代发言、插件帮助 | [`docs/模块-审核与杂项.md`](docs/模块-审核与杂项.md) |
+| 待办与审核跟踪（第四轮 12 项、修复分批、未定口径） | [`docs/待办-审核跟踪.md`](docs/待办-审核跟踪.md) |
+| 部署环境、盘符映射、本机工作区（**不入库**） | `docs/private/`（新克隆上不存在） |
+
+## 约定
+
+1. **ESM** — 全部 `import`/`export`
+2. **路径统一** — `path.dirname(fileURLToPath(import.meta.url))` 获取 `__dirname`
+3. **日志前缀** — `[Axiu-Plugin]` 或 `[Axiu-Plugin][模块名]`；model 层沿用原 `[loveMys]`/`[米游社]` 前缀
+4. **事件注册** — `request.group.add` 用 `accept()`，`message` 用 `rule[]`，`mys.req.err` 用 `handler[]`
+5. **容错加载** — `index.js` 使用 `Promise.allSettled`，单个 app 失败不影响整体
+6. **文档入库范围** — `AGENTS.md` 与 `docs/`（除 `docs/private/`）**入库**，与代码一同评审提交；`docs/private/` 放部署环境与本机路径，**不入库**，因此入库文档只写占位（`<bot根>` / `<插件根>` / 假群号），且**不得依赖**它（新克隆上没有）；`CLAUDE.md` / `.claude/` / `.dsh/` 仍忽略
+7. **model 层源自 loveMys-plugin** — 模型文件从 loveMys-plugin 复制而来，gsCfg.js 路径已调整为 Axiu-Plugin
+8. **渲染缓存标识逐次唯一** — `components/render.js` 未显式传 `saveId` 时生成 `randomUUID()`，并在截图后删除生成的临时 HTML；**禁止**给 `saveId` 传固定值（宿主先同步写 HTML 再 `page.goto` 读取，固定标识会让并发渲染串图，扫码登录场景会造成账号错绑）
+9. **回归套件** — 改到数据口径或共享链路时，同步补/更新 `test/` 下对应套件（`pnpm test`），见「## 测试」
+10. **配置写入** — 值经 `yamlValue()` 序列化、写盘前 `validateRendered()` 逐键验证、`writeConfigAtomic()` 原子替换；表单没提交的键沿用文件当前值；读不出来时允许保存救回但回执必须点明（见下面「配置写入口径」）
+
+
+## 配置写入口径（改锅巴写入路径前先读）
+
+1. **值一律经 `yamlValue()` 序列化**（`components/config.js`）：字符串 `JSON.stringify`（所以以 `*` 开头的 cron、含 `#` / `:` / 引号 / 换行的值都写不坏），数组与对象写单行 YAML。**禁止**把值裸拼进模板——`*/30 * * * * ?` 会被 YAML 当别名语法，整份配置随之读不出来（第四轮 #10）。
+2. **写盘前必须验证**：渲染出的文本先 `YAML.parse`，再逐键比对「要写的值」与「解析回来的值」；任一不过就 `Result.error`，**一个字节都不写**。
+3. **原子替换**：临时文件（与目标同目录、名字落在 `config/*.yaml` 这条 gitignore 规则内）+ `renameSync`，不留半截文件。
+4. **表单没提交的键沿用文件当前值**，不许退回空串——那会把用户的值抹掉。
+5. **文件本来就读不出来时允许救回**：面板照常返回参考默认值，保存后按参考默认值重写其余键，回执**必须点明**「其余键已按参考默认值重写」。错误文案只留「哪份文件 + 解析器原因的第一行」，**不带出错行原文**（那行常常是 `api.key`，等于把口令打进日志或弹窗）。**不新增面板横幅字段**（2026-10-05 决定）：只在 `logger.error` 与保存回执里提示。
+6. **回归套件重定向**：`AXIU_CONFIG_DIR` 指向临时目录时配置读写都落在那里（`resolveConfigPath()` / `resolveGroupConfigPath()` 解析），生产不设这个变量。`test/guoba-write.test.mjs` 走的就是这条路，不碰仓库的 `config/`。
+
+
+## 测试
+
+回归套件在 `test/`（**入仓库**）：`pnpm test`（= `node test/run.mjs`，任意 cwd 可跑，缺前置打印「跳过」并 exit 0）。
+
+| 套件 | 覆盖 |
+|------|------|
+| `test/srGacha-merge.test.mjs` | 星铁抽卡合并窗口：首次出五星的扣减、十连同秒尾段、远端更旧五星的重叠窗口、重复同步幂等、文件新旧方向、UTC+8 占位时间 |
+| `test/signin-refresh-report.test.mjs` | 批量刷新 Cookie 的汇总口径与报告：部分成功用户的失败明细不被丢弃、三档统计、边界 |
+| `test/rank-order.test.mjs` | 原神排行综合排序：剧诗「用时优先于借出」与各级不越级、深渊 32 天首查窗口（28~31 天保序）与星数/层数优先、定向重置与上报交错不覆盖其他玩法明细 |
+| `test/signin-runner-marks.test.mjs` | 签到 runner 的失败判定：429/脚本失败/云游戏 -100（国服与国际服两套文案）判失败、正常成功与「已签到过」不误报、status_code 非 0；套件禁用 Python 字节码写入，避免覆写同长 main.py 时复用过期 .pyc |
+| `test/sr-device-timeout.test.mjs` | 星铁设备指纹/设备注册请求**都带可取消信号**（缺信号的桩会把用例挂住）、指纹缓存命中时请求数减少；按 signal 判定，**不等**真实 10 秒超时、**不**逐个验证三个辅助请求 |
+| `test/guoba-write.test.mjs` | 锅巴配置读写：危险值（以 `*` 开头 cron / `#` / `:` / 引号 / 换行）序列化与回读、写前验证拦坏值、表单没提交的键不丢值、群规则映射与数组双形态往返、非法输入被拒且文件零改动、坏配置救回且文案不泄露口令、临时文件不留残渣（配置目录经 `AXIU_CONFIG_DIR` 重定向到 `test/.test-tmp/`） |
+
+约定：命名 `<主题>.test.mjs`（主题写被测行为）；路径一律经 `test/_helper.mjs` 的 `pluginRoot` / `mod()` / `importMod()` 推导，禁止裸相对字面量与盘符绝对路径；框架全局（logger/redis/segment/Bot）用 `installFrameworkStubs()` 的内存实现（不联网、不触真实 Redis）；临时产物只写 `test/.test-tmp/`（已 gitignore）；**断言必须能真的失败**——新增套件应临时还原被修的代码确认转红后再入库。细节见 `test/README.md`。
+
+
+## 待办：审核跟踪（摘要）
+
+- 第四轮审核（2026-10-04，基准 `e86fca9`）共 11 项 P2 + 1 项 P3，**已逐条回源码核实**；批 A（锅巴 #10 + #11）已落地，B–F 待做 → 明细见 [`docs/待办-审核跟踪.md`](docs/待办-审核跟踪.md)
+- 未定口径 3 项：① #4 同一期的权威成绩与锁粒度；② #7 国际服失败判定的路线；③ 两处设备实现是否合并（属重构，须单独授权）

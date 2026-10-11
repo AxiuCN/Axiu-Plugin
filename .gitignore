@@ -14,7 +14,9 @@ node_modules/
 .claude/
 .dsh/
 CLAUDE.md
-AGENTS.md
+
+# 部署环境与本机路径（隐私，不进仓库）
+docs/private/
 
 # 日志
 log/

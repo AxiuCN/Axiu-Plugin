@@ -6,6 +6,11 @@
  * （第三轮 P2-7）
  *
  * fetch 用桩替换：辅助请求在无 signal 时永不返回（复刻无超时），有 signal 时视为已中止
+ *
+ * **本套件证明了什么、不证明什么**：它断言的是「辅助请求都带上可取消信号，缺信号的桩会把用例挂住」，
+ * **不**等待真实的 10 秒超时，也**不**逐个验证 getFp / deviceLogin / saveDevice 各自的行为
+ * （第四轮复审实测的请求序：冷缓存 `getFp→getFp→getFp→srNote`、热缓存 `getFp→srNote`）。
+ * 真实的响应头 / 响应体阶段超时行为在第四轮 #8、#9 里单独跟踪。
  */
 import { importMod, installFrameworkStubs, skip, checker } from './_helper.mjs'
 
