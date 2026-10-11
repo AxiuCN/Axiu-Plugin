@@ -70,4 +70,25 @@ console.log('=== 边界 ===')
   check('无用户时报告提示未执行', buildRefreshReport({ total: 0 }).header.includes('无已注册用户'))
 }
 
+console.log('=== 第四轮 #6：ok=false 且 failed 为空的用户不能被算成全部成功 ===')
+{
+  const s = summarizeCookieRefresh([
+    { userId: '10001', ok: true, failed: [] },
+    { userId: '10002', ok: false, failed: [], message: '请先绑定 stoken' }
+  ])
+  check('未绑定 stoken（ok=false、failed 为空）计为失败而非成功',
+    s.success === 1 && s.fullFail === 1 && s.partial === 0, `success=${s.success} fullFail=${s.fullFail} partial=${s.partial}`)
+  check('该用户进入失败明细并带上原因',
+    s.failedUsers.some(u => u.userId === '10002' && (u.failed || []).some(f => String(f.reason).includes('stoken'))),
+    JSON.stringify(s.failedUsers))
+  check('报告里确实列出该用户',
+    buildRefreshReport({ ...s, total: 2 }).failedUsers.some(u => u.qq === '10002'))
+
+  // 生产侧两个早返回（未绑定 stoken / 未注册签到）本身就带明细，汇总层无需再兜底
+  const s2 = summarizeCookieRefresh([
+    { userId: '10003', ok: false, failed: [{ n: '—', reason: '未绑定 stoken，没有可刷新的账号' }] }
+  ])
+  check('带明细的 ok=false 仍算全部失败', s2.success === 0 && s2.fullFail === 1, JSON.stringify(s2))
+}
+
 finish()

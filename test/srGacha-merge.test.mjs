@@ -155,4 +155,69 @@ console.log('=== 第二轮回归：已有五星 + 新增五星的幂等性 ===')
   check('再次同步不增长（幂等）', r2.records.length === r1.records.length, `${r1.records.length} → ${r2.records.length}`)
 }
 
+console.log('=== 第四轮 #2：十连同秒的同名五星不能被整类压掉 ===')
+{
+  const star = { ...rec('黄泉', '2026-09-05 10:00:00', '5'), id: 'import-star-1' }
+  const local = [star, rec('真实三星1', '2026-09-04 09:00:00')]
+  // 同一秒两个同名五星（十连双黄），都晚于本地最新五星
+  const twins = [apiStar('黄泉', '2026-09-05 11:00:00', 5), apiStar('黄泉', '2026-09-05 11:00:00', 15)]
+  const out = appendNewRecordsToGenuinePool({ prevRecords: local, fiveStars: twins, pity: 2, uid: UID, type: TYPE })
+  const named = out.records.filter(r => r.name === '黄泉' && String(r.rank_type) === '5')
+  check('同秒同名两个五星都记为新增（旧实现只记 1 条）', out.added === 2, `added=${out.added}`)
+  check('池内该名五星共 3 条（1 条导入 + 2 条新增）', named.length === 3, String(named.length))
+
+  // 幂等：同样的两条再来一次（换新 id，走「名称|秒级时间」按条数消费）
+  const again = twins.map(t => ({ ...t, id: String(BigInt(t.id) + 1000n) }))
+  const out2 = appendNewRecordsToGenuinePool({ prevRecords: out.records, fiveStars: again, pity: 2, uid: UID, type: TYPE })
+  check('再同步（id 不同、名称时间相同）不重复记入', out2.added === 0, `added=${out2.added}`)
+
+  const out3 = appendNewRecordsToGenuinePool({ prevRecords: out.records, fiveStars: twins, pity: 2, uid: UID, type: TYPE })
+  check('再同步（同一批对象，同源 id 命中）不重复记入', out3.added === 0, `added=${out3.added}`)
+}
+
+console.log('=== 第四轮 #3：新五星必须按时间归并，不能整段前置 ===')
+{
+  const star = { ...rec('黄泉', '2026-09-05 10:00:00', '5'), id: 'import-star-2' }
+  const local = [
+    star,
+    rec('真实三星1', '2026-09-04 09:00:00'),
+    rec('真实三星2', '2026-09-03 09:00:00'),
+    rec('真实三星3', '2026-09-02 09:00:00')
+  ]
+  // 同步①：接口没有新五星（只有本地已有的那条），仅按垫抽差补占位——占位时间 = 现在
+  const r1 = appendNewRecordsToGenuinePool({
+    prevRecords: local,
+    fiveStars: [apiStar('黄泉', '2026-09-05 10:00:00', 25)],
+    pity: 5,
+    uid: UID,
+    type: TYPE
+  })
+  check('同步①：无新五星，只补垫抽占位', r1.added === 0 && countFillers(r1.records) >= 2, `added=${r1.added} fillers=${countFillers(r1.records)}`)
+
+  // 同步②：接口这次才带回一个新五星 银狼(11:30)——晚于本地最新五星(10:00)，但早于①留下的占位（时间=现在）
+  const r2 = appendNewRecordsToGenuinePool({
+    prevRecords: r1.records,
+    fiveStars: [apiStar('银狼', '2026-09-05 11:30:00', 10)],
+    pity: 6,
+    uid: UID,
+    type: TYPE
+  })
+  const idxSilver = r2.records.findIndex(r => r.name === '银狼')
+  const idxPadding = r2.records.findIndex(r => isFiller(r) && r.time > '2026-09-06 00:00:00')
+  const idxOld = r2.records.findIndex(r => r.name === '黄泉')
+  console.log(`  顺序: 银狼@${idxSilver} 落在 旧占位@${idxPadding} 与 黄泉@${idxOld} 之间`)
+  check('新增五星插在时间正确的位置（旧占位 > 银狼 11:30 > 黄泉 10:00）',
+    idxSilver > idxPadding && idxOld > idxSilver, `${idxPadding}/${idxSilver}/${idxOld}`)
+
+  let inverted = null
+  for (let i = 1; i < r2.records.length; i++) {
+    if (String(r2.records[i - 1].time) < String(r2.records[i].time)) {
+      inverted = `${i - 1}:${r2.records[i - 1].time} < ${i}:${r2.records[i].time}`
+      break
+    }
+  }
+  check('合并后数组按时间非递增（消费者按数组顺序累计才正确）', inverted === null, String(inverted))
+  check('五星总数仍为 2（未重复、未丢失）', countStars(r2.records) === 2, String(countStars(r2.records)))
+}
+
 finish()

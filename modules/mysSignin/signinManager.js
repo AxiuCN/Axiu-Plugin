@@ -394,12 +394,12 @@ async function signinForAll (isAuto = true, onProgress) {
 async function refreshUserCookies (userId) {
   const stokenData = await stokenStore.getUserStoken(userId)
   if (!stokenData || Object.keys(stokenData).length === 0) {
-    return { ok: false, count: 0, message: '请先绑定 stoken', failed: [] }
+    return { ok: false, count: 0, message: '请先绑定 stoken', failed: [{ n: '—', reason: '未绑定 stoken，没有可刷新的账号' }] }
   }
 
   const configs = listUserConfigs(userId)
   if (configs.length === 0) {
-    return { ok: false, count: 0, message: '未注册签到，请先发送【#注册自动签到】', failed: [] }
+    return { ok: false, count: 0, message: '未注册签到，请先发送【#注册自动签到】', failed: [{ n: '—', reason: '未注册签到，没有可刷新的账号' }] }
   }
 
   let refreshed = 0
@@ -530,12 +530,15 @@ function summarizeCookieRefresh (results = []) {
 
   for (const r of results) {
     const failed = Array.isArray(r?.failed) ? r.failed : []
-    if (failed.length === 0) {
+    // 成功必须是「ok 为真且没有失败账号」：ok:false 而 failed 为空（如「未绑定 stoken」
+    // 「未注册签到」这类根本没刷新的情况）只看 failed.length 会被算成全部成功（第四轮 #6）
+    if (r?.ok === true && failed.length === 0) {
       success++
       continue
     }
-    if (r?.ok) partial++
-    failedUsers.push({ userId: String(r?.userId ?? ''), ok: !!r?.ok, failed })
+    const detail = failed.length ? failed : [{ n: '—', reason: String(r?.message || '刷新失败') }]
+    if (r?.ok === true) partial++
+    failedUsers.push({ userId: String(r?.userId ?? ''), ok: !!r?.ok, failed: detail })
   }
 
   return { total: results.length, success, partial, fullFail: failedUsers.length - partial, failedUsers }

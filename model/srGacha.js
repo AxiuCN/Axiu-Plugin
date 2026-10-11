@@ -588,15 +588,27 @@ export function appendNewRecordsToGenuinePool ({ prevRecords = [], fiveStars = [
     ? recordedAfterLastFive
     : existing.filter(r => String(r?.rank_type) !== '5').length
 
-  const known = new Set(existingStars.map(r => `${r?.name || ''}|${recordTime(r)}`))
+  // 去重：优先用**同源 id** 精确命中；跨命名空间（导入数据 vs 小程序数据）时按「名称|秒级时间」
+  // **按条数消费**——做成集合会把十连同秒的同名五星整类压掉，少记一个五星（第四轮 #2）
+  const keyOfStar = (r) => `${r?.name || ''}|${recordTime(r)}`
+  const knownIds = new Set(existing.map(r => String(r?.id || '')).filter(Boolean))
+  const knownLeft = new Map()
+  for (const r of existingStars) knownLeft.set(keyOfStar(r), (knownLeft.get(keyOfStar(r)) || 0) + 1)
+
   const candidates = []
   for (const raw of fiveStars) { // 接口顺序：最新在前
     const time = fiveStarTime(raw)
     const name = String(raw?.item?.name || '')
     if (!time || time <= newestFiveTime) continue
+    const rawId = String(raw?.id || raw?.uuid || '')
+    if (rawId && knownIds.has(rawId)) continue
     const key = `${name}|${time}`
-    if (known.has(key)) continue
-    known.add(key)
+    const left = knownLeft.get(key) || 0
+    if (left > 0) {
+      knownLeft.set(key, left - 1)
+      continue
+    }
+    if (rawId) knownIds.add(rawId)
     candidates.push({ raw, name, time, gachaCount: nonNegativeInt(raw?.gacha_count) })
   }
 
@@ -614,11 +626,15 @@ export function appendNewRecordsToGenuinePool ({ prevRecords = [], fiveStars = [
     }
   }
 
-  // 有新增五星：构造「新在前」方向的新段，再按文件方向拼接
-  const segment = buildFillerRecords(nonNegativeInt(pity), numericType, uid, nextTailTime(existing), `${tag}p`)
+  // 有新增五星：先构造「当前垫抽占位」，再把「新五星 + 其间隔占位」**按时间归并**进已有记录。
+  // 不能整段前置：候选的真实抽取时间可能早于上次同步留下的垫抽占位，
+  // 整段前置会让数组顺序与时间倒挂，消费者（genshin GachaLog.analyse）按数组顺序累计就会算错
+  // 五星间隔与首抽时间（第四轮 #3）
+  const pityPad = buildFillerRecords(nonNegativeInt(pity), numericType, uid, nextTailTime(existing), `${tag}p`)
+  const newEntries = []
   for (let i = 0; i < candidates.length; i++) {
     const c = candidates[i]
-    segment.push({
+    newEntries.push({
       id: String(c.raw.id || c.raw.uuid || `axiu-five-${numericType}-${tag}-${i}`),
       uid: String(uid),
       name: c.name,
@@ -641,11 +657,21 @@ export function appendNewRecordsToGenuinePool ({ prevRecords = [], fiveStars = [
     }, 0)
 
     const gap = Math.max(0, c.gachaCount - 1 - overlap)
-    segment.push(...buildFillerRecords(gap, numericType, uid, c.time, `${tag}-${i}`))
+    newEntries.push(...buildFillerRecords(gap, numericType, uid, c.time, `${tag}-${i}`))
   }
 
+  // 归一到「新在前」后逐条插入：已有记录的相对顺序与身份完全不动，只决定新条目落在哪
+  const canonical = order === 'newest' ? existing.slice() : existing.slice().reverse()
+  for (const entry of newEntries) {
+    let at = 0
+    const asStar = { time: recordTime(entry), raw: entry }
+    while (at < canonical.length && !isOlderThanStar(canonical[at], asStar)) at++
+    canonical.splice(at, 0, entry)
+  }
+
+  const merged = [...pityPad, ...canonical] // 垫抽占位时间最新，始终在最前
   return {
-    records: order === 'newest' ? [...segment, ...existing] : [...existing, ...[...segment].reverse()],
+    records: order === 'newest' ? merged : merged.reverse(),
     added: candidates.length,
     order
   }
