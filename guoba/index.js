@@ -9,17 +9,36 @@ import * as signinMod from './signin.js'
 import * as challengeMod from './challenge.js'
 import * as proxySpeakMod from './proxySpeak.js'
 import gsCfg from '../model/gsCfg.js'
-import { getPluginConfig } from '../components/config.js'
+import {
+  readConfigWithStatus,
+  readField,
+  resolveConfigPath,
+  validateRendered,
+  writeConfigAtomic,
+  yamlValue
+} from '../components/config.js'
+import {
+  groupShapeOf,
+  groupsFromPanel,
+  groupsToPanel,
+  resolveGroupConfigPath
+} from '../components/groupConfig.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const PLUGIN_DIR = path.join(__dirname, '..')
 
-const GROUP_CONFIG_PATH = path.join(PLUGIN_DIR, 'config', 'group_config.yaml')
+/**
+ * 配置路径：主配置 / 群配置走 `components/` 的解析函数（与插件侧读的是同一份，
+ * 且回归套件能用 `AXIU_CONFIG_DIR` 重定向）；MihoyoBBSTools 模板只在锅巴这条路上用，跟着同一目录。
+ * 模板 `defSet/config.yaml` 是只读输入，路径固定。
+ */
+const configDir = () => process.env.AXIU_CONFIG_DIR || path.join(PLUGIN_DIR, 'config')
+const CONFIG_PATH = () => resolveConfigPath()
+const GROUP_CONFIG_PATH = () => resolveGroupConfigPath(PLUGIN_DIR)
+const BBS_TOOLS_TEMPLATE_PATH = () => path.join(configDir(), 'MihoyoBBSTools_config.yaml')
+const BBS_TOOLS_TEMPLATE_EXAMPLE = () => path.join(configDir(), 'MihoyoBBSTools_config.yaml.example')
 const DEFSET_CONFIG_PATH = path.join(PLUGIN_DIR, 'defSet', 'config.yaml')
-const CONFIG_PATH = path.join(PLUGIN_DIR, 'config', 'config.yaml')
-const BBS_TOOLS_TEMPLATE_PATH = path.join(PLUGIN_DIR, 'config', 'MihoyoBBSTools_config.yaml')
-const BBS_TOOLS_TEMPLATE_EXAMPLE = path.join(PLUGIN_DIR, 'config', 'MihoyoBBSTools_config.yaml.example')
 
 /** guoba field → defSet 模板变量名 */
 const TEMPLATE_VARS = {
@@ -58,14 +77,15 @@ const TEMPLATE_VARS = {
 // ==================== 工具函数 ====================
 
 function readGroupConfigRaw () {
+  const configPath = GROUP_CONFIG_PATH()
   try {
-    if (fs.existsSync(GROUP_CONFIG_PATH)) {
-      return YAML.parse(fs.readFileSync(GROUP_CONFIG_PATH, 'utf8')) || {}
+    if (fs.existsSync(configPath)) {
+      return YAML.parse(fs.readFileSync(configPath, 'utf8')) || {}
     }
   } catch (err) {
     logger.error('[Axiu-Plugin] 读取群配置失败:', err)
   }
-  const examplePath = path.join(PLUGIN_DIR, 'config', 'group_config.yaml.example')
+  const examplePath = path.join(configDir(), 'group_config.yaml.example')
   if (fs.existsSync(examplePath)) {
     try { return YAML.parse(fs.readFileSync(examplePath, 'utf8')) || {} } catch {}
   }
@@ -78,24 +98,33 @@ function readGroupConfigRaw () {
  */
 function readBbsToolsTemplateRaw () {
   let file = null
-  if (fs.existsSync(BBS_TOOLS_TEMPLATE_PATH)) {
-    file = BBS_TOOLS_TEMPLATE_PATH
-  } else if (fs.existsSync(BBS_TOOLS_TEMPLATE_EXAMPLE)) {
-    file = BBS_TOOLS_TEMPLATE_EXAMPLE
+  if (fs.existsSync(BBS_TOOLS_TEMPLATE_PATH())) {
+    file = BBS_TOOLS_TEMPLATE_PATH()
+  } else if (fs.existsSync(BBS_TOOLS_TEMPLATE_EXAMPLE())) {
+    file = BBS_TOOLS_TEMPLATE_EXAMPLE()
   }
   if (!file) return {}
   try {
     return YAML.parse(fs.readFileSync(file, 'utf8')) || {}
   } catch (err) {
-    logger.error('[Axiu-Plugin] 读取 MihoyoBBSTools 模板失败:', err)
+    logger.error('[Axiu-Plugin] 读取 MihoyoBBSTools 模板失败：', err)
     return {}
   }
 }
 
-/** 读取 signin 主配置（从 config.yaml） */
-function readSigninConfigRaw () {
-  const cfg = gsCfg.getConfig('config') || {}
-  return cfg.signin || {}
+/**
+ * 按 defSet 模板渲染出运行时配置文本
+ *
+ * 值一律经 `yamlValue()`：字符串加引号并转义，所以以 `*` 开头的 cron（`*\/30 * * * * ?`）不会被
+ * YAML 当别名语法，含 `#` / `:` / 引号 / 换行的值也写不坏。**禁止**在这里裸拼字符串。
+ */
+function renderTemplate (template, values) {
+  let out = template
+  for (const [field, varName] of Object.entries(TEMPLATE_VARS)) {
+    /* 函数替换：值里的 $& / $1 / $$ 不会被 String.replace 当特殊语法展开 */
+    out = out.replace(new RegExp(`\\$\\{${varName}\\}`, 'g'), () => yamlValue(values[field]))
+  }
+  return out
 }
 
 // ==================== 导出 ====================
@@ -126,9 +155,11 @@ export function supportGuoba () {
       ],
 
       getConfigData () {
+        /* 读**文件当前内容**（只有读不出来时才退回参考默认值），不读模块加载那一刻的快照 */
+        const read = readConfigWithStatus()
+        const cfg = read.config
+        const signinReportGroups = readField(cfg, 'signin.reportGroups')
         const groupRaw = readGroupConfigRaw()
-        const apiCfg = gsCfg.api || {}
-        const signinCfg = readSigninConfigRaw()
         const bbsTemplate = readBbsToolsTemplateRaw()
         const mihoyobbs = bbsTemplate.mihoyobbs || {}
         const gamesCn = bbsTemplate.games?.cn || {}
@@ -138,55 +169,53 @@ export function supportGuoba () {
         const web = bbsTemplate.web_activity || {}
 
         return {
-          // 群配置
-          groups: groupRaw.groups || [],
+          // 群配置：手写的映射格式也转成行，面板不丢规则
+          groups: groupsToPanel(groupRaw.groups),
 
           // api 过码配置
-          'api.type': apiCfg.type ?? 1,
-          'api.api': apiCfg.api ?? '',
-          'api.resapi': apiCfg.resapi ?? '',
-          'api.key': apiCfg.key ?? '',
-          'api.query': apiCfg.query ?? '',
-          'api.resquery': apiCfg.resquery ?? '',
-          'api.startApi': apiCfg.startApi ?? false,
-          'api.Port': apiCfg.Port ?? 3000,
-          'api.bindHost': apiCfg.bindHost ?? '127.0.0.1',
-          'api.Address': apiCfg.Address ?? 'http://127.0.0.1:3000',
-          'api.verifyAddr': apiCfg.verifyAddr ?? 'http://127.0.0.1:3000/GTest/register',
-          'api.GtestType': apiCfg.GtestType ?? 2,
-          'api.qrLogin_enabled': apiCfg.qrLogin_enabled ?? true,
+          'api.type': readField(cfg, 'api.type') ?? 1,
+          'api.api': readField(cfg, 'api.api') ?? '',
+          'api.resapi': readField(cfg, 'api.resapi') ?? '',
+          'api.key': readField(cfg, 'api.key') ?? '',
+          'api.query': readField(cfg, 'api.query') ?? '',
+          'api.resquery': readField(cfg, 'api.resquery') ?? '',
+          'api.startApi': readField(cfg, 'api.startApi') ?? false,
+          'api.Port': readField(cfg, 'api.Port') ?? 3000,
+          'api.bindHost': readField(cfg, 'api.bindHost') ?? '127.0.0.1',
+          'api.Address': readField(cfg, 'api.Address') ?? 'http://127.0.0.1:3000',
+          'api.verifyAddr': readField(cfg, 'api.verifyAddr') ?? 'http://127.0.0.1:3000/GTest/register',
+          'api.GtestType': readField(cfg, 'api.GtestType') ?? 2,
+          'api.qrLogin_enabled': readField(cfg, 'api.qrLogin_enabled') ?? true,
 
           // srChallenge
-          'srChallenge.enabled': getPluginConfig()?.srChallenge?.enabled ?? true,
+          'srChallenge.enabled': readField(cfg, 'srChallenge.enabled') ?? true,
 
           // srChallengeRank
-          'srChallengeRank.enabled': getPluginConfig()?.srChallengeRank?.enabled ?? true,
-          'srChallengeRank.rankNumber': getPluginConfig()?.srChallengeRank?.rankNumber ?? 20,
+          'srChallengeRank.enabled': readField(cfg, 'srChallengeRank.enabled') ?? true,
+          'srChallengeRank.rankNumber': readField(cfg, 'srChallengeRank.rankNumber') ?? 20,
 
           // gsAbyss
-          'gsAbyss.enabled': getPluginConfig()?.gsAbyss?.enabled ?? true,
+          'gsAbyss.enabled': readField(cfg, 'gsAbyss.enabled') ?? true,
 
           // gsAbyssRank
-          'gsAbyssRank.enabled': getPluginConfig()?.gsAbyssRank?.enabled ?? true,
-          'gsAbyssRank.rankNumber': getPluginConfig()?.gsAbyssRank?.rankNumber ?? 20,
+          'gsAbyssRank.enabled': readField(cfg, 'gsAbyssRank.enabled') ?? true,
+          'gsAbyssRank.rankNumber': readField(cfg, 'gsAbyssRank.rankNumber') ?? 20,
 
           // proxySpeak
-          'proxySpeak.enabled': getPluginConfig()?.proxySpeak?.enabled ?? true,
+          'proxySpeak.enabled': readField(cfg, 'proxySpeak.enabled') ?? true,
 
           // signin 主配置
-          'signin.enable': signinCfg.enable ?? true,
-          'signin.manualSignin': signinCfg.manualSignin ?? true,
-          'signin.schedule': signinCfg.schedule ?? '0 0 5 * * ? *',
-          'signin.refreshSchedule': signinCfg.refreshSchedule ?? '0 30 4 * * ? *',
-          'signin.randomDelayMin': signinCfg.randomDelayMin ?? 0,
-          'signin.pythonCommand': signinCfg.pythonCommand ?? 'python',
-          'signin.notifyGroup': signinCfg.notifyGroup ?? true,
+          'signin.enable': readField(cfg, 'signin.enable') ?? true,
+          'signin.manualSignin': readField(cfg, 'signin.manualSignin') ?? true,
+          'signin.schedule': readField(cfg, 'signin.schedule') ?? '0 0 5 * * ? *',
+          'signin.refreshSchedule': readField(cfg, 'signin.refreshSchedule') ?? '0 30 4 * * ? *',
+          'signin.randomDelayMin': readField(cfg, 'signin.randomDelayMin') ?? 0,
+          'signin.pythonCommand': readField(cfg, 'signin.pythonCommand') ?? 'python',
+          'signin.notifyGroup': readField(cfg, 'signin.notifyGroup') ?? true,
           // GSelectGroup 需要数组，config 存的是逗号分隔字符串，这里做转换
-          'signin.reportGroups': (signinCfg.reportGroups || '')
-            ? String(signinCfg.reportGroups).split(/[,，\s]+/).filter(Boolean)
-            : [],
-          'signin.captchaRetries': signinCfg.captchaRetries ?? 3,
-          'signin.captchaTimeout': signinCfg.captchaTimeout ?? 240,
+          'signin.reportGroups': signinReportGroups ? String(signinReportGroups).split(/[,，\s]+/).filter(Boolean) : [],
+          'signin.captchaRetries': readField(cfg, 'signin.captchaRetries') ?? 3,
+          'signin.captchaTimeout': readField(cfg, 'signin.captchaTimeout') ?? 240,
 
           // MihoyoBBSTools 模板
           'mihoyobbs.enable': mihoyobbs.enable ?? true,
@@ -223,25 +252,59 @@ export function supportGuoba () {
 
       async setConfigData (data, { Result }) {
         try {
-          const configDir = path.join(PLUGIN_DIR, 'config')
-          if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true })
+          const dir = configDir()
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
 
-          // 群配置：GTags 原生数组，直接 YAML.stringify
-          const groups = Array.isArray(data.groups) ? data.groups : []
-          fs.writeFileSync(GROUP_CONFIG_PATH, YAML.stringify({ groups }), 'utf8')
+          /* 读一次当前文件：表单没提交的键要用它兜底，回执里也要说清原文件读不读得出来 */
+          const read = readConfigWithStatus()
 
-          // 主配置（api + signin）：读取 defSet 模板，替换 ${变量} 后写入 config.yaml
-          let template = fs.readFileSync(DEFSET_CONFIG_PATH, 'utf8')
-          for (const [field, varName] of Object.entries(TEMPLATE_VARS)) {
-            let value = data[field] ?? ''
-            if (Array.isArray(value)) value = value.join(',')
-            // 函数替换：返回值作为原样替换，避免值中含 $&/$1/$$ 时被 String.replace 特殊语法展开
-            template = template.replace(new RegExp(`\\$\\{${varName}\\}`, 'g'), () => String(value))
+          // ---------- 主配置：模板渲染 → 写前验证 → 原子替换 ----------
+          let template
+          try {
+            template = fs.readFileSync(DEFSET_CONFIG_PATH, 'utf8')
+          } catch (err) {
+            return Result.error(`读不到配置模板 ${DEFSET_CONFIG_PATH}：${err.message}`)
           }
-          fs.writeFileSync(CONFIG_PATH, template, 'utf8')
 
-          // MihoyoBBSTools 模板配置：直接读写 YAML
-          let bbsTemplate = readBbsToolsTemplateRaw()
+          const values = {}
+          for (const [field] of Object.entries(TEMPLATE_VARS)) {
+            /* 面板没提交的键沿用文件当前值（**不能**退回空串：那会把用户的值抹掉） */
+            let value = field in data ? data[field] : readField(read.config, field)
+            value = value ?? ''
+            if (Array.isArray(value)) value = value.join(',')
+            values[field] = value
+          }
+          const text = renderTemplate(template, values)
+          const check = validateRendered(text, values, CONFIG_PATH())
+          if (!check.ok) {
+            return Result.error(
+              check.parseError
+                ? `保存被拒绝（你的文件没有被改动）：渲染出的配置解析不回来 —— ${check.parseError}`
+                : `保存被拒绝（你的文件没有被改动）：这些值写不成有效的 YAML —— ${check.invalid.join('、')}`
+            )
+          }
+
+          // ---------- 群配置：保持文件原有形态；没有群号的行不算内容，不许静默清空 ----------
+          let groupText = null
+          let groupSkipped = 0
+          if (data.groups !== undefined) {
+            if (!Array.isArray(data.groups)) return Result.error('保存被拒绝：群规则必须是数组（你的文件没有被改动）')
+            const rows = groupsToPanel(data.groups)
+            if (rows.length === 0 && data.groups.length > 0) {
+              return Result.error('保存被拒绝：群规则里没有有效的群号（你的文件没有被改动）')
+            }
+            groupSkipped = data.groups.length - rows.length
+            const built = groupsFromPanel(rows, groupShapeOf(readGroupConfigRaw().groups))
+            if (built.error) return Result.error(`保存被拒绝：${built.error}（你的文件没有被改动）`)
+            groupText = YAML.stringify({ groups: built.groups })
+            /* 群配置也要过同一道闸：写出去的东西必须能原样读回同样的行 */
+            if (JSON.stringify(groupsToPanel(YAML.parse(groupText).groups)) !== JSON.stringify(rows)) {
+              return Result.error('保存被拒绝：群规则写不成等价的 YAML（你的文件没有被改动）')
+            }
+          }
+
+          // ---------- MihoyoBBSTools 模板配置：直接读写 YAML ----------
+          const bbsTemplate = readBbsToolsTemplateRaw()
           if (!bbsTemplate.mihoyobbs) bbsTemplate.mihoyobbs = {}
           if (!bbsTemplate.games) bbsTemplate.games = { cn: {}, os: {} }
           if (!bbsTemplate.games.cn) bbsTemplate.games.cn = {}
@@ -285,13 +348,21 @@ export function supportGuoba () {
           // Web
           bbsTemplate.web_activity.enable = data['web_activity.enable'] ?? false
 
-          fs.writeFileSync(BBS_TOOLS_TEMPLATE_PATH, YAML.stringify(bbsTemplate), 'utf8')
+          const bbsText = YAML.stringify(bbsTemplate)
+
+          // ---------- 全部验证通过后才落盘 ----------
+          writeConfigAtomic(CONFIG_PATH(), text)
+          if (groupText !== null) writeConfigAtomic(GROUP_CONFIG_PATH(), groupText)
+          fs.writeFileSync(BBS_TOOLS_TEMPLATE_PATH(), bbsText, 'utf8')
 
           // 清除 gsCfg 缓存
           delete gsCfg.config.config
           delete gsCfg.defSet.config
 
-          return Result.ok({}, '保存成功~')
+          const notes = []
+          if (read.error) notes.push(`原配置读不出来（${read.error}），其余键已按参考默认值重写，请核对`)
+          if (groupSkipped) notes.push(`已忽略 ${groupSkipped} 行没有群号的群规则`)
+          return Result.ok({}, `保存成功~${notes.length ? `（${notes.join('；')}）` : ''}`)
         } catch (err) {
           logger.error('[Axiu-Plugin] 保存配置失败:', err)
           return Result.error(`保存失败：${err.message}`)

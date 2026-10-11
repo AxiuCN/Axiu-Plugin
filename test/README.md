@@ -37,6 +37,7 @@ node test/srGacha-merge.test.mjs  # 单跑（任意 cwd 均可）
 | `rank-order.test.mjs` | 原神排行综合排序：剧诗「用时优先于借出」与各级不越级、深渊 32 天首查窗口与星数/层数优先、定向重置与上报交错不覆盖其他玩法明细 | 无（内存 Redis） |
 | `signin-runner-marks.test.mjs` | 签到 runner 的失败判定（假 module-dir 端到端跑 `run()`）：429 / 脚本失败 / 云游戏 -100 判失败、正常成功与「已签到过」不误报 | `python`（可用 `AXIU_TEST_PYTHON` 指定），缺则跳过 |
 | `sr-device-timeout.test.mjs` | 星铁设备指纹/设备注册请求自带超时、指纹缓存命中时请求数减少 | genshin 插件（缺失则跳过） |
+| `guoba-write.test.mjs` | 锅巴配置读写（真跑生产 `getConfigData` / `setConfigData`）：危险值（以 `*` 开头 cron / `#` / `:` / 引号 / 换行）序列化与回读、写前验证拦坏值、表单没提交的键不丢值、群规则映射与数组双形态往返、非法输入被拒且文件零改动、坏配置救回且文案不泄露口令、临时文件不留残渣 | 无（配置目录经 `AXIU_CONFIG_DIR` 重定向到 `test/.test-tmp/`，不碰仓库 `config/`） |
 
 套件均为数据无关：不依赖真实账号、真实 Redis 与网络，也不触发 `#扫码登录` / 真实 Python 签到链路（`signin-runner-marks` 只在子进程里跑假 module-dir）。
 
