@@ -8,6 +8,7 @@ import fetch from 'node-fetch'
 import MysApi from '../../../genshin/model/mys/mysApi.js'
 import SRApiTool from './srApiTool.js'
 import { generateSeed } from './srApiTool.js'
+import { fetchDeviceFp } from './deviceFp.js'
 import stokenStore from '../stokenStore.js'
 import QrUser from '../qrUser.js'
 import { LOG_PREFIX } from '../../components/constants.js'
@@ -245,63 +246,28 @@ export default class MysSrApi extends MysApi {
     return res
   }
 
-  /** 获取设备指纹（带 Redis 缓存，7 天） */
+  /**
+   * 获取设备指纹（带 Redis 缓存，7 天）
+   *
+   * 流程委托 `model/mys/deviceFp.js`，星铁侧只负责注入自己的策略：私有缓存键、按 UID 段的硬编码兜底、
+   * 并行设备注册（不读响应体、失败静默）——与通用过码链路的共享键 / null 兜底 / 串行注册刻意区分。
+   * 返回值形状 `{deviceFp}` 与 data.deviceFp 的写入时机保持不变。
+   */
   async _getDeviceFp (ltuid, data) {
-    let deviceFp = await redis.get(`ZZZ:DEVICE_FP:${ltuid}:FP`)
-    if (deviceFp) return { deviceFp }
-
-    const sdk = this.getUrl('getFp', data)
-    if (!sdk) return { deviceFp: null }
-
-    let fpRes
-    try {
-      // 与普通请求同口径的超时：指纹接口无响应时按失败走兜底值，不拖住本轮查询
-      // 响应体读取同样在 try 内：signal 覆盖整轮请求（含响应体阶段），只包 fetch 的话
-      // 响应头先到、体阶段超时仍会抛穿，绕开下面的兜底（第四轮 #8）
-      const res = await fetch(sdk.url, {
-        headers: sdk.headers,
-        method: 'POST',
-        body: sdk.body,
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
-      })
-      fpRes = await res.json()
-    } catch {
-      // 请求或响应体失败 → 兜底值
-      deviceFp = /^(18|[6-9])[0-9]{8}/i.test(this.uid) ? '38d805c20d53d' : '38d7f4c72b736'
-      return { deviceFp }
-    }
-
-    deviceFp = fpRes?.data?.device_fp
-    if (!deviceFp) return { deviceFp: null }
-
-    await redis.set(`ZZZ:DEVICE_FP:${ltuid}:FP`, deviceFp, { EX: 86400 * 7 })
-
-    // 国服需要 deviceLogin + saveDevice
-    if (!/^(18|[6-9])[0-9]{8}/i.test(this.uid)) {
-      data.deviceFp = deviceFp
-      const deviceLogin = this.getUrl('deviceLogin', data)
-      const saveDevice = this.getUrl('saveDevice', data)
-      if (deviceLogin && saveDevice) {
-        try {
-          await Promise.all([
-            fetch(deviceLogin.url, {
-              headers: deviceLogin.headers,
-              method: 'POST',
-              body: deviceLogin.body,
-              signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
-            }),
-            fetch(saveDevice.url, {
-              headers: saveDevice.headers,
-              method: 'POST',
-              body: saveDevice.body,
-              signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
-            })
-          ])
-        } catch { /* 设备登录非关键 */ }
-      }
-    }
-
-    return { deviceFp }
+    return fetchDeviceFp({
+      uid: this.uid,
+      ltuid,
+      data,
+      keyPrefix: 'ZZZ:DEVICE_FP',
+      keySuffix: 'FP',
+      // 星铁自身请求必须有指纹：请求或响应体阶段失败时按 UID 段兜底（第四轮 #8）
+      fallback: /^(18|[6-9])[0-9]{8}/i.test(this.uid) ? '38d805c20d53d' : '38d7f4c72b736',
+      needRegister: (uid) => !/^(18|[6-9])[0-9]{8}/i.test(uid),
+      getUrl: (type, reqData) => this.getUrl(type, reqData),
+      registerMode: 'parallel',
+      // 设备登录非关键，失败静默（与合并前一致）
+      onRegisterError: null
+    })
   }
 
   getHeaders (query = '', body = '') {
