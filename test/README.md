@@ -36,7 +36,8 @@ node test/srGacha-merge.test.mjs  # 单跑（任意 cwd 均可）
 | `signin-refresh-report.test.mjs` | 批量刷新 Cookie 的汇总口径 `summarizeCookieRefresh` 与报告 `buildRefreshReport`：部分成功用户的失败明细不被丢弃、三档统计、报告渲染、边界 | 无（纯函数 + 合成数据） |
 | `rank-order.test.mjs` | 终局挑战排行（原神 + 星铁）：名次键编码与各级不越级（含星铁虚构「分数借位」回归）、并列密集名次（1,1,2）与首查只破并列、首查缺失排末尾、首查冻结、名次键只升不降、展示字段取最后一次、重排幂等、定向重置与上报交错 | 无（内存 Redis） |
 | `signin-runner-marks.test.mjs` | 签到 runner 的失败判定（假 module-dir 端到端跑 `run()`）：429 / 脚本失败 / 云游戏 -100 判失败、正常成功与「已签到过」不误报 | `python`（可用 `AXIU_TEST_PYTHON` 指定），缺则跳过 |
-| `sr-device-timeout.test.mjs` | 星铁设备指纹/设备注册请求都带可取消信号（按 signal 判定，**不等**真实 10 秒超时、**不**逐个验证三个请求）、指纹缓存命中时请求数减少 | genshin 插件（缺失则跳过） |
+| `sr-device-timeout.test.mjs` | 星铁设备指纹/设备注册请求都带可取消信号（按 signal 判定，**不等**真实 10 秒超时）、指纹缓存命中时请求数减少、响应体阶段失败也走兜底指纹 | genshin 插件（缺失则跳过） |
+| `device-fp-ltuid.test.mjs` | 通用过码设备指纹：缓存键取 cookie 里的 ltuid（不再落到 `undefined` 键）、`getFp` 网络失败与响应体失败都返回 `{deviceFp:null}` 而不抛穿、三处辅助请求都带超时信号 | 无（stub 替换 `globalThis.fetch`，不联网） |
 | `guoba-write.test.mjs` | 锅巴配置读写（真跑生产 `getConfigData` / `setConfigData`）：危险值（以 `*` 开头 cron / `#` / `:` / 引号 / 换行）序列化与回读、写前验证拦坏值、表单没提交的键不丢值、群规则映射与数组双形态往返、非法输入被拒且文件零改动、坏配置救回且文案不泄露口令、临时文件不留残渣 | 无（配置目录经 `AXIU_CONFIG_DIR` 重定向到 `test/.test-tmp/`，不碰仓库 `config/`） |
 | `qr-login-token.test.mjs` | 扫码登录的 ltoken 取值：`pickToken` strict 不跨类型兜底（stoken 侧兜底保留）、tokens 只有 stoken 时 ltoken 取自 `getLtoken` 接口、具名优先、ltoken 等于 stoken 判为未取到、缺 ltoken / 缺 cookie_token 均不产出凭据 | 无（stub 替换 `user.getData`，不联网、不写凭据） |
 

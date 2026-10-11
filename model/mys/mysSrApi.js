@@ -253,23 +253,24 @@ export default class MysSrApi extends MysApi {
     const sdk = this.getUrl('getFp', data)
     if (!sdk) return { deviceFp: null }
 
-    let res
+    let fpRes
     try {
       // 与普通请求同口径的超时：指纹接口无响应时按失败走兜底值，不拖住本轮查询
-      res = await fetch(sdk.url, {
+      // 响应体读取同样在 try 内：signal 覆盖整轮请求（含响应体阶段），只包 fetch 的话
+      // 响应头先到、体阶段超时仍会抛穿，绕开下面的兜底（第四轮 #8）
+      const res = await fetch(sdk.url, {
         headers: sdk.headers,
         method: 'POST',
         body: sdk.body,
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
       })
+      fpRes = await res.json()
     } catch {
-      // fetch 失败时使用兜底值
+      // 请求或响应体失败 → 兜底值
       deviceFp = /^(18|[6-9])[0-9]{8}/i.test(this.uid) ? '38d805c20d53d' : '38d7f4c72b736'
       return { deviceFp }
     }
 
-    const fpRes = await res.json()
-    logger.debug(`[Axiu-Plugin][MysSrApi] 设备指纹: ${JSON.stringify(fpRes)}`)
     deviceFp = fpRes?.data?.device_fp
     if (!deviceFp) return { deviceFp: null }
 

@@ -31,9 +31,12 @@ globalThis.fetch = (url, options = {}) => {
   return Promise.resolve({
     ok: true,
     status: 200,
-    json: async () => ({ retcode: 0, message: 'OK', data: {} })
+    json: () => (bodyFail
+      ? Promise.reject(new Error('body aborted'))
+      : Promise.resolve({ retcode: 0, message: 'OK', data: {} }))
   })
 }
+let bodyFail = false
 
 const store = installFrameworkStubs()
 
@@ -83,6 +86,25 @@ console.log('=== 回归：指纹缓存命中时辅助请求减少，且全部仍
   check('缓存命中：请求数较冷缓存减少', calls.length > 0 && calls.length < coldCallCount, `${calls.length} vs ${coldCallCount}`)
   check('缓存命中：所有请求仍带超时信号', calls.every(c => c.hasSignal))
   check('缓存命中：查询正常返回', result !== TIMEOUT && result?.retcode === 0, JSON.stringify(result))
+}
+
+console.log('=== #8 响应体阶段失败也走兜底指纹（不再抛穿）===')
+{
+  bodyFail = true
+  calls.length = 0
+  store.strings.clear()
+  const api = new MysSrApi(UID, COOKIE, { log: false })
+  let out = null
+  let threw = null
+  try {
+    out = await api._getDeviceFp(LTUID, {})
+  } catch (err) {
+    threw = err
+  }
+  bodyFail = false
+  console.log(`  返回值: ${threw ? `抛错 ${threw.message}` : JSON.stringify(out)}`)
+  check('响应体读取失败时返回兜底指纹而非抛错', !threw && !!out?.deviceFp, threw ? String(threw) : JSON.stringify(out))
+  check('该请求仍带超时信号', calls.length > 0 && calls.every(c => c.hasSignal), `请求数 ${calls.length}`)
 }
 
 finish()

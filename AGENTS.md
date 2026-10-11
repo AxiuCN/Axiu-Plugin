@@ -50,7 +50,7 @@ Axiu-Plugin — 阿修自用 Yunzai-Bot v3 插件，ESM（`"type": "module"`）�
 
 1. **ESM** — 全部 `import`/`export`
 2. **路径统一** — `path.dirname(fileURLToPath(import.meta.url))` 获取 `__dirname`
-3. **日志前缀** — `[Axiu-Plugin]` 或 `[Axiu-Plugin][模块名]`；model 层沿用原 `[loveMys]`/`[米游社]` 前缀
+3. **日志前缀与级别** — `[Axiu-Plugin]` 或 `[Axiu-Plugin][模块名]`；model 层沿用原 `[loveMys]`/`[米游社]` 前缀。级别只用 `info` / `warn` / `error`（框架等级是 info，`debug` 等于不输出）；**调试日志不进仓库**——排查时临时加、验证完还原
 4. **事件注册** — `request.group.add` 用 `accept()`，`message` 用 `rule[]`，`mys.req.err` 用 `handler[]`
 5. **容错加载** — `index.js` 使用 `Promise.allSettled`，单个 app 失败不影响整体
 6. **文档入库范围** — `AGENTS.md` 与 `docs/`（除 `docs/private/`）**入库**，与代码一同评审提交；`docs/private/` 放部署环境与本机路径，**不入库**，因此入库文档只写占位（`<bot根>` / `<插件根>` / 假群号），且**不得依赖**它（新克隆上没有）；`CLAUDE.md` / `.claude/` / `.dsh/` 仍忽略
@@ -80,7 +80,8 @@ Axiu-Plugin — 阿修自用 Yunzai-Bot v3 插件，ESM（`"type": "module"`）�
 | `test/signin-refresh-report.test.mjs` | 批量刷新 Cookie 的汇总口径与报告：部分成功用户的失败明细不被丢弃、三档统计、边界 |
 | `test/rank-order.test.mjs` | 终局挑战排行（原神 + 星铁）：名次键编码与各级不越级（含星铁虚构「分数借位」回归）、并列密集名次（1,1,2）与首查只破并列、首查缺失排末尾、首查冻结、名次键只升不降、展示字段取最后一次、重排幂等、定向重置与上报交错不覆盖其他玩法明细 |
 | `test/signin-runner-marks.test.mjs` | 签到 runner 的失败判定：429/脚本失败/云游戏 -100（国服与国际服两套文案）判失败、正常成功与「已签到过」不误报、status_code 非 0；套件禁用 Python 字节码写入，避免覆写同长 main.py 时复用过期 .pyc |
-| `test/sr-device-timeout.test.mjs` | 星铁设备指纹/设备注册请求**都带可取消信号**（缺信号的桩会把用例挂住）、指纹缓存命中时请求数减少；按 signal 判定，**不等**真实 10 秒超时、**不**逐个验证三个辅助请求 |
+| `test/sr-device-timeout.test.mjs` | 星铁设备指纹/设备注册请求**都带可取消信号**（缺信号的桩会把用例挂住）、指纹缓存命中时请求数减少、**响应体阶段失败也走兜底指纹**；按 signal 判定，**不等**真实 10 秒超时 |
+| `test/device-fp-ltuid.test.mjs` | 通用过码设备指纹：缓存键取 cookie 里的 ltuid（不再落到 `undefined` 键）、`getFp` 网络失败与响应体失败都返回 `{deviceFp:null}` 而不抛穿、三处辅助请求都带超时信号 |
 | `test/guoba-write.test.mjs` | 锅巴配置读写：危险值（以 `*` 开头 cron / `#` / `:` / 引号 / 换行）序列化与回读、写前验证拦坏值、表单没提交的键不丢值、群规则映射与数组双形态往返、非法输入被拒且文件零改动、坏配置救回且文案不泄露口令、临时文件不留残渣（配置目录经 `AXIU_CONFIG_DIR` 重定向到 `test/.test-tmp/`） |
 | `test/qr-login-token.test.mjs` | 扫码登录 ltoken 取值：`pickToken` strict 不跨类型兜底（stoken 侧兜底保留）、tokens 只有 stoken 时 ltoken 必须取自 `getLtoken` 接口、具名优先、ltoken 等于 stoken 判为未取到、缺 ltoken / 缺 cookie_token 都不产出凭据 |
 
@@ -89,6 +90,6 @@ Axiu-Plugin — 阿修自用 Yunzai-Bot v3 插件，ESM（`"type": "module"`）�
 
 ## 待办：审核跟踪（摘要）
 
-- 第四轮审核（2026-10-04，基准 `e86fca9`）共 11 项 P2 + 1 项 P3，**已逐条回源码核实**；批 A（锅巴 #10/#11）、批 B（扫码 #1）已落地，C–F 待做 → 明细见 [`docs/待办-审核跟踪.md`](docs/待办-审核跟踪.md)
+- 第四轮审核（2026-10-04，基准 `e86fca9`）共 11 项 P2 + 1 项 P3，**已逐条回源码核实**；批 A（锅巴 #10/#11）、批 B（扫码 #1）、批 F（设备指纹 #8/#9/#12 + 日志级别）已落地，C/D/E 待做（D 批卡在 #4 锁粒度口径） → 明细见 [`docs/待办-审核跟踪.md`](docs/待办-审核跟踪.md)
 - **并列排名 + 隐藏首查**（2026-10-05）：名次键决定名次（战斗/借出移出、只展示）、同键密集并列（1,1,2）、组内按首查先后、首查冻结不展示、名次键取本期最优；**部署后须执行一次 `#刷新…排行` / `*刷新…排行`** → 见 [`docs/模块-挑战与排行.md`](docs/模块-挑战与排行.md)
 - 未定口径：① #4 的**并发收口**（元信息与 ZSET 不一致；锁粒度按 uid / 按 (type, scheduleId)）——权威成绩口径已随上一条定死；② #7 国际服失败判定的路线；③ 两处设备实现是否合并（属重构，须单独授权）

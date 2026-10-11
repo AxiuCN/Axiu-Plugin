@@ -9,7 +9,6 @@ import fs from 'node:fs'
 import YAML from 'yaml'
 import * as mys from './passportTool.js'
 import * as utils from './passportUtils.js'
-import { maskSecrets, maskUrl } from '../../components/maskSecrets.js'
 
 const DEVICE_ID = utils.randomString(32).toUpperCase()
 const DEVICE_NAME = utils.randomString(_.random(1, 10))
@@ -137,11 +136,6 @@ export default class PassportApi {
     if (!res) {
       logger.mark('passportApi 接口没有返回')
       return false
-    }
-
-    if (res.retcode !== 0) {
-      // 脱敏后再记录（URL 查询串可能含 stoken/login_ticket/game_token，param 含 Cookie 头）
-      logger.debug(`[passportApi][请求参数] ${maskUrl(url)} ${JSON.stringify(maskSecrets(param))}`)
     }
 
     res.api = type
