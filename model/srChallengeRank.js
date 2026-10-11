@@ -62,23 +62,72 @@ const DIMENSIONS = {
 const DEFAULT_DIMENSION = { 0: '__', 1: '__', 2: '__', 3: '__' }
 
 /**
- * 综合排序分数 — 多维度加权编码
- * 忘却: 层数 > 星数 > 轮数(升)   末日: 难度 > 总分
- * 虚构: 层数 > 星数 > 分数 > 轮数(升)   仲裁: 绝境 > 王棋 > 骑士 > 轮数(升)
+ * 名次键：**决定名次**的字段，数组顺序即优先级
+ *
+ * 末日 难度→分；虚构 层→星→分→轮；忘却 层→星→轮；仲裁 绝境→王棋→骑士→轮
+ * （战斗次数会随重复挑战增长，进名次会让排名往回走，因此只展示）
+ *
+ * 首查时间**不进名次键**：只在「名次键相同」时决定先后（见 getRank）。
  */
-function compoundScore (scores, extra, challengeType) {
-  const R = (v) => Math.max(0, Math.min(v, 99)) // 轮数/战斗数上限
-  switch (challengeType) {
-    case 0: // 末日: 难度(floor) > 总分(score)
-      return (scores.floor || 0) * 100000 + (scores.score || 0)
-    case 1: // 虚构: 层数 > 星数 > 分数 > 轮数(升)
-      return (scores.floor || 0) * 10000000 + (scores.star || 0) * 100000 + (scores.score || 0) * 10 + (99 - R(extra.round_num || 0))
-    case 2: // 忘却: 层数 > 星数 > 轮数(升)
-      return (scores.floor || 0) * 10000 + (scores.star || 0) * 100 + (99 - R(extra.round_num || 0))
-    case 3: // 仲裁: 绝境 > 王棋 > 骑士 > 轮数(升)
-      return (scores.hard || 0) * 1000000 + (scores.boss || 0) * 10000 + (scores.mob || 0) * 100 + (99 - R(extra.round_num || 0))
-    default: return 0
+const RANK_KEY_FIELDS = {
+  0: ['floor', 'score'],
+  1: ['floor', 'star', 'score', 'round'],
+  2: ['floor', 'star', 'round'],
+  3: ['hard', 'boss', 'mob', 'round']
+}
+
+/** 只展示、不进名次的 scores 字段（取**最后一次观测**的值） */
+const DISPLAY_ONLY_FIELDS = {
+  0: ['battle'],
+  1: ['battle'],
+  2: ['battle'],
+  3: []
+}
+
+/**
+ * 名次键每级的取值上界（块宽 = 上界 + 1）
+ *
+ * 上界必须覆盖真实取值，否则会向上借位：旧的虚构公式 `score*10` 在 score ≥ 10000 时
+ * 就会顶掉星数位，正是不够宽的例子。这里给的都留了余量（分数按 6 位取）
+ */
+const RANK_KEY_CAPS = {
+  floor: 999, star: 99, score: 999999, round: 99, hard: 99, boss: 99, mob: 99
+}
+
+function capOf (key) { return RANK_KEY_CAPS[key] ?? 999 }
+
+/** 某一级 → 非负、且「越大越好」的整数（`round` 在 scores 里存负的轮数，加 cap 即轮数越少越大） */
+function levelValue (scores, key) {
+  const raw = Number(scores?.[key] ?? 0)
+  const v = Number.isFinite(raw) ? raw : 0
+  const cap = capOf(key)
+  const normalized = key === 'round' ? cap + v : v
+  return Math.max(0, Math.min(cap, normalized))
+}
+
+/** 只展示的字段（取最后一次观测值），用于「名次键没变好」时刷新展示数据 */
+function pickDisplayFields (scores, challengeType) {
+  const out = {}
+  for (const key of DISPLAY_ONLY_FIELDS[challengeType] || []) {
+    if (scores?.[key] != null) out[key] = scores[key]
   }
+  return out
+}
+
+/**
+ * 名次键编码 —— `__` 维度的 ZSET 分数
+ *
+ * 混合进制折叠：每级块宽 `R = 上界 + 1`，**高一级的一个单位大于所有低级的最大合计**，
+ * 低级永远翻不到高级之上（同分数 ⇔ 同名次键，并列判定因此是结构性的）。
+ * 首查时间不编进来（会越过 2^53 丢精度），并列组内的先后由展示侧按 firstTime 排。
+ */
+function rankKeyScore (scores, challengeType) {
+  const fields = RANK_KEY_FIELDS[challengeType] || []
+  let value = 0
+  for (const field of fields) {
+    value = value * (capOf(field) + 1) + levelValue(scores, field)
+  }
+  return value
 }
 
 const DIM_ALIAS = {
@@ -271,8 +320,33 @@ export default class SrChallengeRank {
   static async report (uid, qq, groupId, challengeType, data, scheduleId, isCurrent = true) {
     const { scores, extra } = this.extractScores(data, challengeType)
 
-    // 综合排序分
-    const compound = compoundScore(scores, extra, challengeType)
+    // 同一 uid 的并发上报（如 *深渊 并发查询三种挑战）会读写同一 uidKey，非原子读改写会互相覆盖
+    // → 按 uidKey 串行化；段内完成「读已有信息 → 合并出本期最优成绩 → 写回本类型本期槽位」
+    let effective = scores
+    try {
+      effective = await withKeyLock(uidKey(uid), async () => {
+        const existing = await redis.get(uidKey(uid))
+        const info = existing ? JSON.parse(existing) : {}
+        info.qq = String(qq || '')
+        if (!info[challengeType] || typeof info[challengeType] !== 'object') info[challengeType] = {}
+        const prevSlot = info[challengeType][String(scheduleId)]
+        // 首查时间 = 该期**第一次观测到成绩**的时刻；落定后不再改（成绩提升也不刷新）
+        const ft = Number.isFinite(prevSlot?.firstTime) ? Number(prevSlot.firstTime) : Date.now()
+        // 名次键取本期最优（编码单调 ⇒ 比编码等价于比元组）；不进名次的展示字段取最后一次观测
+        const prevScores = prevSlot?.scores
+        const best = (!prevScores || rankKeyScore(scores, challengeType) > rankKeyScore(prevScores, challengeType))
+          ? scores
+          : { ...prevScores, ...pickDisplayFields(scores, challengeType) }
+        info[challengeType][String(scheduleId)] = { scores: best, extra, firstTime: ft, time: Date.now() }
+        await redis.setEx(uidKey(uid), TTL, JSON.stringify(info))
+        return best
+      })
+    } catch (err) {
+      logger?.error(`${LOG_PREFIX}[排行] 设置 UID 信息失败`, err)
+    }
+
+    // `__` 维度写名次键编码（首查不进分数，并列组内的先后由展示侧按 firstTime 排）
+    const compound = rankKeyScore(effective, challengeType)
     if (compound > 0) {
       try {
         const ck = rankKey(challengeType, '__', scheduleId)
@@ -285,7 +359,7 @@ export default class SrChallengeRank {
 
     // 写 ZSET（每个维度一个 key）
     for (const dim of this.getDimensions(challengeType)) {
-      const val = scores[dim.key]
+      const val = effective[dim.key]
       if (val == null) continue
       try {
         const rk = rankKey(challengeType, dim.key, scheduleId)
@@ -322,19 +396,7 @@ export default class SrChallengeRank {
       }))
     } catch {}
 
-    // UID 信息（QQ + 各 scheduleId 的 scores/extra，全局共享）— 按 scheduleId 隔离，上期上报不覆盖本期展示数据
-    // 同一 uid 的并发上报（如 *深渊 并发查询三种挑战）会读写同一 key，
-    // 非原子读改写会互相覆盖 → 按 uidKey 串行化
-    try {
-      await withKeyLock(uidKey(uid), async () => {
-        const existing = await redis.get(uidKey(uid))
-        const info = existing ? JSON.parse(existing) : {}
-        info.qq = String(qq || '')
-        if (!info[challengeType] || typeof info[challengeType] !== 'object') info[challengeType] = {}
-        info[challengeType][String(scheduleId)] = { scores, extra, time: Date.now() }
-        await redis.setEx(uidKey(uid), TTL, JSON.stringify(info))
-      })
-    } catch {}
+    // UID 信息已在上面的 uidKey 串行段内写回（含首查时间与本期最优成绩）
   }
 
   // ==================== 查询 ====================
@@ -402,16 +464,39 @@ export default class SrChallengeRank {
       }
     }
 
-    return members.map((m, i) => {
+    /** 首查时间：只在并列（同分数 = 同名次键）时决定先后；缺失的排到同名次末尾 */
+    const firstTimeOf = (uid) => {
+      const slot = (infoMap[uid] || {})[challengeType]
+      const cur = slot && typeof slot === 'object' ? slot[String(scheduleId)] : null
+      const ft = Number(cur?.firstTime ?? slot?.firstTime)
+      return Number.isFinite(ft) ? ft : Number.MAX_SAFE_INTEGER
+    }
+
+    const rows = members.map(m => {
       const uid = String(m.value || m.member)
       const info = infoMap[uid] || {}
-      const ext = this._extractUidExtra(info, challengeType, scheduleId)
       return {
-        rank: i + 1,
         uid,
-        score: isCompound ? displayScore(ext, challengeType) : Math.round(m.score),
+        raw: Number(m.score) || 0,
+        firstTime: firstTimeOf(uid),
         qq: info.qq || '',
-        extra: ext
+        extra: this._extractUidExtra(info, challengeType, scheduleId)
+      }
+    })
+
+    /* 分数降序；同分按首查升序。**密集名次**（1,1,2）：分数一变才 +1 —— 同分 ⇔ 同名次键 */
+    rows.sort((a, b) => (b.raw - a.raw) || (a.firstTime - b.firstTime))
+    let rank = 0
+    let prevRaw = null
+    return rows.map(r => {
+      if (prevRaw === null || r.raw !== prevRaw) rank += 1
+      prevRaw = r.raw
+      return {
+        rank,
+        uid: r.uid,
+        score: isCompound ? displayScore(r.extra, challengeType) : Math.round(r.raw),
+        qq: r.qq,
+        extra: r.extra
       }
     })
   }
@@ -420,9 +505,15 @@ export default class SrChallengeRank {
     const isCompound = dimension === '__'
     const key = rankKey(challengeType, dimension, scheduleId)
     try {
-      const rank = await redis.zRevRank(key, String(uid))
-      if (rank == null) return null
       const score = await redis.zScore(key, String(uid))
+      if (score == null) return null
+      /* 密集名次：只数「严格更好的不同分数」个数（同分并列同名次，不再用名次下标 + 1） */
+      const all = await redis.zRangeWithScores(key, 0, -1)
+      const better = new Set()
+      for (const m of all || []) {
+        const s = Number(m.score) || 0
+        if (s > Number(score)) better.add(s)
+      }
 
       let qq = ''; let extra = {}
       try {
@@ -437,7 +528,7 @@ export default class SrChallengeRank {
       let displayScore = isCompound
         ? (() => { switch (challengeType) { case 0: return extra.total_score || extra.star_num || 0; case 1: return extra.star_num || 0; case 2: return extra.star_num || 0; case 3: return extra.boss_stars || 0; default: return 0 } })()
         : Math.round(score)
-      return { rank: rank + 1, uid: String(uid), score: displayScore, qq, extra }
+      return { rank: better.size + 1, uid: String(uid), score: displayScore, qq, extra }
     } catch { return null }
   }
 
@@ -476,12 +567,12 @@ export default class SrChallengeRank {
           totalUids++
 
           for (const [sid, slot] of Object.entries(slotMap)) {
-            const { scores, extra } = (slot && typeof slot === 'object') ? slot : {}
-            if (!scores || !extra) continue
+            const { scores } = (slot && typeof slot === 'object') ? slot : {}
+            if (!scores) continue
             stats[ct].schedules++
 
             // 重建综合分 ZSET
-            const compound = compoundScore(scores, extra, ct)
+            const compound = rankKeyScore(scores, ct)
             if (compound > 0) {
               try {
                 const ck = rankKey(ct, '__', sid)

@@ -75,51 +75,86 @@ const DIMENSIONS = {
 
 const DEFAULT_DIMENSION = { 0: '__', 1: '__', 2: '__', 3: '__' }
 
-/** 深渊一期最长跨度（秒）— 首查时间倒计时窗口
- *  2024-06-16 起为月期（16 号刷新，最长 31 天），窗口留 32 天余量；
- *  超出窗口（如赛季结束后查往期）时间项归零，退回战斗次数排序
+/**
+ * 名次键：**决定名次**的字段，数组顺序即优先级
+ *
+ * - 深渊：层 → 星（战斗次数会随重复查询增长，进名次会让排名往回走，因此只展示）
+ * - 剧诗：模式 → 幕 → 星章 → 用时（借出同上，只展示）
+ * - 危战：难度 → 用时（用时就该决定名次，不是展示项）
+ *
+ * 首查时间**不进名次键**：它只在「名次键相同」时决定先后（见 getRank）。
  */
-const ABYSS_MAX_OFFSET = 32 * 24 * 3600
+const RANK_KEY_FIELDS = {
+  0: ['floor', 'star'],
+  1: ['mode', 'floor', 'flower', 'time'],
+  2: ['difficulty', 'time'],
+  3: ['difficulty', 'time']
+}
+
+/** 只展示、不进名次的 scores 字段（可配项，取**最后一次观测**的值） */
+const DISPLAY_ONLY_FIELDS = {
+  0: ['battle'],
+  1: ['borrow'],
+  2: [],
+  3: []
+}
 
 /**
- * 综合排序分数 — 多维度加权编码
- * @param {number|null} firstTs 该期首次查询时间戳(ms)，首次上报后固定
- * @param {number|null} startTs 本期开始时间戳(s)，来自 API start_time
+ * 名次键每级的取值上界
+ *
+ * 编码用混合进制（块宽 = 上界 + 1），因此上界必须**覆盖真实取值**，否则会向上借位、
+ * 把高一级的分数顶掉。上界给的都比实际宽（例：深渊层 = 层*10+间，真实最大 123）
  */
-function compoundScore (scores, extra, challengeType, firstTs = null, startTs = null) {
-  const R = (v, max) => Math.max(0, Math.min(v, max))
-  switch (challengeType) {
-    case 0: { // 深境螺旋: 层数 > 星数 > 首查时间(早) > 战斗(少)
-      let timeTerm = 0
-      if (firstTs && startTs) {
-        const st = Number(startTs)
-        if (Number.isFinite(st) && st > 0) {
-          // 距开赛秒数越小越早查询 → 倒转后越大排名越前
-          const elapsed = Math.floor(Number(firstTs) / 1000) - st
-          timeTerm = R(ABYSS_MAX_OFFSET - elapsed, ABYSS_MAX_OFFSET)
-        }
-      }
-      // 权重阶梯: 层(1e11) > 星(1e9) > 首查(×300) > 战斗(0-99)
-      // 32 天窗口 × 300 = 8.29e8 未越星数权重 1e9，且 300 > 99（战斗跨度）——任一级都不被下级反超
-      return (scores.floor || 0) * 100000000000
-        + (scores.star || 0) * 1000000000
-        + timeTerm * 300
-        + (99 - R(extra.battle_num || 0, 99))
-    }
-    case 1: // 幻想真境剧诗: 模式 > 幕 > 花 > 用时(少) > 借出(多)
-      // 权重阶梯（自底向上留满跨度）: 借出(0-99) < 用时(每秒 100，合计 9.99e7) < 星章(1e8) < 幕数(1e10) < 模式(1e12)
-      // 原实现时间项与借出项同为 1 倍，1 次借出即可抵消 1 秒用时（第三轮 P2-5）
-      return (scores.mode || 0) * 1000000000000
-        + (scores.floor || 0) * 10000000000
-        + (scores.flower || 0) * 100000000
-        + (999999 - R(extra.time_second || 0, 999999)) * 100
-        + R(extra.borrow_num || 0, 99)
-    case 2:
-    case 3: // 幽境危战: 难度 > 用时(少)
-      return (scores.difficulty || 0) * 1000000
-        - (R(extra.time_second || 0, 999999))
-    default: return 0
+const RANK_KEY_CAPS = {
+  floor: 999,        // 深渊 = 层*10+间；剧诗 = 幕数
+  star: 99,          // 深渊最深楼层星数
+  mode: 99,          // 剧诗模式（difficulty_id）
+  flower: 99,        // 剧诗明星挑战星章
+  difficulty: 99,    // 危战难度
+  time: 999999       // 用时（秒）上界：剧诗总耗时 / 危战单场用时
+}
+
+function capOf (key) { return RANK_KEY_CAPS[key] ?? 999 }
+
+/**
+ * 某一级 → 非负、且「越大越好」的整数
+ *
+ * `time` 这类 higher=false 的维度在 scores 里存**负的秒数**，加 cap 即「用时越短值越大」
+ */
+function levelValue (scores, key) {
+  const raw = Number(scores?.[key] ?? 0)
+  const v = Number.isFinite(raw) ? raw : 0
+  const cap = capOf(key)
+  const normalized = key === 'time' ? cap + v : v
+  return Math.max(0, Math.min(cap, normalized))
+}
+
+/** 只展示的字段（取最后一次观测值），用于「名次键没变好」时刷新展示数据 */
+function pickDisplayFields (scores, challengeType) {
+  const out = {}
+  for (const key of DISPLAY_ONLY_FIELDS[challengeType] || []) {
+    if (scores?.[key] != null) out[key] = scores[key]
   }
+  return out
+}
+
+/**
+ * 名次键编码 —— `__` 维度的 ZSET 分数
+ *
+ * 混合进制折叠：`v1*R2*R3... + v2*R3... + ...`，每级块宽 `R = 上界 + 1`，
+ * **高一级的一个单位大于所有低级的最大合计**，所以低级永远翻不到高级之上
+ * （第三轮踩过"块宽不够导致借位翻转"的坑）。同分数 ⇔ 同名次键，并列判定因此是结构性的。
+ *
+ * 首查时间**不编进来**：剧诗名次键已经到 1e13 量级，再乘时间戳会越过 2^53 丢精度；
+ * 而"同键才比首查"这条约束靠"不同键 = 不同分数"天然成立，展示侧排序即可（见 getRank）。
+ */
+function rankKeyScore (scores, challengeType) {
+  const fields = RANK_KEY_FIELDS[challengeType] || []
+  let value = 0
+  for (const field of fields) {
+    value = value * (capOf(field) + 1) + levelValue(scores, field)
+  }
+  return value
 }
 
 const DIM_ALIAS = {
@@ -406,8 +441,8 @@ export default class GsChallengeRank {
     const startTs = data?.start_time || data?.schedule?.start_time || null
 
     // 同一 uid 的并发上报会读写同一 uidKey，非原子读改写会互相覆盖 → 按 uidKey 串行化。
-    // 段内完成「读已有信息 → 计算首查时间 → 写回本类型本期槽位」
-    const firstTime = await withKeyLock(uidKey(uid), async () => {
+    // 段内完成「读已有信息 → 合并出本期最优成绩 → 写回本类型本期槽位」，返回要写进 ZSET 的那份成绩
+    const stored = await withKeyLock(uidKey(uid), async () => {
       let existing = null
       try { existing = await redis.get(uidKey(uid)) } catch {}
       let info = {}
@@ -417,26 +452,24 @@ export default class GsChallengeRank {
       info.qq = String(qq || '')
       if (!info[challengeType] || typeof info[challengeType] !== 'object') info[challengeType] = {}
       const prevSlot = info[challengeType][slotKey]
-      // 首查时间：首次查询记录；层数/星数上升（成绩提升，层优先同层比星）时更新为本次；否则沿用 — 防重复战斗稀释排名
-      const curFloor = scores.floor || 0
-      const curStar = scores.star || 0
-      const prevFloor = prevSlot?.scores?.floor || 0
-      const prevStar = prevSlot?.scores?.star || 0
-      const upgraded = curFloor > prevFloor || (curFloor === prevFloor && curStar > prevStar)
-      const ft = !prevSlot || upgraded ? Date.now() : (prevSlot.firstTime || Date.now())
-
-      // 首查时间注入 extra 供展示（不入排序分）— 必须在序列化写入之前赋值
-      if (challengeType === 0) extra.first_query_time = ft
-      info[challengeType][slotKey] = { scores, extra, firstTime: ft, startTs, time: Date.now() }
+      // 首查时间 = 该期**第一次观测到成绩**的时刻；落定后不再改（成绩提升也不刷新）
+      const ft = Number.isFinite(prevSlot?.firstTime) ? Number(prevSlot.firstTime) : Date.now()
+      // 名次键取本期最优（编码单调 ⇒ 比编码等价于比元组）；不进名次的展示字段取最后一次观测
+      const prevScores = prevSlot?.scores
+      const best = (!prevScores || rankKeyScore(scores, challengeType) > rankKeyScore(prevScores, challengeType))
+        ? scores
+        : { ...prevScores, ...pickDisplayFields(scores, challengeType) }
+      info[challengeType][slotKey] = { scores: best, extra, firstTime: ft, startTs, time: Date.now() }
       try {
         await redis.setEx(uidKey(uid), 90 * 24 * 3600, JSON.stringify(info))
       } catch (err) {
         logger?.error(`${LOG_PREFIX}[原神排行] 设置 UID 信息失败`, err)
       }
-      return ft
+      return best
     })
 
-    const compound = compoundScore(scores, extra, challengeType, firstTime, startTs)
+    // `__` 维度写名次键编码（首查不进分数，并列组内的先后由展示侧按 firstTime 排）
+    const compound = rankKeyScore(stored, challengeType)
     if (compound > 0) {
       try {
         const ck = rankKey(challengeType, '__', scheduleId)
@@ -448,7 +481,7 @@ export default class GsChallengeRank {
     }
 
     for (const dim of this.getDimensions(challengeType)) {
-      const val = scores[dim.key]
+      const val = stored[dim.key]
       if (val == null) continue
       try {
         const rk = rankKey(challengeType, dim.key, scheduleId)
@@ -579,16 +612,39 @@ export default class GsChallengeRank {
       }
     }
 
-    return members.map((m, i) => {
+    /** 首查时间：只在并列（同分数 = 同名次键）时决定先后；缺失的排到同名次末尾 */
+    const firstTimeOf = (uid) => {
+      const slot = (infoMap[uid] || {})[challengeType]
+      const cur = slot && typeof slot === 'object' ? slot[String(scheduleId)] : null
+      const ft = Number(cur?.firstTime ?? slot?.firstTime)
+      return Number.isFinite(ft) ? ft : Number.MAX_SAFE_INTEGER
+    }
+
+    const rows = members.map(m => {
       const uid = String(m.value || m.member)
       const info = infoMap[uid] || {}
-      const ext = this._extractUidExtra(info, challengeType, scheduleId)
       return {
-        rank: i + 1,
         uid,
-        score: isCompound ? displayScore(ext, challengeType) : Math.round(m.score),
+        raw: Number(m.score) || 0,
+        firstTime: firstTimeOf(uid),
         qq: info.qq || '',
-        extra: ext
+        extra: this._extractUidExtra(info, challengeType, scheduleId)
+      }
+    })
+
+    /* 分数降序；同分按首查升序。**密集名次**（1,1,2）：分数一变才 +1 —— 同分 ⇔ 同名次键 */
+    rows.sort((a, b) => (b.raw - a.raw) || (a.firstTime - b.firstTime))
+    let rank = 0
+    let prevRaw = null
+    return rows.map(r => {
+      if (prevRaw === null || r.raw !== prevRaw) rank += 1
+      prevRaw = r.raw
+      return {
+        rank,
+        uid: r.uid,
+        score: isCompound ? displayScore(r.extra, challengeType) : Math.round(r.raw),
+        qq: r.qq,
+        extra: r.extra
       }
     })
   }
@@ -597,9 +653,15 @@ export default class GsChallengeRank {
     const isCompound = dimension === '__'
     const key = rankKey(challengeType, dimension, scheduleId)
     try {
-      const rank = await redis.zRevRank(key, String(uid))
-      if (rank == null) return null
       const score = await redis.zScore(key, String(uid))
+      if (score == null) return null
+      /* 密集名次：只数「严格更好的不同分数」个数（同分并列同名次，不再用名次下标 + 1） */
+      const all = await redis.zRangeWithScores(key, 0, -1)
+      const better = new Set()
+      for (const m of all || []) {
+        const s = Number(m.score) || 0
+        if (s > Number(score)) better.add(s)
+      }
 
       let qq = ''; let extra = {}
       try {
@@ -622,7 +684,7 @@ export default class GsChallengeRank {
           }
         })()
         : Math.round(score)
-      return { rank: rank + 1, uid: String(uid), score: displayScore, qq, extra }
+      return { rank: better.size + 1, uid: String(uid), score: displayScore, qq, extra }
     } catch { return null }
   }
 
@@ -661,11 +723,11 @@ export default class GsChallengeRank {
           totalUids++
 
           for (const [sid, slot] of Object.entries(slotMap)) {
-            const { scores, extra, firstTime, startTs } = (slot && typeof slot === 'object') ? slot : {}
-            if (!scores || !extra) continue
+            const { scores } = (slot && typeof slot === 'object') ? slot : {}
+            if (!scores) continue
             stats[ct].schedules++
 
-            const compound = compoundScore(scores, extra, ct, firstTime || null, startTs || null)
+            const compound = rankKeyScore(scores, ct)
             if (compound > 0) {
               try {
                 const ck = rankKey(ct, '__', sid)
