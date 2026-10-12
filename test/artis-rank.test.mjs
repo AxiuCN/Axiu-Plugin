@@ -81,10 +81,29 @@ const CHARS = {
 }
 
 /** miao 访问替身 */
+/** 记录"交给 miao 渲染"的调用（替身，不启浏览器） */
+const rankRenders = []
 const stubAccessor = ({ topN = 15, available = true } = {}) => ({
   available: async () => available,
   getRankNumber: async () => topN,
-  getChar: async (charId, game) => CHARS[`${game}:${charId}`] || null
+  getChar: async (charId, game) => CHARS[`${game}:${charId}`] || null,
+  /** 行组装替身：回显被请求的 (uid, 角色)，并给 miao 模板需要的最小字段 */
+  buildRow: async ({ uid, charId }) => ({
+    uid,
+    id: charId,
+    isMax: false,
+    star: 5,
+    imgs: { face: '' },
+    _mark: 0,
+    _formatmark: '0.0',
+    _star: 0,
+    _dmg: 0
+  }),
+  /** 渲染替身：只记录 miao 模板收到的参数（真实实现走 miao 的 Common.render） */
+  renderList: async (params, opts) => {
+    rankRenders.push({ params, opts })
+    return { type: 'image', file: 'test/.test-tmp/artis-rank-stub.png' }
+  }
 })
 
 /** 造排行键（member = uid, score = 分数） */
@@ -288,18 +307,27 @@ const ok = makeEvent({
 })
 await app.artisRank(ok.e)
 check('成功分支回复图片段', ok.replies[0]?.type === 'image')
-check('成功分支渲染模板为 artisRank/rank', lastRender?.name === 'Axiu-Plugin/artisRank/rank', String(lastRender?.name))
-check('渲染数据：标题与范围', lastRender?.data?.title === '圣遗物总榜' && lastRender?.data?.scopeText === '本群')
-check('渲染数据：人数与行数', lastRender?.data?.topN === 15 && lastRender?.data?.count === 5)
-check('本群范围不显示来源群号', lastRender?.data?.showGid === false)
-check('本群优先用群名片与群头像', lastRender?.data?.list?.[0]?.nick === '群名片11111' && lastRender?.data?.list?.[0]?.face === 'https://avatar.example/11111')
-check('角色头像前缀指向 miao resources', /miao-plugin[\\/]resources$/.test(String(lastRender?.data?.faceBase)))
-check('取不到群成员时保留回落值', lastRender?.data?.list?.find(r => r.uid === '100000006')?.nick === '未知用户')
+check('渲染交给 miao（参数 mode=mark、list 为数组）',
+  rankRenders.length > 0 && rankRenders[0].params?.mode === 'mark' && Array.isArray(rankRenders[0].params?.list),
+  String(rankRenders[0]?.params?.title))
+check('标题与范围由本插件只提供文案（圣遗物总榜 · 本群）',
+  /圣遗物总榜/.test(String(rankRenders[0]?.params?.title)) && /本群/.test(String(rankRenders[0]?.params?.title)),
+  String(rankRenders[0]?.params?.title))
+check('背景由 miao 注入（bodyContainerStyle 已传）',
+  /body \.container/.test(String(rankRenders[0]?.params?.bodyContainerStyle)))
+check('传给 miao 的行数 = 选行结果（5 行）', rankRenders[0]?.params?.list?.length === 5, String(rankRenders[0]?.params?.list?.length))
+check('传给 miao 的行带面板字段（imgs / star）',
+  !!rankRenders[0]?.params?.list?.[0]?.imgs && rankRenders[0]?.params?.list?.[0]?.star === 5)
+check('本插件不再自建模板目录（resources/artisRank 已删除）',
+  !fs.existsSync(path.join(pluginRoot, 'resources', 'artisRank')))
 
 const srGlobal = makeEvent({ msg: '#星铁全局遗器总榜', groupId: G1, isSr: true })
 await app.artisRank(srGlobal.e)
-check('星铁全局榜：标题 / 范围 / 显示来源群', lastRender?.data?.title === '遗器总榜' && lastRender?.data?.scopeText === '全局' && lastRender?.data?.showGid === true)
-check('星铁全局榜只有星铁行', lastRender?.data?.list?.length === 1 && lastRender?.data?.list?.[0]?.charId === '1205')
+const lastRank = rankRenders[rankRenders.length - 1]
+check('星铁全局榜：标题 / 游戏',
+  /遗器总榜/.test(String(lastRank?.params?.title)) && /全局/.test(String(lastRank?.params?.title)) && lastRank?.params?.game === 'sr',
+  String(lastRank?.params?.title))
+check('星铁全局榜只有星铁行', lastRank?.params?.list?.length === 1 && lastRank?.params?.list?.[0]?.charId === '1205')
 
 /* ==================== 【9】定时任务 ==================== */
 

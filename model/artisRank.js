@@ -64,9 +64,9 @@ export const MESSAGES = {
 let miaoModules = null
 
 /**
- * 加载 miao-plugin 的 Cfg 与 Character
+ * 加载 miao-plugin 的组件与 model
  * 相对路径 import：不能写 `#miao`（该别名只在 miao 包内生效）
- * @returns {Promise<{Cfg: object, Character: object}|false>}
+ * @returns {Promise<object|false>}
  */
 async function loadMiaoModules () {
   if (miaoModules !== null) return miaoModules
@@ -75,12 +75,15 @@ async function loadMiaoModules () {
       import('../../miao-plugin/components/index.js'),
       import('../../miao-plugin/models/index.js')
     ])
-    const Cfg = components?.Cfg
-    const Character = models?.Character
+    const { Cfg, Data, Format, Common } = components || {}
+    const { Character, Player, ProfileRank } = models || {}
     if (typeof Cfg?.get !== 'function' || typeof Character?.get !== 'function') {
       throw new Error('模块结构不符合预期（缺 Cfg.get / Character.get）')
     }
-    miaoModules = { Cfg, Character }
+    if (typeof Player?.create !== 'function' || typeof ProfileRank?.create !== 'function' || typeof Common?.render !== 'function') {
+      throw new Error('模块结构不符合预期（缺 Player.create / ProfileRank.create / Common.render）')
+    }
+    miaoModules = { Cfg, Character, Player, ProfileRank, Data, Format, Common }
   } catch (err) {
     miaoModules = false
     logger?.warn(`${RANK_LOG_PREFIX}加载 miao-plugin 失败，该功能降级：${err?.message ?? err}`)
@@ -135,6 +138,53 @@ function createDefaultAccessor () {
         logger?.warn(`${RANK_LOG_PREFIX}读取角色 ${charId} 失败：${err?.message ?? err}`)
         return null
       }
+    },
+
+    /**
+     * 按 miao 排行卡片的口径组装一行
+     *
+     * 字段与 miao `apps/profile/ProfileRank.js` 的 `renderCharRankList` **完全一致**
+     * （同一批 `avatar.getData(...)` / `Data.getData(mark, ...)` 字段名），
+     * 保证交回 miao 自己的模板 `character/rank-profile-list` 时不需要任何自定义字段。
+     * `getRank(profile, false)` 用 force=false：只读评分，不重录排行。
+     * @returns {Promise<object|null>} 取不到面板（已删角色/无数据）返回 null，由调用方跳过该行
+     */
+    async buildRow ({ uid, charId, game = 'gs', groupId }) {
+      const mods = await loadMiaoModules()
+      if (!mods) return null
+      try {
+        const player = mods.Player.create(uid, game)
+        const avatar = player?.getAvatar(charId)
+        if (!avatar) return null
+        const profile = avatar.getProfile()
+        if (!profile) return null
+        const rank = await mods.ProfileRank.create({ groupId, uid })
+        const data = await rank?.getRank(profile, false)
+        const mark = data?.mark?.data
+        const row = {
+          uid,
+          isMax: false,
+          ...avatar.getData('id,star,name,sName,level,fetter,cons,weapon,elem,talent,artisSet,imgs'),
+          artisMark: mods.Data.getData(mark, 'mark,markClass,valid,crit')
+        }
+        row._mark = mark?._mark || 0
+        row._formatmark = mods.Format.comma(row._mark, 1)
+        row._star = 5 - (Number(row.star) || 0)
+        row._dmg = 0
+        return row
+      } catch (err) {
+        logger?.warn(`${RANK_LOG_PREFIX}组装排行行失败 uid=${uid} char=${charId}：${err?.message ?? err}`)
+        return null
+      }
+    },
+
+    /**
+     * 用 miao 自己的模板渲染排行页（背景 / 行卡片 / 页脚全部由 miao 负责，本插件不自建模板）
+     */
+    async renderList (params, opts) {
+      const mods = await loadMiaoModules()
+      if (!mods) return null
+      return mods.Common.render('character/rank-profile-list', params, opts)
     }
   }
 }
@@ -399,6 +449,9 @@ export async function buildArtisRank ({ groupId = null, game = 'gs', topN = null
   )
   const top = candidates.slice(0, N)
 
+  // 逐行按 miao 的排行卡片口径组装（字段与 miao 模板一一对应）；取不到面板的行跳过。
+  // 额外附上本插件自己的标识字段（charId/charName/score/qq 等）：miao 模板会忽略它们，
+  // 但"选行"口径的回归断言要按 (uid, 角色, 分数) 来查。
   const charCache = new Map()
   const charInfoOf = async (charId) => {
     const cacheKey = `${game}:${charId}`
@@ -414,24 +467,24 @@ export async function buildArtisRank ({ groupId = null, game = 'gs', topN = null
     return charCache.get(cacheKey)
   }
 
-  const rows = (await mapLimit(top, BATCH_SIZE, async (item, idx) => {
+  const built = []
+  for (const item of top) {
+    const row = await miaoAccessor.buildRow({ uid: item.uid, charId: item.charId, game, groupId: item.groupId })
+    if (!row) continue
     const info = await getUidInfo(item.uid)
     const qq = info?.qq ? String(info.qq) : ''
     const char = await charInfoOf(item.charId)
-    return {
-      rank: idx + 1,
-      uid: item.uid,
-      qq,
-      nick: qq ? `用户:${qq}` : '未知用户',
-      face: qq ? fallbackAvatarUrl(qq) : '',
-      charId: item.charId,
-      charName: char?.name || `未知角色(${item.charId})`,
-      charFace: char?.face || '',
-      star: char?.star || 0,
-      score: item.score,
-      gid: item.groupId
-    }
-  }))
+    row.charId = item.charId
+    row.charName = char?.name || `未知角色(${item.charId})`
+    row.charFace = char?.face || ''
+    row.score = item.score
+    row.qq = qq
+    row.nick = qq ? `用户:${qq}` : '未知用户'
+    row.face = qq ? fallbackAvatarUrl(qq) : ''
+    row.gid = item.groupId
+    built.push(row)
+  }
+  const rows = built.map((row, idx) => ({ ...row, rank: idx + 1 }))
 
   return {
     ok: true,
@@ -442,4 +495,30 @@ export async function buildArtisRank ({ groupId = null, game = 'gs', topN = null
     keyCount: keys.length,
     candidateCount: candidates.length
   }
+}
+
+/* ==================== 渲染（走 miao 自己的模板） ==================== */
+
+/**
+ * 用 miao 的排行模板渲染总榜
+ *
+ * 背景（`bodyContainerStyle`）、行卡片、页脚全部由 miao 的 `Common.render` 注入，
+ * 本插件**不自建模板**；这里只提供 miao 模板要的数据（`list` 由 `buildRow` 组装）。
+ * @param {{e: object, rows: Array, game?: string, scope?: string, topN?: number}} param
+ * @returns {Promise<object|null>} 图片段（直接交给 e.reply）
+ */
+export async function renderArtisRankList ({ e, rows = [], game = 'gs', scope = 'group', topN = DEFAULT_TOP_N } = {}) {
+  const isSr = game === 'sr'
+  const params = {
+    game,
+    isMemosprite: false,
+    isJoy: false,
+    bodyContainerStyle: `<style>body .container {width: ${isSr ? 900 : 820}px;}</style>`,
+    list: rows,
+    title: `${isSr ? '遗器' : '圣遗物'}总榜 · ${scope === 'global' ? '全局' : '本群'}`,
+    mode: 'mark',
+    rankCfg: { number: topN },
+    pageGotoParams: { waitUntil: 'networkidle2' }
+  }
+  return miaoAccessor.renderList(params, { e, scale: 1.4, retType: 'base64' })
 }
