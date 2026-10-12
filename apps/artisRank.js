@@ -11,7 +11,8 @@
  *
  *  数据：miao-plugin 的群排行 ZSET，见 model/artisRank.js
  */
-import { buildArtisRank, MESSAGES, renderArtisRankList } from '../model/artisRank.js'
+import { buildArtisRank, MESSAGES, miaoResourcesBase } from '../model/artisRank.js'
+import { render } from '../components/render.js'
 import { LOG_PREFIX } from '../components/constants.js'
 
 /** 本群总榜：#圣遗物总榜 / #遗器总榜 / #星铁遗器总榜 */
@@ -63,13 +64,16 @@ export class ArtisRankApp extends plugin {
       return true
     }
 
-    // 渲染完全走 miao 自己的模板（背景 / 行卡片 / 页脚由 miao 注入，本插件不自建模板）
-    const img = await renderArtisRankList({
-      e,
-      rows: res.rows,
-      game,
-      scope: isGlobal ? 'global' : 'group',
-      topN: res.topN
+    await this._fillMemberInfo(e, res.rows)
+
+    const img = await render('artisRank', 'rank', {
+      title: game === 'sr' ? '遗器总榜' : '圣遗物总榜',
+      scopeText: isGlobal ? '全局' : '本群',
+      showGid: isGlobal,
+      topN: res.topN,
+      count: res.rows.length,
+      list: res.rows,
+      faceBase: miaoResourcesBase()
     })
     if (img) await e.reply(img)
     return true
@@ -80,5 +84,28 @@ export class ArtisRankApp extends plugin {
     if (reason === 'group-closed') return MESSAGES.groupClosed
     if (reason === 'no-miao') return MESSAGES.noMiao
     return MESSAGES.noData
+  }
+
+  /**
+   * 补全用户昵称与头像：本群优先群名片/群头像，取不到保留 model 层的回落值
+   * （回落口径与 modules/challenge/gsRank.js 一致）
+   */
+  async _fillMemberInfo (e, rows) {
+    if (!e?.isGroup || typeof e.group?.pickMember !== 'function') return rows
+    const cache = new Map()
+    await Promise.all(rows.map(async (row) => {
+      if (!row.qq) return
+      try {
+        if (!cache.has(row.qq)) cache.set(row.qq, e.group.pickMember(row.qq))
+        const member = cache.get(row.qq)
+        if (!member) return
+        const face = await Promise.resolve(member.getAvatarUrl?.()).catch(() => null)
+        if (face) row.face = face
+        const info = await Promise.resolve(member.getInfo?.()).catch(() => null)
+        const nick = info?.card || info?.nickname
+        if (nick) row.nick = nick
+      } catch { /* 取不到就用回落值，不影响出图 */ }
+    }))
+    return rows
   }
 }
