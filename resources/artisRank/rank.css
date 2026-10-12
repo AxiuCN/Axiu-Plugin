@@ -1,205 +1,344 @@
-/* 圣遗物总榜 / 遗器总榜 — 方案 B 自建（不复刻 miao 面板卡） */
-
+/* 样式搬迁自 miao-plugin resources/character/rank-profile-list.css（GPL，与本插件许可一致） */
+.font-YS {
+  font-family: Number, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+}
+.font-NZBZ {
+  font-family: Number, "印品南征北战NZBZ体", NZBZ, "汉仪文黑-65W", YS, PingFangSC-Medium, "PingFang SC", sans-serif;
+}
 .container {
-  padding: 30px 30px 20px 30px;
-  width: 880px;
+  padding: 0;
+  background-size: cover;
   overflow: hidden;
-  background: #1a1a2e linear-gradient(180deg, rgba(30, 40, 80, 0.6), rgba(10, 10, 30, 0.9));
-  color: #f0eaca;
-  font-family: 'YS', 'Number', sans-serif;
-  box-sizing: border-box;
 }
-
-.container * { box-sizing: border-box; }
-
-/* ===== 标题 ===== */
-.rank-head {
-  text-align: center;
-  font-size: 28px;
-  font-weight: bold;
-  color: #ffd780;
-  text-shadow: 0 0 10px rgba(255, 215, 128, 0.5);
-  margin-bottom: 8px;
+.group-rank-icon {
+  width: 16px;
+  height: 16px;
+  background: url("../../../miao-plugin/resources/character/imgs/mark-icon.png");
+  background-size: auto 100%;
+  display: inline-block;
+  vertical-align: bottom;
+  margin: -1px 3px -1px 0;
 }
-
-.rank-sub {
-  text-align: center;
-  font-size: 13px;
-  color: rgba(240, 234, 202, 0.45);
-  margin-bottom: 12px;
+.group-rank-icon.mark-icon {
+  background-position: 100% 0;
 }
-
-/* ===== 统计 ===== */
-.rank-info {
-  text-align: center;
-  font-size: 13px;
-  color: rgba(240, 234, 202, 0.5);
-  margin-bottom: 18px;
-}
-
-.rank-info .sep {
-  margin: 0 10px;
-  color: rgba(240, 234, 202, 0.2);
-}
-
-/* ===== 列表 ===== */
-.rank-list {
+.char-list-item {
+  height: 60px;
+  background-size: auto 150%;
   display: flex;
-  flex-direction: column;
-  gap: 5px;
+  padding: 5px;
+  overflow: visible;
 }
-
-.rank-item {
-  display: flex;
-  align-items: center;
-  padding: 7px 14px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.22);
+.char-list-item .line {
+  margin-left: 15px;
+  position: relative;
 }
-
-.tier-1 {
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.12), rgba(255, 215, 0, 0.04));
-  border: 1px solid rgba(255, 215, 0, 0.25);
+.char-list-item .line:before {
+  content: "";
+  display: block;
+  width: 1px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.8);
+  background: linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.1));
+  position: absolute;
+  left: -15px;
+  top: 5px;
 }
-
-.tier-2 {
-  background: linear-gradient(135deg, rgba(192, 192, 192, 0.10), rgba(192, 192, 192, 0.03));
-  border: 1px solid rgba(192, 192, 192, 0.20);
+.char-idx {
+  width: 48px;
 }
-
-.tier-3 {
-  background: linear-gradient(135deg, rgba(205, 127, 50, 0.10), rgba(205, 127, 50, 0.03));
-  border: 1px solid rgba(205, 127, 50, 0.20);
-}
-
-/* ===== 名次 ===== */
-.rank-no {
-  width: 34px;
+.char-idx .idx-icon {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  margin: 13px 12px;
+  background: url('../../../miao-plugin/resources/character/imgs/mark-icon.png');
+  background-size: auto 100%;
   text-align: center;
-  font-size: 18px;
-  font-weight: 800;
-  font-family: 'Number', monospace;
-  flex-shrink: 0;
-  color: rgba(240, 234, 202, 0.55);
+  font-size: 12px;
+  line-height: 24px;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.8);
 }
-
-.no-1 { color: #ffd780; font-size: 22px; text-shadow: 0 0 8px rgba(255, 215, 128, 0.5); }
-.no-2 { color: #c0c0c0; font-size: 20px; text-shadow: 0 0 6px rgba(192, 192, 192, 0.3); }
-.no-3 { color: #cd7f32; font-size: 20px; text-shadow: 0 0 6px rgba(205, 127, 50, 0.3); }
-
-/* ===== 角色头像 ===== */
-.char-face {
-  width: 46px;
-  height: 46px;
-  flex-shrink: 0;
-  margin: 0 10px 0 6px;
+.char-idx .idx-icon.mode-mark.idx-1,
+.char-idx .idx-icon.mode-dmg.idx-1 {
+  width: 48px;
+  margin: 13px 0;
+  background-image: url('../../../miao-plugin/resources/character/imgs/mark-icon2.png');
+  color: rgba(0, 0, 0, 0);
+  text-shadow: none;
 }
-
-.cf-img {
-  width: 100%;
-  height: 100%;
+.char-idx .idx-icon.mode-mark,
+.char-idx .idx-icon.mode-crit,
+.char-idx .idx-icon.mode-valid {
+  background-position: 100% 0;
+}
+.char-idx .char-icon {
+  width: 36px;
+  height: 36px;
+  margin-top: 8px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.char-idx .char-icon .img {
+  border-radius: 0;
+}
+.char-icon {
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid rgba(240, 234, 202, 0.25);
-  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid #fff;
+  box-shadow: 1px 1px 3px 0 #000;
+  overflow: visible;
+  margin: 0 5px 0 6px;
 }
-
-.tier-1 .cf-img { border-color: rgba(255, 215, 0, 0.5); }
-.tier-2 .cf-img { border-color: rgba(192, 192, 192, 0.4); }
-.tier-3 .cf-img { border-color: rgba(205, 127, 50, 0.4); }
-
-.cf-no {
-  width: 100%;
-  height: 100%;
+.char-icon .img {
+  background-size: auto 100%;
+  background-position: top center;
+  overflow: hidden;
   border-radius: 50%;
-  background: rgba(240, 234, 202, 0.08);
-  border: 2px solid rgba(240, 234, 202, 0.18);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+}
+.char-info .name {
+  margin-top: 4px;
+  height: 24px;
+  line-height: 24px;
   font-size: 18px;
-  color: rgba(240, 234, 202, 0.3);
+  color: #d3bc8e;
+  font-weight: normal;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.8);
 }
-
-/* ===== 角色信息 ===== */
-.rank-char {
-  width: 250px;
-  flex-shrink: 0;
-  min-width: 0;
+.char-info .cons {
+  height: 16px;
+  line-height: 16px;
+  font-size: 12px;
+  width: 16px;
+  text-align: center;
+  padding: 0;
+  margin-right: -2px;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.8);
 }
-
+.char-info .info {
+  height: 20px;
+  font-size: 12px;
+  line-height: 20px;
+}
 .char-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: #f0eaca;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  width: 100px;
 }
-
-.char-meta {
-  font-size: 11px;
-  color: rgba(240, 234, 202, 0.42);
-  font-family: 'Number', monospace;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.char-meta span { margin-right: 8px; }
-.char-star { color: #ffd780; }
-
-/* ===== 用户 ===== */
-.rank-user {
-  flex: 1;
+.char-talent {
   display: flex;
-  align-items: center;
-  min-width: 0;
+  padding: 0 5px;
+  margin: -5px 0;
 }
-
-.face-img {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  object-fit: cover;
-  margin-right: 8px;
-  flex-shrink: 0;
-  border: 1px solid rgba(240, 234, 202, 0.25);
+.char-talent .talent-item,
+.char-talent .talent-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 -3px;
 }
-
-.face-no {
-  width: 28px;
-  height: 28px;
+.char-talent .talent-item {
+  position: relative;
+}
+.char-talent .talent-icon {
+  width: 56px;
+  height: 56px;
+  position: relative;
+  margin: 7px -5px 13x;
   border-radius: 50%;
-  margin-right: 8px;
-  flex-shrink: 0;
-  background: rgba(240, 234, 202, 0.08);
-  color: rgba(240, 234, 202, 0.3);
-  font-size: 13px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center center;
+  z-index: 90;
+}
+.char-talent .talent-icon img,
+.char-talent .talent-icon .talent-icon-img {
+  width: 46%;
+  height: 46%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -22% 0 0 -23%;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.char-talent .talent-icon span {
+  background: #fff;
+  width: 22px;
+  height: 18px;
+  line-height: 18px;
+  font-size: 12px;
+  text-align: center;
+  border-radius: 5px;
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  margin-left: -11px;
+  color: #000;
+  box-shadow: 0 0 5px 0 #000;
+}
+.char-talent .talent-icon.talent-plus span {
+  background: #2e353e;
+  color: #ffdfa0;
+  font-weight: bold;
+  box-shadow: 0 0 1px 0 #d3bc8e, 1px 1px 2px 0 rgba(0, 0, 0, 0.5);
+}
+.char-talent .talent-icon.talent-crown:after {
+  content: "";
+  display: block;
+  width: 18px;
+  height: 18px;
+  background: url("../../../miao-plugin/resources/character/imgs/crown.png") no-repeat;
+  background-size: contain;
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  margin-left: -9px;
+}
+.char-talent .talent-icon.talent-crown-sr:after {
+  content: "";
+  display: block;
+  width: 22px;
+  height: 22px;
+  background: url("../../../miao-plugin/resources/character/imgs/crown-sr.webp") no-repeat;
+  background-size: contain;
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  margin-left: -9px;
+}
+.char-item {
+  vertical-align: middle;
+  height: 50px;
+}
+.char-item .item {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  margin: 7px 5px 7px 0;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7);
+  display: inline-block;
+  overflow: visible;
+  vertical-align: middle;
+}
+.char-weapon {
+  width: 125px;
   display: flex;
-  align-items: center;
-  justify-content: center;
 }
-
-.user-name {
+.char-weapon .img {
+  margin: -10px -5px;
+  width: 46px;
+  height: 56px;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.char-weapon .weapon-info {
+  padding-left: 5px;
+}
+.char-weapon .cons {
+  width: 28px;
+  font-size: 12px;
+  transform: scale(0.9);
+  transform-origin: 0 50%;
+}
+.char-weapon .name {
+  height: 20px;
+  line-height: 20px;
+}
+.char-weapon .name strong {
   font-size: 13px;
-  color: rgba(240, 234, 202, 0.75);
+  font-weight: normal;
+}
+.char-artis {
+  display: flex;
+  width: 130px;
+}
+.char-artis {
+  margin-left: 5px;
+  text-align: left;
+  position: relative;
+  z-index: 10;
+}
+.char-artis.class-ACE .artis-mark-class,
+.char-artis.class-MAX .artis-mark-class {
+  background: #ff5722;
+}
+.char-artis.class-SSS .artis-mark-class,
+.char-artis.class-SS .artis-mark-class {
+  background: #531ba9cf;
+}
+.char-artis.class-S .artis-mark-class,
+.char-artis.class-A .artis-mark-class {
+  background: #3955b7;
+}
+.char-artis.class-B .artis-mark-class,
+.char-artis.class-C .artis-mark-class,
+.char-artis.class-D .artis-mark-class {
+  background: #aaa;
+}
+.char-artis .artis-mark-class {
+  width: 28px;
+  margin-right: -2px;
+  transform: scale(0.9);
+  transform-origin: 0 50%;
+}
+.char-artis .artis {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  margin: 7px 5px 7px 0;
+  display: inline-block;
+}
+.char-artis .artis.no-artis {
+  background: #bbb;
+}
+.char-artis .no-artis {
+  background: url(../../../miao-plugin/resources/common/item/artifact-icon.webp) center no-repeat;
+  background-size: auto 88%;
+}
+.char-artis .char-info .name {
+  height: 20px;
+  line-height: 20px;
+}
+.char-artis .artis2 {
+  position: relative;
+}
+.char-artis .artis2 .img {
+  position: absolute;
+  transform: scale(0.7);
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+.char-artis .artis2 .img:first-child {
+  transform-origin: left top;
+}
+.char-artis .artis2 .img:last-child {
+  transform-origin: right bottom;
+}
+.char-artis .artis-title {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.char-artis .artis-mark {
+  height: 23px;
+}
+.char-dmg {
+  width: 120px;
+}
+.char-dmg .dmg-value {
+  height: 28px;
+  line-height: 28px;
+  font-size: 18px;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.8);
+}
+.char-dmg .dmg-title {
+  height: 16px;
+  line-height: 16px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #aaa;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-/* ===== 分数 ===== */
-.rank-score {
-  width: 96px;
-  flex-shrink: 0;
-  text-align: right;
-  font-size: 22px;
-  font-weight: 800;
-  font-family: 'Number', monospace;
-  color: #ffd780;
-}
-
-.tier-1 .rank-score { color: #ffd700; text-shadow: 0 0 8px rgba(255, 215, 0, 0.35); }
-.tier-2 .rank-score { color: #d0d0d0; }
-.tier-3 .rank-score { color: #e09145; }

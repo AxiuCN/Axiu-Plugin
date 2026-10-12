@@ -372,7 +372,24 @@ export async function buildArtisRank ({ groupId = null, game = 'gs', topN = null
     }
   })
 
-  const candidates = parts.flat()
+  let candidates = parts.flat()
+
+  // 行身份 = (uid, 角色)：同一个 uid 的同一角色会在**多个群的键里各出现一次**，只保留分数最高的那条
+  // （同分取群号较小者，保证结果稳定）。口径澄清：不同 uid 练同一角色、同一 uid 的不同角色都仍是多行，
+  // 这里去重的只是「同一 uid 的同一角色」这一组合。
+  {
+    const bestByUidChar = new Map()
+    for (const row of candidates) {
+      const key = `${row.uid}|${row.charId}`
+      const prev = bestByUidChar.get(key)
+      const better = !prev ||
+        row.score > prev.score ||
+        (row.score === prev.score && String(row.groupId).localeCompare(String(prev.groupId)) < 0)
+      if (better) bestByUidChar.set(key, row)
+    }
+    candidates = [...bestByUidChar.values()]
+  }
+
   // 分数降序；同分按 uid → 角色 id → 群号定先后，保证同一份数据每次结果一致
   candidates.sort((a, b) =>
     (b.score - a.score) ||

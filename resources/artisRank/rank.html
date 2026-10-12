@@ -1,52 +1,77 @@
 {{extend defaultLayout}}
 
 {{block 'css'}}
-<link rel="stylesheet" href="{{ pluResPath }}artisRank/rank.css">
+<link rel="stylesheet" type="text/css" href="{{ pluResPath }}artisRank/rank.css"/>
 {{/block}}
 
 {{block 'main'}}
-
-<h2 class="rank-head">{{title}} · {{scopeText}}</h2>
-<div class="rank-sub">数据来源：miao-plugin 群排行（圣遗物 / 遗器评分）</div>
-
-<div class="rank-info">
-  <span>人数 {{topN}}</span>
-  <span class="sep">|</span>
-  <span>本榜 {{count}} 行</span>
+<div class="head-box">
+  <div class="title">{{title}} · {{scopeText}}</div>
 </div>
+<div id="profile-stat">
 
-<div class="rank-list">
+  <div class="cont group-rank-tip has-rank">
+    <div class="cont-title">总榜说明</div>
+    <div class="cont-body">
+      <ul class="cont-msg">
+        <li>
+          <i class="group-rank-icon mark-icon"></i><strong>数据来源：</strong>
+          miao-plugin 群排行中的圣遗物评分（原神）/ 遗器评分（星铁），只取评分榜，不含伤害榜
+        </li>
+        <li>
+          <strong>排名范围：</strong>{{scopeText}} / 按评分从高到低 / 只显示前 {{topN}} 名
+        </li>
+        <li>
+          <strong>排名人数：</strong>{{topN}}（取自 miao 的「排行人数」设置）
+        </li>
+        {{if showGid}}
+        <li>
+          <strong>全局去重：</strong>同一用户的同一角色跨群只占一行（保留其最高分）
+        </li>
+        {{/if}}
+      </ul>
+    </div>
+  </div>
+
   {{each list ds}}
-  <div class="rank-item tier-{{ds.rank <= 3 ? ds.rank : 0}}">
-    <div class="rank-no no-{{ds.rank <= 3 ? ds.rank : ''}}">{{ds.rank}}</div>
+  <div class="cont char-list-item">
+    <div class="char-idx">
+      <span class="idx-icon idx-{{ds.rank}} mode-mark">{{ds.rank}}</span>
+    </div>
 
-    <div class="char-face">
+    <div class="item-icon char-icon star{{ds.star}}">
       {{if ds.charFace}}
-      <img class="cf-img" src="{{faceBase}}{{ds.charFace}}" />
+      <span class="img" style="background-image:url({{faceBase}}{{ds.charFace}})"></span>
       {{else}}
-      <div class="cf-no">?</div>
+      <span class="img"></span>
       {{/if}}
     </div>
 
-    <div class="rank-char">
-      <div class="char-name">{{ds.charName}}</div>
-      <div class="char-meta">
-        {{if ds.star}}<span class="char-star">{{ds.star}}★</span>{{/if}}
-        <span class="char-uid">UID {{ds.uid}}</span>
-        {{if showGid}}<span class="char-gid">群 {{ds.gid}}</span>{{/if}}
+    <div class="char-info char-name">
+      <div class="name">
+        <strong>{{ds.charName}}</strong>
+      </div>
+      <div class="info">{{ds.uid}}{{if showGid}} · 群{{ds.gid}}{{/if}}</div>
+    </div>
+
+    <div class="char-item char-weapon line">
+      {{if ds.face}}
+      <div class="item item-icon">
+        <div class="img" style="background-image:url({{ds.face}})"></div>
+      </div>
+      {{/if}}
+      <div class="char-info weapon-info">
+        <div class="name">
+          <strong>{{ds.nick}}</strong>
+        </div>
+        <div class="info">用户</div>
       </div>
     </div>
 
-    <div class="rank-user">
-      {{if ds.face}}
-      <img class="face-img" src="{{ds.face}}" />
-      {{else}}
-      <div class="face-no">?</div>
-      {{/if}}
-      <div class="user-name">{{ds.nick}}</div>
+    <div class="char-dmg line">
+      <div class="dmg-title">评分</div>
+      <div class="dmg-value">{{ds.score}}</div>
     </div>
-
-    <div class="rank-score">{{ds.score}}</div>
   </div>
   {{/each}}
 </div>

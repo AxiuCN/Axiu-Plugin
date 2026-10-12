@@ -343,4 +343,36 @@ check('启用后确实执行了（扫过 Axiu 侧排行键）', keysCalls > 0, `
 check('miao 缺失时汇总写明未刷 miao 侧', /miao 侧: 未刷新/.test(String(summary)) && /需要 miao-plugin/.test(String(summary)))
 check('汇总含耗时与 Axiu 侧重排结果', /耗时: \d/.test(String(summary)) && /Axiu 侧: 成功（原神挑战排行/.test(String(summary)))
 
+/* ==================== 【11】全局去重（同一 uid 的同一角色跨群只占一行） ==================== */
+
+console.log('\n【11】全局去重：同一 (uid, 角色) 跨群只占一行、保留最高分、去重先于截断')
+{
+  // 前面【6】【8】【9】测过 miao 缺失分支，这里把替身装回来
+  setMiaoAccessor(stubAccessor())
+  // G1 里 uid…001 + 角色 10000052 是 250.5；这里在 G5 造同一 (uid, 角色) 的**更高分** 260
+  const G5 = '50005'
+  await seedRank(G5, 'mark', '10000052', [['100000001', 260.0]])
+
+  const dedup = await buildArtisRank({ game: 'gs' })
+  const pair = dedup.rows.filter(r => r.uid === '100000001' && r.charId === '10000052')
+  check('同一 (uid, 角色) 跨群只占一行', pair.length === 1, `实际 ${pair.length} 行`)
+  check('保留两群里分数最高的那条（来源群号跟着最高分走）',
+    pair[0]?.score === 260 && pair[0]?.gid === G5, JSON.stringify(pair[0]))
+
+  // 去重发生在截断前：不去重时 250.5 会占掉第 3 行，去重后第 3 行应是 210.5
+  const top3 = await buildArtisRank({ game: 'gs', topN: 3 })
+  const top3Pair = top3.rows.filter(r => r.uid === '100000001' && r.charId === '10000052')
+  check('去重先于截断（top3 里该组合只有一条，且让位给下一个不同组合）',
+    top3Pair.length === 1 && top3.rows.length === 3 && top3.rows[2]?.score === 210.5,
+    JSON.stringify(top3.rows.map(r => `${r.uid}|${r.charId}|${r.score}`)))
+
+  const charUids = new Set(dedup.rows.filter(r => r.charId === '10000052').map(r => r.uid))
+  check('去重不影响「不同 uid 同一角色」多行', charUids.size >= 3, String(charUids.size))
+  const uidChars = new Set(dedup.rows.filter(r => r.uid === '100000001').map(r => r.charId))
+  check('去重不影响「同一 uid 不同角色」多行', uidChars.size >= 2, [...uidChars].join(','))
+
+  const g5 = await buildArtisRank({ groupId: G5, game: 'gs' })
+  check('本群范围行数与去重前一致', g5.rows.length === 1 && g5.rows[0]?.score === 260, JSON.stringify(g5.rows))
+}
+
 finish()
