@@ -431,3 +431,19 @@
 body.artis-rank-sr .container {
   width: 900px;
 }
+
+/* 本插件 common.css 只有 7 种元素底色，且页面默认底色要与 miao 一致：
+   原神用 miao 的默认元素底（hydro），星铁用 miao 的 sr 底，图片直接取 miao-plugin/resources/common/bg；
+   另补两条本插件缺失的天赋底图（星铁 / 量子），否则这两种角色的天赋格没有底色。 */
+.elem-hydro .elem-bg {
+  background-image: url("../../../miao-plugin/resources/common/bg/bg-hydro.webp");
+}
+.elem-sr .elem-bg {
+  background-image: url("../../../miao-plugin/resources/common/bg/bg-sr.webp");
+}
+.elem-sr .talent-icon {
+  background-image: url("../../../miao-plugin/resources/common/bg/talent-sr.webp");
+}
+.elem-quantum .talent-icon {
+  background-image: url("../../../miao-plugin/resources/common/bg/talent-quantum.webp");
+}

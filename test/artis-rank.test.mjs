@@ -326,7 +326,7 @@ check('成功分支回复图片段', ok.replies[0]?.type === 'image')
 check('成功分支渲染模板为 artisRank/rank', lastRender?.name === 'Axiu-Plugin/artisRank/rank', String(lastRender?.name))
 check('渲染数据：标题与范围', lastRender?.data?.title === '圣遗物总榜 · 本群' && lastRender?.data?.scopeText === '本群')
 check('渲染数据：人数与行数', lastRender?.data?.topN === 15 && lastRender?.data?.count === 4)
-check('背景按榜首角色的元素', lastRender?.data?.element === 'electro')
+check('背景用 miao 的默认元素底（原神 hydro）', lastRender?.data?.element === 'hydro')
 check('容器宽度 class 按游戏给定', lastRender?.data?.bodyClass === 'artis-rank-gs')
 check('行首用群头像（qqFace 优先）', lastRender?.data?.list?.find(r => r.uid === '100000001')?.qqFace === 'https://avatar.example/11111')
 check('取不到群成员时不填 qqFace（模板回落角色立绘）', lastRender?.data?.list?.find(r => r.uid === '100000002' && r.charId === '10000052')?.qqFace === undefined)
@@ -432,6 +432,15 @@ console.log('\n【12】自建模板 / 样式：规则顺序与头像尺寸（防
   check('模板行首头像：qqFace 优先、否则回落 miao 的角色立绘',
     /ds\.qqFace/.test(html) && /miaoResPath\}\}\{\{ds\.imgs\.face/.test(html))
   check('模板不自造昵称列 / qlogo 兜底', !/ds\.nick/.test(html) && !/qlogo/.test(html))
+  // 页面底色必须指向 miao 的默认元素底：原神 hydro、星铁 sr；另补本插件缺失的两条天赋底图
+  check('页面底色指向 miao 的默认元素底（原神 hydro / 星铁 sr）',
+    /\.elem-hydro \.elem-bg \{[\s\S]{0,160}miao-plugin[\\/]resources[\\/]common[\\/]bg[\\/]bg-hydro\.webp/.test(css) &&
+    /\.elem-sr \.elem-bg \{[\s\S]{0,160}miao-plugin[\\/]resources[\\/]common[\\/]bg[\\/]bg-sr\.webp/.test(css))
+  check('补齐本插件 common.css 缺失的天赋底图（星铁 / 量子）',
+    /\.elem-sr \.talent-icon \{[\s\S]{0,160}talent-sr\.webp/.test(css) && /\.elem-quantum \.talent-icon \{[\s\S]{0,160}talent-quantum\.webp/.test(css))
+  const miaoBgDir = path.join(pluginRoot, '..', 'miao-plugin', 'resources', 'common', 'bg')
+  check('引用的 miao 底图文件确实存在（规则与文件缺一边就是无背景）',
+    ['bg-hydro.webp', 'bg-sr.webp', 'talent-sr.webp', 'talent-quantum.webp'].every(f => fs.existsSync(path.join(miaoBgDir, f))))
 }
 
 finish()

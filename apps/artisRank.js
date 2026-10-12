@@ -75,8 +75,8 @@ export class ArtisRankApp extends plugin {
       list: res.rows,
       // miao 资源前缀：角色立绘 / 天赋图标 / 武器与圣遗物图标都取自 miao-plugin/resources
       miaoResPath: `${miaoResourcesBase()}/`,
-      // 背景沿用 miao 的元素底色机制（星铁走 sr 底，原神取榜首角色的元素，取不到用 hydro）
-      element: game === 'sr' ? 'sr' : (res.rows[0]?.elem || 'hydro'),
+      // 背景沿用 miao 的默认元素底：原神 hydro、星铁 sr（这两条规则在 rank.css 里指向 miao 的图片）
+      element: game === 'sr' ? 'sr' : 'hydro',
       // 容器宽度在自建样式里按游戏固定（见 resources/artisRank/rank.css）
       bodyClass: game === 'sr' ? 'artis-rank-sr' : 'artis-rank-gs'
     })
