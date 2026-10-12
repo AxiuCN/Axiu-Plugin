@@ -10,7 +10,7 @@ Axiu-Plugin — 阿修自用 Yunzai-Bot v3 插件，ESM（`"type": "module"`）�
 
 > **鸣谢**：感谢 [FurinaWai77](https://github.com/FurinaWai77) 为本项目提供代码审查与修复建议（审查基准 e9c4dae + 7fa4b3d - 88affaf），详见 `.dsh/Axiu-Plugin-code-review-handled.md` 处理归档；签到架构、过码桥接、计划式调度思路借鉴 [Lotus-Plugin](https://github.com/MOPELotus/Lotus-Plugin)，星铁抽卡记录同步思路参考其重制版 Lotus-ReFactor（本地副本位置见 `docs/private/本机工作区.md`，**该目录不入库**）。
 
-当前提供自动入群审核、代发言、米游社过码、扫码登录、抽卡记录管理、星铁终局挑战、原神终局挑战、米游社签到八个功能，另有 `#Axiu帮助` 帮助图。
+当前提供自动入群审核、代发言、米游社过码、扫码登录、抽卡记录管理、星铁终局挑战、原神终局挑战、米游社签到、圣遗物/遗器总榜、排行榜定时刷新十个功能，另有 `#Axiu帮助` 帮助图。
 
 **新增功能**：在 `apps/` 下新建一个 `.js` 文件（export 一个继承 `plugin` 的 class），`index.js` 自动发现并加载，无需修改入口文件。
 
@@ -27,6 +27,8 @@ Axiu-Plugin — 阿修自用 Yunzai-Bot v3 插件，ESM（`"type": "module"`）�
 | 原神抽卡记录 | `apps/gsGachaLog.js` | `message` | `rule[]`（`#更新抽卡记录` / `#更新小助手抽卡记录` / `#获取抽卡链接`） | all |
 | 星铁抽卡记录 | `apps/srGachaLog.js` | `message` | `rule[]`（`*更新星铁抽卡记录` / `*获取星铁抽卡链接`） | all |
 | 米游社签到 | `apps/mysSignin.js` | `message` + `task[]` | `rule[]`（`#签到` 等 9 条命令 + 签到/刷新cookie 2个定时任务） | 见文档 |
+| 圣遗物/遗器总榜 | `apps/artisRank.js` | `message` | `rule[]`（本群 `#圣遗物总榜` / `#遗器总榜` + 全局 `#全局圣遗物总榜` / `#全局遗器总榜`，星铁走 `*` 前缀，2 条 rule 共用一个 fnc） | all |
+| 排行榜定时刷新 | `apps/rankRefresh.js` | `task[]` | `task[]`（`排行榜定时刷新`，cron 取 `rankRefresh.schedule`，默认关闭） | — |
 | 插件帮助 | `apps/help.js` | `message` | `rule[]`（`#Axiu帮助` / `#阿修帮助`） | all |
 
 
@@ -42,6 +44,7 @@ Axiu-Plugin — 阿修自用 Yunzai-Bot v3 插件，ESM（`"type": "module"`）�
 | 扫码登录、原神/星铁抽卡记录、星铁 CK 自动刷新 | [`docs/模块-扫码与抽卡.md`](docs/模块-扫码与抽卡.md) |
 | 米游社签到（命令 / 定时任务 / Python 桥接） | [`docs/模块-签到.md`](docs/模块-签到.md) |
 | 星铁终局挑战、原神终局挑战与两套排行榜 | [`docs/模块-挑战与排行.md`](docs/模块-挑战与排行.md) |
+| 圣遗物/遗器总榜、排行榜定时刷新（miao 群排行摊平） | [`docs/模块-圣遗物总榜.md`](docs/模块-圣遗物总榜.md) |
 | 入群审核、代发言、插件帮助 | [`docs/模块-审核与杂项.md`](docs/模块-审核与杂项.md) |
 | 待办与审核跟踪（第四轮 12 项、修复分批、未定口径） | [`docs/待办-审核跟踪.md`](docs/待办-审核跟踪.md) |
 | 部署环境、盘符映射、本机工作区（**不入库**） | `docs/private/`（新克隆上不存在） |
@@ -85,6 +88,7 @@ Axiu-Plugin — 阿修自用 Yunzai-Bot v3 插件，ESM（`"type": "module"`）�
 | `test/guoba-write.test.mjs` | 锅巴配置读写：危险值（以 `*` 开头 cron / `#` / `:` / 引号 / 换行）序列化与回读、写前验证拦坏值、表单没提交的键不丢值、群规则映射与数组双形态往返、非法输入被拒且文件零改动、坏配置救回且文案不泄露口令、临时文件不留残渣（配置目录经 `AXIU_CONFIG_DIR` 重定向到 `test/.test-tmp/`） |
 | `test/qr-login-token.test.mjs` | 扫码登录 ltoken 取值：`pickToken` strict 不跨类型兜底（stoken 侧兜底保留）、tokens 只有 stoken 时 ltoken 必须取自 `getLtoken` 接口、具名优先、ltoken 等于 stoken 判为未取到、缺 ltoken / 缺 cookie_token 都不产出凭据 |
 | `test/copyright-line.test.mjs` | 版权行：框架名按 bot 根包名判定（TRSS-Yunzai / Yunzai-Bot）且与根包一致、插件版本取插件包、出图版带 `<span class="version">`、聊天版无 HTML 标签、名称与版本号不粘连、版本缺失时不拼版本 |
+| `test/artis-rank.test.mjs` | 圣遗物/遗器总榜与排行定时刷新：排行键解析（原神 8 位 / 星铁 4 位、uid-info 与 cfg 键不算排行键）、汇总口径（分数降序、取前 N 且每键只取前 N、同角色多 uid、同 uid 多角色、全局跨群、`dmg` 不混入、残留角色兜底命名）、uid→qq 与昵称/头像回落、群开关关闭时只提示不出图、miao 缺失降级、有数据的群集合只含 mark 键出现的群、命令正则（`*遗器总榜` 归一后命中）、未启用时定时任务零 Redis 访问、`rankRefresh.*` 三层配置与面板保存往返（配置目录经 `AXIU_CONFIG_DIR` 重定向） |
 
 约定：命名 `<主题>.test.mjs`（主题写被测行为）；路径一律经 `test/_helper.mjs` 的 `pluginRoot` / `mod()` / `importMod()` 推导，禁止裸相对字面量与盘符绝对路径；框架全局（logger/redis/segment/Bot）用 `installFrameworkStubs()` 的内存实现（不联网、不触真实 Redis）；临时产物只写 `test/.test-tmp/`（已 gitignore）；**断言必须能真的失败**——新增套件应临时还原被修的代码确认转红后再入库。细节见 `test/README.md`。
 

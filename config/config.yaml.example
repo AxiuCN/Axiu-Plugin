@@ -82,3 +82,12 @@ srChallengeRank:
 proxySpeak:
   # 是否启用代发言功能（关闭后 #代 命令不响应）
   enabled: true
+
+# 排行榜定时刷新（miao 群排行 + 本插件挑战排行）
+rankRefresh:
+  # 是否启用定时刷新（默认关闭，避免开箱就跑重活）
+  enabled: false
+  # 刷新时间 cron 表达式（Quartz格式，支持秒），默认每天4:40
+  schedule: "0 40 4 * * ? *"
+  # 刷新完成后私聊 Bot 主人发送汇总
+  notifyMaster: true

@@ -1,0 +1,54 @@
+{{extend defaultLayout}}
+
+{{block 'css'}}
+<link rel="stylesheet" href="{{ pluResPath }}artisRank/rank.css">
+{{/block}}
+
+{{block 'main'}}
+
+<h2 class="rank-head">{{title}} · {{scopeText}}</h2>
+<div class="rank-sub">数据来源：miao-plugin 群排行（圣遗物 / 遗器评分）</div>
+
+<div class="rank-info">
+  <span>人数 {{topN}}</span>
+  <span class="sep">|</span>
+  <span>本榜 {{count}} 行</span>
+</div>
+
+<div class="rank-list">
+  {{each list ds}}
+  <div class="rank-item tier-{{ds.rank <= 3 ? ds.rank : 0}}">
+    <div class="rank-no no-{{ds.rank <= 3 ? ds.rank : ''}}">{{ds.rank}}</div>
+
+    <div class="char-face">
+      {{if ds.charFace}}
+      <img class="cf-img" src="{{faceBase}}{{ds.charFace}}" />
+      {{else}}
+      <div class="cf-no">?</div>
+      {{/if}}
+    </div>
+
+    <div class="rank-char">
+      <div class="char-name">{{ds.charName}}</div>
+      <div class="char-meta">
+        {{if ds.star}}<span class="char-star">{{ds.star}}★</span>{{/if}}
+        <span class="char-uid">UID {{ds.uid}}</span>
+        {{if showGid}}<span class="char-gid">群 {{ds.gid}}</span>{{/if}}
+      </div>
+    </div>
+
+    <div class="rank-user">
+      {{if ds.face}}
+      <img class="face-img" src="{{ds.face}}" />
+      {{else}}
+      <div class="face-no">?</div>
+      {{/if}}
+      <div class="user-name">{{ds.nick}}</div>
+    </div>
+
+    <div class="rank-score">{{ds.score}}</div>
+  </div>
+  {{/each}}
+</div>
+
+{{/block}}

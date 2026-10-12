@@ -8,6 +8,7 @@ import * as captchaMod from './captcha.js'
 import * as signinMod from './signin.js'
 import * as challengeMod from './challenge.js'
 import * as proxySpeakMod from './proxySpeak.js'
+import * as rankRefreshMod from './rankRefresh.js'
 import gsCfg from '../model/gsCfg.js'
 import {
   readConfigWithStatus,
@@ -71,7 +72,10 @@ const TEMPLATE_VARS = {
   'gsAbyss.enabled': 'gsAbyss_enabled',
   'gsAbyssRank.enabled': 'gsAbyssRank_enabled',
   'gsAbyssRank.rankNumber': 'gsAbyssRank_rankNumber',
-  'proxySpeak.enabled': 'proxySpeak_enabled'
+  'proxySpeak.enabled': 'proxySpeak_enabled',
+  'rankRefresh.enabled': 'rankRefresh_enabled',
+  'rankRefresh.schedule': 'rankRefresh_schedule',
+  'rankRefresh.notifyMaster': 'rankRefresh_notifyMaster'
 }
 
 // ==================== 工具函数 ====================
@@ -151,7 +155,8 @@ export function supportGuoba () {
         ...captchaMod.getSchema(),
         ...challengeMod.getSchema(),
         ...groupApproveMod.getSchema(),
-        ...proxySpeakMod.getSchema()
+        ...proxySpeakMod.getSchema(),
+        ...rankRefreshMod.getSchema()
       ],
 
       getConfigData () {
@@ -203,6 +208,11 @@ export function supportGuoba () {
 
           // proxySpeak
           'proxySpeak.enabled': readField(cfg, 'proxySpeak.enabled') ?? true,
+
+          // rankRefresh
+          'rankRefresh.enabled': readField(cfg, 'rankRefresh.enabled') ?? false,
+          'rankRefresh.schedule': readField(cfg, 'rankRefresh.schedule') ?? '0 40 4 * * ? *',
+          'rankRefresh.notifyMaster': readField(cfg, 'rankRefresh.notifyMaster') ?? true,
 
           // signin 主配置
           'signin.enable': readField(cfg, 'signin.enable') ?? true,

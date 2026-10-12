@@ -1,0 +1,205 @@
+/* 圣遗物总榜 / 遗器总榜 — 方案 B 自建（不复刻 miao 面板卡） */
+
+.container {
+  padding: 30px 30px 20px 30px;
+  width: 880px;
+  overflow: hidden;
+  background: #1a1a2e linear-gradient(180deg, rgba(30, 40, 80, 0.6), rgba(10, 10, 30, 0.9));
+  color: #f0eaca;
+  font-family: 'YS', 'Number', sans-serif;
+  box-sizing: border-box;
+}
+
+.container * { box-sizing: border-box; }
+
+/* ===== 标题 ===== */
+.rank-head {
+  text-align: center;
+  font-size: 28px;
+  font-weight: bold;
+  color: #ffd780;
+  text-shadow: 0 0 10px rgba(255, 215, 128, 0.5);
+  margin-bottom: 8px;
+}
+
+.rank-sub {
+  text-align: center;
+  font-size: 13px;
+  color: rgba(240, 234, 202, 0.45);
+  margin-bottom: 12px;
+}
+
+/* ===== 统计 ===== */
+.rank-info {
+  text-align: center;
+  font-size: 13px;
+  color: rgba(240, 234, 202, 0.5);
+  margin-bottom: 18px;
+}
+
+.rank-info .sep {
+  margin: 0 10px;
+  color: rgba(240, 234, 202, 0.2);
+}
+
+/* ===== 列表 ===== */
+.rank-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rank-item {
+  display: flex;
+  align-items: center;
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.tier-1 {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.12), rgba(255, 215, 0, 0.04));
+  border: 1px solid rgba(255, 215, 0, 0.25);
+}
+
+.tier-2 {
+  background: linear-gradient(135deg, rgba(192, 192, 192, 0.10), rgba(192, 192, 192, 0.03));
+  border: 1px solid rgba(192, 192, 192, 0.20);
+}
+
+.tier-3 {
+  background: linear-gradient(135deg, rgba(205, 127, 50, 0.10), rgba(205, 127, 50, 0.03));
+  border: 1px solid rgba(205, 127, 50, 0.20);
+}
+
+/* ===== 名次 ===== */
+.rank-no {
+  width: 34px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 800;
+  font-family: 'Number', monospace;
+  flex-shrink: 0;
+  color: rgba(240, 234, 202, 0.55);
+}
+
+.no-1 { color: #ffd780; font-size: 22px; text-shadow: 0 0 8px rgba(255, 215, 128, 0.5); }
+.no-2 { color: #c0c0c0; font-size: 20px; text-shadow: 0 0 6px rgba(192, 192, 192, 0.3); }
+.no-3 { color: #cd7f32; font-size: 20px; text-shadow: 0 0 6px rgba(205, 127, 50, 0.3); }
+
+/* ===== 角色头像 ===== */
+.char-face {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  margin: 0 10px 0 6px;
+}
+
+.cf-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(240, 234, 202, 0.25);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.tier-1 .cf-img { border-color: rgba(255, 215, 0, 0.5); }
+.tier-2 .cf-img { border-color: rgba(192, 192, 192, 0.4); }
+.tier-3 .cf-img { border-color: rgba(205, 127, 50, 0.4); }
+
+.cf-no {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(240, 234, 202, 0.08);
+  border: 2px solid rgba(240, 234, 202, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: rgba(240, 234, 202, 0.3);
+}
+
+/* ===== 角色信息 ===== */
+.rank-char {
+  width: 250px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.char-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #f0eaca;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.char-meta {
+  font-size: 11px;
+  color: rgba(240, 234, 202, 0.42);
+  font-family: 'Number', monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.char-meta span { margin-right: 8px; }
+.char-star { color: #ffd780; }
+
+/* ===== 用户 ===== */
+.rank-user {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.face-img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 8px;
+  flex-shrink: 0;
+  border: 1px solid rgba(240, 234, 202, 0.25);
+}
+
+.face-no {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  margin-right: 8px;
+  flex-shrink: 0;
+  background: rgba(240, 234, 202, 0.08);
+  color: rgba(240, 234, 202, 0.3);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-name {
+  font-size: 13px;
+  color: rgba(240, 234, 202, 0.75);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===== 分数 ===== */
+.rank-score {
+  width: 96px;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 22px;
+  font-weight: 800;
+  font-family: 'Number', monospace;
+  color: #ffd780;
+}
+
+.tier-1 .rank-score { color: #ffd700; text-shadow: 0 0 8px rgba(255, 215, 0, 0.35); }
+.tier-2 .rank-score { color: #d0d0d0; }
+.tier-3 .rank-score { color: #e09145; }
