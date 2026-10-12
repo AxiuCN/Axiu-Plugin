@@ -64,16 +64,21 @@ export class ArtisRankApp extends plugin {
       return true
     }
 
-    await this._fillMemberInfo(e, res.rows)
+    await this._fillQqFace(e, res.rows)
 
     const img = await render('artisRank', 'rank', {
-      title: game === 'sr' ? '遗器总榜' : '圣遗物总榜',
+      title: `${game === 'sr' ? '遗器' : '圣遗物'}总榜 · ${isGlobal ? '全局' : '本群'}`,
       scopeText: isGlobal ? '全局' : '本群',
-      showGid: isGlobal,
+      game,
       topN: res.topN,
       count: res.rows.length,
       list: res.rows,
-      faceBase: miaoResourcesBase()
+      // miao 资源前缀：角色立绘 / 天赋图标 / 武器与圣遗物图标都取自 miao-plugin/resources
+      miaoResPath: `${miaoResourcesBase()}/`,
+      // 背景沿用 miao 的元素底色机制（星铁走 sr 底，原神取榜首角色的元素，取不到用 hydro）
+      element: game === 'sr' ? 'sr' : (res.rows[0]?.elem || 'hydro'),
+      // 容器宽度在自建样式里按游戏固定（见 resources/artisRank/rank.css）
+      bodyClass: game === 'sr' ? 'artis-rank-sr' : 'artis-rank-gs'
     })
     if (img) await e.reply(img)
     return true
@@ -87,25 +92,24 @@ export class ArtisRankApp extends plugin {
   }
 
   /**
-   * 补全用户昵称与头像：本群优先群名片/群头像，取不到保留 model 层的回落值
-   * （回落口径与 modules/challenge/gsRank.js 一致）
+   * 补行首 QQ 头像（照 miao `renderCharRankList` 的做法：群成员头像，取不到不填）
+   *
+   * 模板里 `qqFace` 优先、为空才回落角色立绘；这里**不做 qlogo 等额外兜底**。
+   * @param {object} e 消息上下文
+   * @param {object[]} rows 已组装的行
    */
-  async _fillMemberInfo (e, rows) {
+  async _fillQqFace (e, rows) {
     if (!e?.isGroup || typeof e.group?.pickMember !== 'function') return rows
     const cache = new Map()
-    await Promise.all(rows.map(async (row) => {
-      if (!row.qq) return
+    for (const row of rows) {
+      if (!row.qq) continue
       try {
         if (!cache.has(row.qq)) cache.set(row.qq, e.group.pickMember(row.qq))
         const member = cache.get(row.qq)
-        if (!member) return
-        const face = await Promise.resolve(member.getAvatarUrl?.()).catch(() => null)
-        if (face) row.face = face
-        const info = await Promise.resolve(member.getInfo?.()).catch(() => null)
-        const nick = info?.card || info?.nickname
-        if (nick) row.nick = nick
-      } catch { /* 取不到就用回落值，不影响出图 */ }
-    }))
+        const face = await Promise.resolve(member?.getAvatarUrl?.()).catch(() => null)
+        if (face) row.qqFace = face
+      } catch { /* 取不到就不填，模板回落角色立绘 */ }
+    }
     return rows
   }
 }

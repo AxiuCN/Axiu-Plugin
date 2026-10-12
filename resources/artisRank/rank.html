@@ -6,7 +6,7 @@
 
 {{block 'main'}}
 <div class="head-box">
-  <div class="title">{{title}} · {{scopeText}}</div>
+  <div class="title">{{title}}</div>
 </div>
 <div id="profile-stat">
 
@@ -16,61 +16,112 @@
       <ul class="cont-msg">
         <li>
           <i class="group-rank-icon mark-icon"></i><strong>数据来源：</strong>
-          miao-plugin 群排行中的圣遗物评分（原神）/ 遗器评分（星铁），只取评分榜，不含伤害榜
+          miao-plugin 群排行中的{{game === 'sr' ? '遗器评分' : '圣遗物评分'}}，按评分降序排列，不含伤害榜
         </li>
         <li>
-          <strong>排名范围：</strong>{{scopeText}} / 按评分从高到低 / 只显示前 {{topN}} 名
+          <strong>排名范围：</strong>
+          {{if scopeText === '全局'}}
+          全局（跨群汇总）：同一 uid 的同一角色只占一行，取最高分
+          {{else}}
+          本群：只统计本群排行榜中的角色
+          {{/if}}
         </li>
         <li>
-          <strong>排名人数：</strong>{{topN}}（取自 miao 的「排行人数」设置）
+          <strong>排名人数：</strong>前 {{topN}} 名（取自 miao 的「排行人数」设置），本页显示 {{count}} 行
         </li>
-        {{if showGid}}
         <li>
-          <strong>全局去重：</strong>同一用户的同一角色跨群只占一行（保留其最高分）
+          <strong>伤害：</strong>右侧为期望伤害（计入暴击率的平均伤害），仅供参照，不参与排序
         </li>
-        {{/if}}
       </ul>
     </div>
   </div>
 
-  {{each list ds}}
+  {{each list ds idx}}
   <div class="cont char-list-item">
     <div class="char-idx">
-      <span class="idx-icon idx-{{ds.rank}} mode-mark">{{ds.rank}}</span>
+      <span class="idx-icon idx-{{idx+1}} mode-mark">{{idx+1}}</span>
     </div>
 
     <div class="item-icon char-icon star{{ds.star}}">
-      {{if ds.charFace}}
-      <span class="img" style="background-image:url({{faceBase}}{{ds.charFace}})"></span>
+      {{if ds.qqFace}}
+      <span class="img" style="background-image:url({{ds.qqFace}})"></span>
       {{else}}
-      <span class="img"></span>
+      <span class="img" style="background-image:url({{miaoResPath}}{{ds.imgs.face}})"></span>
       {{/if}}
     </div>
 
     <div class="char-info char-name">
       <div class="name">
-        <strong>{{ds.charName}}</strong>
+        <span class="cons cons-{{ds.cons}}">{{ds.cons}}</span>
+        <strong>{{ds.sName}}</strong>
       </div>
-      <div class="info">{{ds.uid}}{{if showGid}} · 群{{ds.gid}}{{/if}}</div>
+      <div class="info">{{ds.uid}}</div>
+    </div>
+
+    <div class="char-talent elem-{{ds.elem}}">
+      {{each ds.talentKeys tName key}}
+      {{set talent = ds.talent[key] || {} }}
+      <div class="talent-item">
+        <div class="talent-icon
+           {{talent.level > talent.original ? `talent-plus`:``}}
+            {{talent.original >= 10 && game === 'gs' ? `talent-crown`:``}}
+            {{talent.original >= 10 && game === 'sr' ? `talent-crown-sr`:``}}">
+          <div class="talent-icon-img"
+               style="background-image:url({{miaoResPath}}{{ds.imgs[key]}})"></div>
+          <span>{{talent.level}}</span>
+        </div>
+      </div>
+      {{/each}}
     </div>
 
     <div class="char-item char-weapon line">
-      {{if ds.face}}
-      <div class="item item-icon">
-        <div class="img" style="background-image:url({{ds.face}})"></div>
+      {{set w = ds.weapon }}
+      <div class="item item-icon star{{w?.star}}">
+        <div class="img" style="background-image:url({{miaoResPath}}{{w?.img}})"></div>
       </div>
-      {{/if}}
       <div class="char-info weapon-info">
         <div class="name">
-          <strong>{{ds.nick}}</strong>
+          <strong> {{w?.name?.length > 4 ? (w?.abbr||w?.name) : w?.name}}</strong>
         </div>
-        <div class="info">用户</div>
+        <div class="info">
+          {{if w}}
+          <span class="cons cons-{{w.affix+1}}">精{{w.affix}}</span> Lv.{{w.level}}
+          {{/if}}
+        </div>
+      </div>
+    </div>
+
+    {{set mark = ds.artisMark || false }}
+    {{set marks = ds._formatmark || false }}
+    {{set aImgs = ds?.artisSet?.imgs || []}}
+    <div class="char-item char-artis class-{{mark?.markClass||'D'}}">
+      <div
+          class="item artis item-icon avatar-artis  {{aImgs.length>0?'star5':'no-artis'}} artis{{aImgs.length>2 ? 2 : aImgs.length}}">
+        {{each aImgs img idx}}
+          {{if idx < 2}}
+          <div class="img" style="background-image:url({{miaoResPath}}{{img}})"></div>
+          {{/if}}
+        {{/each}}
+        {{if aImgs.length === 0}}
+        <span class="img no-artis"></span>
+        {{/if}}
+      </div>
+      <div class="char-info artis-info">
+        <div class="name artis-title">
+          {{ds?.artisSet?.name}}
+        </div>
+        <div class="artis-mark">
+          <span class="cons artis-mark-class class-{{mark?.markClass||'D'}}">{{mark.markClass}}</span>
+          {{marks}}
+        </div>
       </div>
     </div>
 
     <div class="char-dmg line">
-      <div class="dmg-title">评分</div>
-      <div class="dmg-value">{{ds.score}}</div>
+      {{if ds.dmg}}
+      <div class="dmg-title">{{ds.dmg?.title}}</div>
+      <div class="dmg-value">{{ds.dmg?.avg}}</div>
+      {{/if}}
     </div>
   </div>
   {{/each}}

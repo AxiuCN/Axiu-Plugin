@@ -64,9 +64,9 @@ export const MESSAGES = {
 let miaoModules = null
 
 /**
- * 加载 miao-plugin 的 Cfg 与 Character
+ * 加载 miao-plugin 的组件与 model
  * 相对路径 import：不能写 `#miao`（该别名只在 miao 包内生效）
- * @returns {Promise<{Cfg: object, Character: object}|false>}
+ * @returns {Promise<{Cfg: object, Data: object, Format: object, Player: object}|false>}
  */
 async function loadMiaoModules () {
   if (miaoModules !== null) return miaoModules
@@ -75,12 +75,15 @@ async function loadMiaoModules () {
       import('../../miao-plugin/components/index.js'),
       import('../../miao-plugin/models/index.js')
     ])
-    const Cfg = components?.Cfg
-    const Character = models?.Character
-    if (typeof Cfg?.get !== 'function' || typeof Character?.get !== 'function') {
-      throw new Error('模块结构不符合预期（缺 Cfg.get / Character.get）')
+    const { Cfg, Data, Format } = components || {}
+    const { Player } = models || {}
+    if (typeof Cfg?.get !== 'function' || typeof Data?.getData !== 'function') {
+      throw new Error('模块结构不符合预期（缺 Cfg.get / Data.getData）')
     }
-    miaoModules = { Cfg, Character }
+    if (typeof Player?.create !== 'function') {
+      throw new Error('模块结构不符合预期（缺 Player.create）')
+    }
+    miaoModules = { Cfg, Data, Format, Player }
   } catch (err) {
     miaoModules = false
     logger?.warn(`${RANK_LOG_PREFIX}加载 miao-plugin 失败，该功能降级：${err?.message ?? err}`)
@@ -88,9 +91,48 @@ async function loadMiaoModules () {
   return miaoModules
 }
 
+/** 元素中文 → 本插件 common.css 的元素 class（天赋图标底色按元素区分，映射同 miao 的 elemLayout） */
+const ELEM_CLASS = {
+  火: 'pyro',
+  水: 'hydro',
+  冰: 'cryo',
+  风: 'anemo',
+  雷: 'electro',
+  草: 'dendro',
+  岩: 'geo',
+  量子: 'quantum',
+  虚数: 'geo',
+  物理: 'sr'
+}
+
+/** 天赋格的键表（键与 miao `avatar.getData('imgs')` / `talent` 一致） */
+const TALENT_KEYS = {
+  gs: { a: '普攻', e: '战技', q: '爆发' },
+  sr: { a: '普攻', e: '战技', t: '天赋', q: '爆发' },
+  srJoy: { a: '普攻', e: '战技', t: '天赋', q: '爆发', xe: '欢愉技' },
+  srMemosprite: { a: '普攻', e: '战技', t: '天赋', q: '爆发', me: '忆灵技', mt: '忆灵天赋' }
+}
+
+/**
+ * 该行的天赋格键表
+ *
+ * miao 的排行卡是按「当前查询的那一个角色」整页判定欢愉 / 记忆命途，总榜是混合行，
+ * 因此这里按行判定，其余（原神 3 格 / 星铁 4 格）与 miao 一致。
+ * @param {object} avatar miao Avatar 实例（weaponType 由角色元数据回填）
+ * @param {'gs'|'sr'} game
+ * @returns {object} { 键: 中文名 }
+ */
+function talentKeysOf (avatar, game) {
+  if (game !== 'sr') return TALENT_KEYS.gs
+  if (avatar?.weaponType === '欢愉') return TALENT_KEYS.srJoy
+  if (avatar?.weaponType === '记忆') return TALENT_KEYS.srMemosprite
+  return TALENT_KEYS.sr
+}
+
 /**
  * 默认 miao 访问器（生产用）
- * @returns {{available: () => Promise<boolean>, getRankNumber: () => Promise<number|null>, getChar: (charId: string, game: string) => Promise<object|null>}}
+ * @returns {{available: () => Promise<boolean>, getRankNumber: () => Promise<number|null>,
+ *   buildRow: (param: {uid: string, charId: string, game: string}) => Promise<object|null>}}
  */
 function createDefaultAccessor () {
   return {
@@ -117,22 +159,58 @@ function createDefaultAccessor () {
     },
 
     /**
-     * 角色信息（角色名 / 头像 / 星级）
-     * @returns {Promise<{name: string, face: string, star: number}|null>} 已删角色等残留返回 null
+     * 按 miao 排行卡片的口径组装一行
+     *
+     * 字段与 miao `apps/profile/ProfileRank.js` 的 `renderCharRankList` 一致（同一批
+     * `avatar.getData(...)` / `Data.getData(mark, ...)`），供搬迁过来的自建模板直接使用。
+     *
+     * 评分取 `profile.getArtisMark(false)`：即 miao `ProfileRank.getTypeValue('mark')` 内部的同一步。
+     * **不调 `ProfileRank.getRank`**：`getRank(profile, false)` 在 uid 已进 ZSET 时（总榜的行本就来自 ZSET）
+     * 不会计算 value，拿不到 `data.mark.data`，评分会全变 0。
+     * 伤害按 miao `getTypeValue('dmg')` 同一步计算（`mode: 'single'`），只展示、不参与排序。
+     * @param {{uid: string, charId: string, game: 'gs'|'sr'}} param
+     * @returns {Promise<object|null>} 取不到面板（已删角色 / 无面板数据）返回 null，由调用方跳过该行
      */
-    async getChar (charId, game) {
+    async buildRow ({ uid, charId, game = 'gs' }) {
       const mods = await loadMiaoModules()
       if (!mods) return null
       try {
-        const char = mods.Character.get(String(charId), game)
-        if (!char) return null
-        return {
-          name: char.name || '',
-          face: char.imgs?.face || char.face || '',
-          star: Number(char.star) || 0
+        const player = mods.Player.create(uid, game)
+        const avatar = player?.getAvatar(charId)
+        if (!avatar) return null
+        const profile = avatar.getProfile()
+        if (!profile?.hasData) return null
+
+        const mark = profile.getArtisMark?.(false)
+        const row = {
+          uid,
+          isMax: false,
+          ...avatar.getData('id,star,name,sName,level,fetter,cons,weapon,elem,talent,artisSet,imgs'),
+          artisMark: mods.Data.getData(mark, 'mark,markClass,valid,crit'),
+          talentKeys: talentKeysOf(avatar, game)
         }
+        row.elem = ELEM_CLASS[row.elem] || row.elem
+        row._mark = mark?._mark || 0
+        row._formatmark = mods.Format.comma(row._mark, 1)
+        row._star = 5 - (Number(row.star) || 0)
+        row._dmg = 0
+
+        // 伤害列：与 miao 一致的算法与标题缩短规则（miao ProfileRank.js:203-216）
+        if (profile.hasDmg) {
+          const dmg = await profile.calcDmg({ enemyLv: game === 'gs' ? 103 : 80, mode: 'single' })
+          if (dmg?.avg) {
+            let title = dmg.title
+            if (title.length > 10) title = title.replace(/[ ·]*/g, '')
+            title = title.length > 10 ? title.replace(/伤害$/, '') : title
+            row.dmg = {
+              title,
+              avg: dmg.type !== 'text' ? mods.Format.comma(dmg.avg, 1) : dmg.avg
+            }
+          }
+        }
+        return row
       } catch (err) {
-        logger?.warn(`${RANK_LOG_PREFIX}读取角色 ${charId} 失败：${err?.message ?? err}`)
+        logger?.warn(`${RANK_LOG_PREFIX}组装排行行失败 uid=${uid} char=${charId}：${err?.message ?? err}`)
         return null
       }
     }
@@ -256,16 +334,11 @@ export async function getUidInfo (uid) {
   }
 }
 
-/** QQ 头像兜底地址（与 modules/challenge/gsRank.js 一致） */
-export function fallbackAvatarUrl (qq) {
-  return `https://q.qlogo.cn/g?b=qq&nk=${qq}&s=100`
-}
-
 /**
- * miao-plugin 的 resources 目录（角色头像等资源前缀）
+ * miao-plugin 的 resources 目录（角色立绘 / 天赋图标 / 武器与圣遗物图标的前缀）
  *
- * `getChar().face` 返回的是以 `/` 开头的 miao 资源相对路径（如 `/meta-gs/character/胡桃/imgs/face.webp`），
- * 拼上本前缀才能被模板加载。只按路径读它的静态资源，不 import 也不改 miao 的任何文件。
+ * 行数据里的图片字段（`avatar.getData('imgs')`、`weapon.img`、`artisSet.imgs`）是 miao 资源
+ * 相对路径，拼上本前缀才能被模板加载。只读它的静态资源，不 import 也不改 miao 的任何文件。
  * @returns {string} 正斜杠绝对路径（不带结尾斜杠）
  */
 export function miaoResourcesBase () {
@@ -399,39 +472,21 @@ export async function buildArtisRank ({ groupId = null, game = 'gs', topN = null
   )
   const top = candidates.slice(0, N)
 
-  const charCache = new Map()
-  const charInfoOf = async (charId) => {
-    const cacheKey = `${game}:${charId}`
-    if (!charCache.has(cacheKey)) {
-      let info = null
-      try {
-        info = await miao.getChar(charId, game)
-      } catch (err) {
-        logger?.warn(`${RANK_LOG_PREFIX}读取角色 ${charId} 失败：${err?.message ?? err}`)
-      }
-      charCache.set(cacheKey, info || null)
-    }
-    return charCache.get(cacheKey)
-  }
-
-  const rows = (await mapLimit(top, BATCH_SIZE, async (item, idx) => {
+  // 逐行按 miao 排行卡片的口径组装；取不到面板的行跳过（与 miao `if (!avatar) continue` 同义）。
+  // 顺序执行：伤害计算较重，且与 miao 的 for 循环一致，不并发打满。
+  // 额外附上本插件自己的标识字段（charId / score / gid）：模板不使用，供回归断言与排查定位。
+  const built = []
+  for (const item of top) {
+    const row = await miao.buildRow({ uid: item.uid, charId: item.charId, game })
+    if (!row) continue
     const info = await getUidInfo(item.uid)
-    const qq = info?.qq ? String(info.qq) : ''
-    const char = await charInfoOf(item.charId)
-    return {
-      rank: idx + 1,
-      uid: item.uid,
-      qq,
-      nick: qq ? `用户:${qq}` : '未知用户',
-      face: qq ? fallbackAvatarUrl(qq) : '',
-      charId: item.charId,
-      charName: char?.name || `未知角色(${item.charId})`,
-      charFace: char?.face || '',
-      star: char?.star || 0,
-      score: item.score,
-      gid: item.groupId
-    }
-  }))
+    row.qq = info?.qq ? String(info.qq) : ''
+    row.charId = item.charId
+    row.score = item.score
+    row.gid = item.groupId
+    built.push(row)
+  }
+  const rows = built.map((row, idx) => ({ ...row, rank: idx + 1 }))
 
   return {
     ok: true,

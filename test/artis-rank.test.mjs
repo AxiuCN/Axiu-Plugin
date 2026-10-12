@@ -4,7 +4,7 @@
  * 覆盖口径：
  * - 键解析：miao:rank:{群}:mark:{角色id}，原神 8 位 / 星铁 4 位；uid-info / cfg 键不算排行键
  * - 汇总：分数降序、取前 N（N 取 miao 配置或注入）、同角色多 uid、同 uid 多角色、全局跨群、dmg 不混入
- * - 身份：uid → qq（uid-info）、昵称/头像回落、未知角色（残留）兜底命名
+ * - 身份：uid → qq（uid-info）、行首 QQ 头像（照 miao：只取群成员头像，不填 qlogo）、取不到面板的行跳过
  * - 群开关：status===1 时本群榜直接提示且不出图；全局范围不判群开关
  * - 降级：miao 缺失 → 提示「该功能需要 miao-plugin」；无数据 → 面板提示
  * - 定时刷新：有数据的群集合只含 mark 键里出现的群；未启用时零 Redis 访问；miao 缺失只刷 Axiu 侧
@@ -69,22 +69,57 @@ const G3 = '30003' // 只有 dmg 键（不该进「有数据的群」）
 const G4 = '40004' // 没有任何键
 
 /**
- * 角色 stub：不加载真实 miao，按 `游戏:角色id` 命中，未命中返回 null（模拟已删角色残留）
- * 角色 id 与名字取自真实 miao 数据（10000052=雷电将军、10000046=胡桃、10000003=琴、10000002=神里绫华、1205=刃）
+ * 行数据替身：字段形状照 miao `apps/profile/ProfileRank.js` 的 `renderCharRankList` 组装的那一行
+ * （模板直接渲染这些字段）。按 `游戏:角色id` 命中，未命中返回 null —— 模拟已删角色 / 无面板数据，
+ * 该行跳过，与 miao `if (!avatar) continue` 同义。
  */
-const CHARS = {
-  'gs:10000052': { name: '雷电将军', face: '/meta-gs/character/雷电将军/imgs/face.webp', star: 5 },
-  'gs:10000046': { name: '胡桃', face: '/meta-gs/character/胡桃/imgs/face.webp', star: 5 },
-  'gs:10000003': { name: '琴', face: '/meta-gs/character/琴/imgs/face.webp', star: 5 },
-  'gs:10000002': { name: '神里绫华', face: '/meta-gs/character/神里绫华/imgs/face.webp', star: 5 },
-  'sr:1205': { name: '刃', face: '/meta-sr/character/刃/imgs/face.webp', star: 5 }
+const mkRow = ({ uid, sName, elem = 'electro', star = 5, cons = 6, mark = 0, markClass = 'ACE', talentKeys }) => ({
+  uid,
+  isMax: false,
+  sName,
+  star,
+  cons,
+  elem,
+  level: 90,
+  fetter: 10,
+  talent: {
+    a: { level: 10, original: 10 },
+    e: { level: 10, original: 10 },
+    q: { level: 10, original: 10 },
+    t: { level: 8, original: 8 },
+    me: { level: 1, original: 1 },
+    mt: { level: 1, original: 1 },
+    xe: { level: 1, original: 1 }
+  },
+  talentKeys: talentKeys || { a: '普攻', e: '战技', q: '爆发' },
+  weapon: { name: '和璞鸢', abbr: '和璞鸢', affix: 1, level: 90, star: 5, img: '/meta-gs/weapon/和璞鸢/img.png' },
+  artisSet: { name: '绝缘之旗印', imgs: ['/meta-gs/artifact/绝缘之旗印/a.webp'] },
+  imgs: { face: `/meta-gs/character/${sName}/imgs/face.webp`, a: '/a.webp', e: '/e.webp', q: '/q.webp' },
+  artisMark: { mark: String(mark), markClass },
+  _mark: mark,
+  _formatmark: String(mark),
+  _star: 5 - star,
+  _dmg: 0,
+  dmg: { title: '裸蒸伤害', avg: '12345.6' }
+})
+
+/** 角色行 fixture（角色 id 取自真实 miao 数据：10000052=雷电将军、10000046=胡桃、10000003=琴、10000002=神里绫华、1205=刃） */
+const ROWS = {
+  'gs:10000052': { sName: '雷电将军', elem: 'electro', mark: 250.5, markClass: 'ACE' },
+  'gs:10000046': { sName: '胡桃', elem: 'pyro', mark: 210.5, markClass: 'SSS' },
+  'gs:10000003': { sName: '琴', elem: 'anemo', mark: 210.5, markClass: 'SSS' },
+  'gs:10000002': { sName: '神里绫华', elem: 'cryo', mark: 50, markClass: 'A' },
+  'sr:1205': { sName: '刃', elem: 'wind', mark: 199, markClass: 'SS', talentKeys: { a: '普攻', e: '战技', t: '天赋', q: '爆发' } }
 }
 
 /** miao 访问替身 */
 const stubAccessor = ({ topN = 15, available = true } = {}) => ({
   available: async () => available,
   getRankNumber: async () => topN,
-  getChar: async (charId, game) => CHARS[`${game}:${charId}`] || null
+  buildRow: async ({ uid, charId, game }) => {
+    const ds = ROWS[`${game}:${charId}`]
+    return ds ? mkRow({ uid, ...ds }) : null
+  }
 })
 
 /** 造排行键（member = uid, score = 分数） */
@@ -112,7 +147,7 @@ await seedRank(G1, 'mark', '1205', [['100000001', 199.0]])
 seedUidInfo('100000001', { qq: '11111', uidType: 'ck' })
 seedUidInfo('100000002', { qq: '22222', uidType: 'bind' })
 seedUidInfo('100000004', { qq: '44444', uidType: 'ck' })
-seedUidInfo('100000005', { uidType: 'bind' }) // 没有 qq：昵称与头像都要回落
+seedUidInfo('100000005', { uidType: 'bind' }) // 没有 qq：行首头像交给模板回落角色立绘
 seedGroupCfg(G1, 0)
 seedGroupCfg(G2, 1)
 seedGroupCfg(G4, 0)
@@ -150,27 +185,26 @@ check('群开关键不是排行键', parseRankKey('miao:rank:10001:cfg', 'gs') =
 
 /* ==================== 【2】本群汇总 ==================== */
 
-console.log('\n【2】本群汇总：降序、重复行、身份回落、残留兜底')
+console.log('\n【2】本群汇总：降序、重复行、uid→qq、取不到面板的行跳过')
 setMiaoAccessor(stubAccessor({ topN: 15 }))
 const g1 = await buildArtisRank({ groupId: G1, game: 'gs' })
 check('本群榜返回 ok', g1.ok === true, JSON.stringify(g1.reason))
 check('① 分数降序', isNonIncreasing(g1.rows.map(r => r.score)))
 check('① 最高分在最前', g1.rows[0].score === 250.5)
-check('行数 = 本群 mark 行数（未截断 5 行）', g1.rows.length === 5, `实际 ${g1.rows.length}`)
+check('行数 = 可组装的行数（残留角色那行被跳过）', g1.rows.length === 4, `实际 ${g1.rows.length}`)
 check('③ 同角色多 uid 都出现（雷电将军 2 行）', g1.rows.filter(r => r.charId === '10000052').length === 2)
 check('④ 同 uid 多角色都出现（uid…001 两行）', g1.rows.filter(r => r.uid === '100000001').length === 2)
-check('名次按位置连续编号', g1.rows.map(r => r.rank).join(',') === '1,2,3,4,5')
-check('角色名取 miao（雷电将军 / 胡桃）', g1.rows.some(r => r.charName === '雷电将军') && g1.rows.some(r => r.charName === '胡桃'))
-check('角色头像与星级取 miao', g1.rows.find(r => r.charName === '雷电将军')?.charFace === '/meta-gs/character/雷电将军/imgs/face.webp' && g1.rows.find(r => r.charName === '雷电将军')?.star === 5)
-check('miao 里没有的角色走兜底命名（残留容忍）', g1.rows.some(r => r.charName === '未知角色(19999999)'))
+check('名次按位置连续编号', g1.rows.map(r => r.rank).join(',') === '1,2,3,4')
+check('行带 miao 卡片字段（角色名 / 元素 class / 天赋格）', g1.rows[0].sName === '雷电将军' && g1.rows[0].elem === 'electro' && Object.keys(g1.rows[0].talentKeys).join(',') === 'a,e,q')
+check('行带评分与评分徽章', g1.rows[0].artisMark?.markClass === 'ACE' && g1.rows[0]._formatmark === '250.5')
+check('行带武器与圣遗物套装（模板直接渲染）', !!g1.rows[0].weapon?.name && !!g1.rows[0].artisSet?.name && Array.isArray(g1.rows[0].artisSet?.imgs))
+check('行带伤害（照 miao 计算，仅展示不排序）', g1.rows[0].dmg?.title === '裸蒸伤害' && g1.rows[0].dmg?.avg === '12345.6')
+check('取不到面板的角色不再出残留行（与 miao 一致跳过）', !g1.rows.some(r => r.charId === '19999999'))
 check('⑦ dmg 键不混入', !g1.rows.some(r => r.score === 999.9))
 check('每行带群号', g1.rows.every(r => r.gid === G1))
 const row001 = g1.rows.find(r => r.uid === '100000001' && r.charId === '10000052')
-const rowNoInfo = g1.rows.find(r => r.uid === '100000006')
 check('⑤ uid → qq 映射（uid-info）', row001?.qq === '11111')
-check('⑤ 昵称回落 用户:{qq}', row001?.nick === '用户:11111')
-check('⑤ 头像回落 qlogo', row001?.face === 'https://q.qlogo.cn/g?b=qq&nk=11111&s=100')
-check('⑤ 没有 uid-info 时昵称与头像都回落', rowNoInfo?.qq === '' && rowNoInfo?.nick === '未知用户' && rowNoInfo?.face === '')
+check('⑤ 行只带 qq，不再自造昵称 / qlogo 头像字段', !!row001 && !('nick' in row001) && !('face' in row001) && !('qqFace' in row001))
 
 /* ==================== 【3】前 N 截断 ==================== */
 
@@ -203,8 +237,10 @@ const globalTop1 = await buildArtisRank({ game: 'gs', topN: 1 })
 check('② 全局 N=1 取跨群最高分（不必扫每键全部成员）', globalTop1.rows.length === 1 && globalTop1.rows[0].score === 300.0)
 const globalSr = await buildArtisRank({ game: 'sr' })
 check('游戏过滤：星铁榜只含 4 位角色 id 的键', globalSr.keyCount === 1 && globalSr.rows.length === 1 && globalSr.rows[0].charId === '1205')
-check('游戏过滤：星铁行取星铁角色名', globalSr.rows[0].charName === '刃')
+check('游戏过滤：星铁行取星铁角色名与 4 格天赋', globalSr.rows[0].sName === '刃' && Object.keys(globalSr.rows[0].talentKeys).join(',') === 'a,e,t,q')
 check('游戏过滤：原神榜不含星铁键', !globalGs.rows.some(r => r.charId === '1205'))
+const rowNoInfo = globalGs.rows.find(r => r.uid === '100000005')
+check('⑤ 没有 uid-info 时 qq 为空（行首头像交给模板回落角色立绘）', rowNoInfo?.qq === '' && !('qqFace' in rowNoInfo))
 
 /* ==================== 【5】群开关 ==================== */
 
@@ -277,28 +313,29 @@ const privateGroup = makeEvent({ msg: '#圣遗物总榜', groupId: null, isGroup
 await app.artisRank(privateGroup.e)
 check('私聊用本群总榜被拦下', privateGroup.replies[0] === MESSAGES.notGroup)
 
-// 成功分支：渲染被桩替换，断言渲染数据与群成员回落口径
+// 成功分支：渲染被桩替换，断言渲染数据与行首头像口径（照 miao：只取群成员头像，取不到不填）
 const ok = makeEvent({
   msg: '#圣遗物总榜',
   groupId: G1,
-  pickMember: (qq) => ({
-    getAvatarUrl: async () => `https://avatar.example/${qq}`,
-    getInfo: async () => ({ card: `群名片${qq}`, nickname: `昵称${qq}` })
-  })
+  pickMember: (qq) => (qq === '11111'
+    ? { getAvatarUrl: async () => `https://avatar.example/${qq}` }
+    : null)
 })
 await app.artisRank(ok.e)
 check('成功分支回复图片段', ok.replies[0]?.type === 'image')
 check('成功分支渲染模板为 artisRank/rank', lastRender?.name === 'Axiu-Plugin/artisRank/rank', String(lastRender?.name))
-check('渲染数据：标题与范围', lastRender?.data?.title === '圣遗物总榜' && lastRender?.data?.scopeText === '本群')
-check('渲染数据：人数与行数', lastRender?.data?.topN === 15 && lastRender?.data?.count === 5)
-check('本群范围不显示来源群号', lastRender?.data?.showGid === false)
-check('本群优先用群名片与群头像', lastRender?.data?.list?.[0]?.nick === '群名片11111' && lastRender?.data?.list?.[0]?.face === 'https://avatar.example/11111')
-check('角色头像前缀指向 miao resources', /miao-plugin[\\/]resources$/.test(String(lastRender?.data?.faceBase)))
-check('取不到群成员时保留回落值', lastRender?.data?.list?.find(r => r.uid === '100000006')?.nick === '未知用户')
+check('渲染数据：标题与范围', lastRender?.data?.title === '圣遗物总榜 · 本群' && lastRender?.data?.scopeText === '本群')
+check('渲染数据：人数与行数', lastRender?.data?.topN === 15 && lastRender?.data?.count === 4)
+check('背景按榜首角色的元素', lastRender?.data?.element === 'electro')
+check('容器宽度 class 按游戏给定', lastRender?.data?.bodyClass === 'artis-rank-gs')
+check('行首用群头像（qqFace 优先）', lastRender?.data?.list?.find(r => r.uid === '100000001')?.qqFace === 'https://avatar.example/11111')
+check('取不到群成员时不填 qqFace（模板回落角色立绘）', lastRender?.data?.list?.find(r => r.uid === '100000002' && r.charId === '10000052')?.qqFace === undefined)
+check('miao 资源前缀指向 miao-plugin/resources', /miao-plugin[\\/]resources\/$/.test(String(lastRender?.data?.miaoResPath)), String(lastRender?.data?.miaoResPath))
+check('渲染行里没有自造的昵称字段', !('nick' in (lastRender?.data?.list?.[0] || {})))
 
 const srGlobal = makeEvent({ msg: '#星铁全局遗器总榜', groupId: G1, isSr: true })
 await app.artisRank(srGlobal.e)
-check('星铁全局榜：标题 / 范围 / 显示来源群', lastRender?.data?.title === '遗器总榜' && lastRender?.data?.scopeText === '全局' && lastRender?.data?.showGid === true)
+check('星铁全局榜：标题 / 范围 / 星铁底色与宽度', lastRender?.data?.title === '遗器总榜 · 全局' && lastRender?.data?.scopeText === '全局' && lastRender?.data?.element === 'sr' && lastRender?.data?.bodyClass === 'artis-rank-sr')
 check('星铁全局榜只有星铁行', lastRender?.data?.list?.length === 1 && lastRender?.data?.list?.[0]?.charId === '1205')
 
 /* ==================== 【9】定时任务 ==================== */
