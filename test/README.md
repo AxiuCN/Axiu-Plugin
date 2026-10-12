@@ -41,7 +41,7 @@ node test/srGacha-merge.test.mjs  # 单跑（任意 cwd 均可）
 | `guoba-write.test.mjs` | 锅巴配置读写（真跑生产 `getConfigData` / `setConfigData`）：危险值（以 `*` 开头 cron / `#` / `:` / 引号 / 换行）序列化与回读、写前验证拦坏值、表单没提交的键不丢值、群规则映射与数组双形态往返、非法输入被拒且文件零改动、坏配置救回且文案不泄露口令、临时文件不留残渣 | 无（配置目录经 `AXIU_CONFIG_DIR` 重定向到 `test/.test-tmp/`，不碰仓库 `config/`） |
 | `qr-login-token.test.mjs` | 扫码登录的 ltoken 取值：`pickToken` strict 不跨类型兜底（stoken 侧兜底保留）、tokens 只有 stoken 时 ltoken 取自 `getLtoken` 接口、具名优先、ltoken 等于 stoken 判为未取到、缺 ltoken / 缺 cookie_token 均不产出凭据 | 无（stub 替换 `user.getData`，不联网、不写凭据） |
 | `copyright-line.test.mjs` | 版权行（`components/pluginVersion.js`）：框架名按 bot 根包名判定（TRSS-Yunzai / Yunzai-Bot）且与根包一致、插件版本取插件包、出图版带 `<span class="version">`、聊天版无 HTML 标签、名称与版本号不粘连、版本缺失时不拼版本；断言写成两种 cwd 都成立 | 无 |
-| `artis-rank.test.mjs` | 圣遗物/遗器总榜（`model/artisRank.js` + `apps/artisRank.js`）与排行定时刷新（`apps/rankRefresh.js`）：排行键解析、分数降序 / 取前 N（每键只取前 N）、同角色多 uid、同 uid 多角色、全局跨群、`dmg` 不混入、群开关关闭不出图、按 miao 卡片口径组装行（角色名 / 元素 class / 天赋格 / 评分徽章 / 武器与套装 / 伤害）与取不到面板的行跳过、uid→qq 与行首 QQ 头像（照 miao 只取群成员头像，取不到不填）、miao 缺失降级、有数据的群集合、命令正则与两条 rule、未启用时任务零 Redis 访问、`rankRefresh.*` 三层配置往返；miao 用 `setMiaoAccessor()` 注入替身、渲染后端换桩（不联网、不启浏览器） | 无（内存 Redis） |
+| `artis-rank.test.mjs` | 圣遗物/遗器总榜（`model/artisRank.js` + `apps/artisRank.js`）与排行定时刷新（`apps/rankRefresh.js`）：排行键解析、分数降序 / 取前 N（每键只取前 N）、同角色多 uid、同 uid 多角色、全局跨群、`dmg` 不混入、群开关关闭不出图、按 miao 卡片口径组装行（角色名 / 元素 class / 天赋格 / 评分徽章 / 武器与套装 / 伤害）与取不到面板的行跳过、uid→qq 与行首 QQ 头像（照 miao 只取群成员头像，取不到不填）、miao 缺失降级、有数据的群集合、命令正则与两条 rule、自建模板/样式的硬约束（`.item-icon` 基础规则必须在 `.char-icon` 之前、行首头像 50px 圆形、qqFace 优先）、未启用时任务零 Redis 访问、`rankRefresh.*` 三层配置往返；miao 用 `setMiaoAccessor()` 注入替身、渲染后端换桩（不联网、不启浏览器） | 无（内存 Redis） |
 
 套件均为数据无关：不依赖真实账号、真实 Redis 与网络，也不触发 `#扫码登录` / 真实 Python 签到链路（`signin-runner-marks` 只在子进程里跑假 module-dir）。
 

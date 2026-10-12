@@ -412,4 +412,26 @@ console.log('\n【11】全局去重：同一 (uid, 角色) 跨群只占一行、
   check('本群范围行数与去重前一致', g5.rows.length === 1 && g5.rows[0]?.score === 260, JSON.stringify(g5.rows))
 }
 
+/* ==================== 【12】模板与样式的搬迁硬约束 ==================== */
+
+console.log('\n【12】自建模板 / 样式：规则顺序与头像尺寸（防样式覆盖回归）')
+{
+  const css = fs.readFileSync(path.join(pluginRoot, 'resources', 'artisRank', 'rank.css'), 'utf8')
+  // 注意用行首锚定：`.char-idx .char-icon {` 里也含有 `.char-icon {` 子串
+  const itemMatch = /^\.item-icon \{/m.exec(css)
+  const charMatch = /^\.char-icon \{/m.exec(css)
+  const itemIdx = itemMatch ? itemMatch.index : -1
+  const charIdx = charMatch ? charMatch.index : -1
+  check('rank.css 里 .item-icon 基础规则排在 .char-icon 之前（对齐 miao 的 common.css → rank css 加载顺序）',
+    itemIdx >= 0 && charIdx >= 0 && itemIdx < charIdx, `item-icon=${itemIdx} char-icon=${charIdx}`)
+  const iconRule = css.slice(charIdx, css.indexOf('}', charIdx))
+  check('行首头像为 50px 方框 + 圆形（若 .item-icon 的 100% 生效，会被撑成整行宽）',
+    /width:\s*50px/.test(iconRule) && /height:\s*50px/.test(iconRule) && /border-radius:\s*50%/.test(iconRule),
+    iconRule.replace(/\s+/g, ' '))
+  const html = fs.readFileSync(path.join(pluginRoot, 'resources', 'artisRank', 'rank.html'), 'utf8')
+  check('模板行首头像：qqFace 优先、否则回落 miao 的角色立绘',
+    /ds\.qqFace/.test(html) && /miaoResPath\}\}\{\{ds\.imgs\.face/.test(html))
+  check('模板不自造昵称列 / qlogo 兜底', !/ds\.nick/.test(html) && !/qlogo/.test(html))
+}
+
 finish()
