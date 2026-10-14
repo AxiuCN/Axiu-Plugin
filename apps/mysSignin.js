@@ -41,6 +41,7 @@ import {
 import { getSigninConfig, listAllRegisteredQQ, listUserConfigs } from '../model/mysSignin/bbsToolsConfig.js'
 import { buildCopyrightText } from '../components/pluginVersion.js'
 import { configFile } from '../components/config.js'
+import { replyForward } from '../components/forward.js'
 
 export class MysSigninApp extends plugin {
   constructor () {
@@ -274,11 +275,8 @@ export class MysSigninApp extends plugin {
     if (qqList.length > 30) {
       msg += `\n  ...及其他 ${qqList.length - 30} 人`
     }
-    // 转发长消息
-    const forwardMsg = await e.runtime.makeForwardMsg([{
-      message: msg, nickname: Bot.nickname || 'Yunzai-Bot', user_id: Bot.uin
-    }])
-    await e.reply(forwardMsg)
+    // 转发长消息（群聊走群转发、私聊走好友转发，取不到转发能力时回落纯文本）
+    await replyForward(e, msg)
     return true
   }
 
