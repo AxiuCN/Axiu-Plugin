@@ -22,7 +22,7 @@
 }
 @font-face {
   font-family: "YS";
-  src: url("../common/font/HYWH-85W.ttf");
+  src: url("../common/font/HYWH-65W.woff") format("woff"), url("../common/font/HYWH-65W.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
 }
