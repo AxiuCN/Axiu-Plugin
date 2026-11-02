@@ -91,8 +91,32 @@ async function loadMiaoModules () {
   return miaoModules
 }
 
-/** 元素中文 → 本插件 common.css 的元素 class（天赋图标底色按元素区分，映射同 miao 的 elemLayout） */
+/**
+ * 元素 → 本插件天赋底图的 class（`.elem-{class} .talent-icon`）
+ *
+ * 元素名在数据里有两套写法，必须都收（见 miao `components/common/Elem.js`）：
+ * - 原神键：anemo / geo / electro / dendro / pyro / hydro / cryo
+ * - 星铁键：fire / ice / wind / elec / phy / quantum / imaginary
+ * - 面板数据里还可能是中文，一并收；虚数沿用 miao 的做法落到 geo（没有单独的虚数底图）
+ */
 const ELEM_CLASS = {
+  // 原神键：与 class 同名
+  anemo: 'anemo',
+  geo: 'geo',
+  electro: 'electro',
+  dendro: 'dendro',
+  pyro: 'pyro',
+  hydro: 'hydro',
+  cryo: 'cryo',
+  // 星铁键：映射到已有底图
+  fire: 'pyro',
+  ice: 'cryo',
+  wind: 'anemo',
+  elec: 'electro',
+  phy: 'sr',
+  quantum: 'quantum',
+  imaginary: 'geo',
+  // 中文别名
   火: 'pyro',
   水: 'hydro',
   冰: 'cryo',
@@ -103,6 +127,19 @@ const ELEM_CLASS = {
   量子: 'quantum',
   虚数: 'geo',
   物理: 'sr'
+}
+
+/**
+ * 元素 → 天赋底图 class
+ *
+ * 认不出来的（如多元素本体的 `multi`）返回空串：宁可不加底框，也不加错元素的底框。
+ * @param {string} elem 面板 / 角色数据里的元素，可能是中文、原神键或星铁键
+ * @returns {string} CSS class 后缀，可为空串
+ */
+export function elemClassOf (elem) {
+  const raw = String(elem ?? '').trim()
+  if (!raw) return ''
+  return ELEM_CLASS[raw] || ELEM_CLASS[raw.toLowerCase()] || ''
 }
 
 /** 天赋格的键表（键与 miao `avatar.getData('imgs')` / `talent` 一致） */
@@ -189,7 +226,7 @@ function createDefaultAccessor () {
           artisMark: mods.Data.getData(mark, 'mark,markClass,valid,crit'),
           talentKeys: talentKeysOf(avatar, game)
         }
-        row.elem = ELEM_CLASS[row.elem] || row.elem
+        row.elem = elemClassOf(row.elem)
         row._mark = mark?._mark || 0
         row._formatmark = mods.Format.comma(row._mark, 1)
         row._star = 5 - (Number(row.star) || 0)

@@ -47,6 +47,7 @@ renderer.screenshot = async (name, data) => {
 
 const {
   buildArtisRank,
+  elemClassOf,
   gameOfCharId,
   getGroupRankStatus,
   listRankGroups,
@@ -441,6 +442,52 @@ console.log('\n【12】自建模板 / 样式：规则顺序与头像尺寸（防
   const miaoBgDir = path.join(pluginRoot, '..', 'miao-plugin', 'resources', 'common', 'bg')
   check('引用的 miao 底图文件确实存在（规则与文件缺一边就是无背景）',
     ['bg-hydro.webp', 'bg-sr.webp', 'talent-sr.webp', 'talent-quantum.webp'].every(f => fs.existsSync(path.join(miaoBgDir, f))))
+}
+
+/* ==================== 【13】天赋底框的元素 class ==================== */
+
+console.log('\n【13】天赋底框元素：原神键 / 星铁键 / 中文别名都要命中')
+{
+  // 原神键与 class 同名（miao `components/common/Elem.js` 的 gs 键）
+  const gsKeys = { anemo: 'anemo', geo: 'geo', electro: 'electro', dendro: 'dendro', pyro: 'pyro', hydro: 'hydro', cryo: 'cryo' }
+  for (const [key, cls] of Object.entries(gsKeys)) {
+    check(`原神键 ${key} → ${cls}`, elemClassOf(key) === cls, elemClassOf(key))
+  }
+  // 星铁键（sr 键）必须映射到已有底图，否则星铁行整片没有天赋底框
+  const srKeys = { fire: 'pyro', ice: 'cryo', wind: 'anemo', elec: 'electro', phy: 'sr', quantum: 'quantum', imaginary: 'geo' }
+  for (const [key, cls] of Object.entries(srKeys)) {
+    check(`星铁键 ${key} → ${cls}`, elemClassOf(key) === cls, elemClassOf(key))
+  }
+  // 面板数据里出现中文时同样要能命中
+  const cnKeys = { 火: 'pyro', 水: 'hydro', 冰: 'cryo', 风: 'anemo', 雷: 'electro', 草: 'dendro', 岩: 'geo', 量子: 'quantum', 虚数: 'geo', 物理: 'sr' }
+  for (const [key, cls] of Object.entries(cnKeys)) {
+    check(`中文元素 ${key} → ${cls}`, elemClassOf(key) === cls, elemClassOf(key))
+  }
+  check('大小写不敏感（面板数据可能出现 Fire / Electro）',
+    elemClassOf('Fire') === 'pyro' && elemClassOf('Electro') === 'electro')
+  check('认不出的元素返回空串（宁可不加底框，也不加错元素）',
+    elemClassOf('multi') === '' && elemClassOf('') === '' && elemClassOf(undefined) === '' && elemClassOf('未知') === '')
+
+  // 映射出的每个 class 都必须在样式里真的有规则，否则等于没底框
+  const cssText = [
+    fs.readFileSync(path.join(pluginRoot, 'resources', 'common', 'common.css'), 'utf8'),
+    fs.readFileSync(path.join(pluginRoot, 'resources', 'artisRank', 'rank.css'), 'utf8')
+  ].join('\n')
+  const mapped = new Set([...Object.values(gsKeys), ...Object.values(srKeys), ...Object.values(cnKeys)])
+  const noRule = [...mapped].filter(cls => !new RegExp(`\\.elem-${cls} \\.talent-icon`).test(cssText))
+  check('映射出的 class 都有 .elem-* .talent-icon 规则', noRule.length === 0, noRule.join(','))
+  const bgDir = path.join(pluginRoot, 'resources', 'common', 'bg')
+  const missingImg = [...mapped].filter(cls => !fs.existsSync(path.join(bgDir, `talent-${cls}.webp`)))
+  check('映射出的 class 都有天赋底图文件', missingImg.length === 0, missingImg.join(','))
+
+  // 行级规则必须压过「页面级 body 元素」，否则整页会按页面元素给所有行上同一个底框
+  const rankCss = fs.readFileSync(path.join(pluginRoot, 'resources', 'artisRank', 'rank.css'), 'utf8')
+  const noRowRule = [...mapped].filter(cls => !new RegExp(`\\.char-talent\\.elem-${cls} \\.talent-icon \\{[^}]*talent-${cls}\\.webp`).test(rankCss))
+  check('每个元素都有行级 .char-talent.elem-* 底框规则（特异性高于页面级元素）', noRowRule.length === 0, noRowRule.join(','))
+  const rankHtml = fs.readFileSync(path.join(pluginRoot, 'resources', 'artisRank', 'rank.html'), 'utf8')
+  check('元素认不出时输出 no-elem，且样式里禁用底框',
+    /char-talent\{\{if ds\.elem\}\} elem-\{\{ds\.elem\}\}\{\{else\}\} no-elem/.test(rankHtml) &&
+    /\.char-talent\.no-elem \.talent-icon \{[^}]*background-image:\s*none/.test(rankCss))
 }
 
 finish()

@@ -58,7 +58,7 @@
       <div class="info">{{ds.uid}}</div>
     </div>
 
-    <div class="char-talent elem-{{ds.elem}}">
+    <div class="char-talent{{if ds.elem}} elem-{{ds.elem}}{{else}} no-elem{{/if}}">
       {{each ds.talentKeys tName key}}
       {{set talent = ds.talent[key] || {} }}
       <div class="talent-item">

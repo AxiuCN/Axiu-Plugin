@@ -447,3 +447,37 @@ body.artis-rank-sr .container {
 .elem-quantum .talent-icon {
   background-image: url("../../../miao-plugin/resources/common/bg/talent-quantum.webp");
 }
+
+/* 行级天赋底框：页面 body 会带上页面级元素 class（原神默认 elem-hydro），.elem-hydro .talent-icon 这类规则与行内元素同特异度，靠 CSS 顺序会盖掉行级元素；这里用 (0,3,0) 的 .char-talent.elem-X 选择器确保每行按自己的元素上底图。 */
+.char-talent.elem-anemo .talent-icon {
+  background-image: url("../common/bg/talent-anemo.webp");
+}
+.char-talent.elem-cryo .talent-icon {
+  background-image: url("../common/bg/talent-cryo.webp");
+}
+.char-talent.elem-dendro .talent-icon {
+  background-image: url("../common/bg/talent-dendro.webp");
+}
+.char-talent.elem-electro .talent-icon {
+  background-image: url("../common/bg/talent-electro.webp");
+}
+.char-talent.elem-geo .talent-icon {
+  background-image: url("../common/bg/talent-geo.webp");
+}
+.char-talent.elem-hydro .talent-icon {
+  background-image: url("../common/bg/talent-hydro.webp");
+}
+.char-talent.elem-pyro .talent-icon {
+  background-image: url("../common/bg/talent-pyro.webp");
+}
+.char-talent.elem-quantum .talent-icon {
+  background-image: url("../common/bg/talent-quantum.webp");
+}
+.char-talent.elem-sr .talent-icon {
+  background-image: url("../common/bg/talent-sr.webp");
+}
+
+/* 元素认不出来（如多元素本体）时不套用页面级元素底框，避免显示成错误的元素 */
+.char-talent.no-elem .talent-icon {
+  background-image: none;
+}
