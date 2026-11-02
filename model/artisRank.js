@@ -34,6 +34,14 @@ const RANK_TYPE = 'mark'
 const MIAO_RANK_NUMBER_CFG = 'rankNumber'
 export const DEFAULT_TOP_N = 15
 
+/**
+ * 排行伤害用的怪物等级
+ *
+ * 与 miao 上游口径对齐（`ProfileRank.getTypeValue` 的 `enemyLv`）：原神 110、星铁 80。
+ * 原神侧由 103 调整为 110，对应上游 PR；星铁维持 80。
+ */
+export const RANK_ENEMY_LV = { gs: 110, sr: 80 }
+
 /** miao 排行键：miao:rank:{groupId}:{type}:{charId}（群号与角色 id 均为数字） */
 const RANK_KEY_RE = /^miao:rank:(\d+):(mark|dmg|crit|valid):(\d+)$/
 
@@ -234,7 +242,7 @@ function createDefaultAccessor () {
 
         // 伤害列：与 miao 一致的算法与标题缩短规则（miao ProfileRank.js:203-216）
         if (profile.hasDmg) {
-          const dmg = await profile.calcDmg({ enemyLv: game === 'gs' ? 103 : 80, mode: 'single' })
+          const dmg = await profile.calcDmg({ enemyLv: RANK_ENEMY_LV[game] ?? RANK_ENEMY_LV.gs, mode: 'single' })
           if (dmg?.avg) {
             let title = dmg.title
             if (title.length > 10) title = title.replace(/[ ·]*/g, '')

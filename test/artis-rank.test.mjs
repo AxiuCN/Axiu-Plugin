@@ -56,7 +56,8 @@ const {
   resetMiaoAccessor,
   setMiaoAccessor,
   DEFAULT_TOP_N,
-  MESSAGES
+  MESSAGES,
+  RANK_ENEMY_LV
 } = await importMod('model/artisRank.js')
 const { ArtisRankApp } = await importMod('apps/artisRank.js')
 const { RankRefreshApp } = await importMod('apps/rankRefresh.js')
@@ -488,6 +489,17 @@ console.log('\n【13】天赋底框元素：原神键 / 星铁键 / 中文别名
   check('元素认不出时输出 no-elem，且样式里禁用底框',
     /char-talent\{\{if ds\.elem\}\} elem-\{\{ds\.elem\}\}\{\{else\}\} no-elem/.test(rankHtml) &&
     /\.char-talent\.no-elem \.talent-icon \{[^}]*background-image:\s*none/.test(rankCss))
+}
+
+/* ==================== 【14】排行伤害的怪物等级 ==================== */
+
+console.log('\n【14】排行伤害的怪物等级与 miao 上游口径对齐（原神 110 / 星铁 80）')
+{
+  check('原神怪物等级 110（对应上游 PR）', RANK_ENEMY_LV.gs === 110, String(RANK_ENEMY_LV.gs))
+  check('星铁怪物等级 80（本次未调整）', RANK_ENEMY_LV.sr === 80, String(RANK_ENEMY_LV.sr))
+  const modelSrc = fs.readFileSync(path.join(pluginRoot, 'model', 'artisRank.js'), 'utf8')
+  check('calcDmg 走 RANK_ENEMY_LV，不再写死等级',
+    /calcDmg\(\{ enemyLv: RANK_ENEMY_LV\[game\]/.test(modelSrc) && !/enemyLv: game === 'gs' \? 103/.test(modelSrc))
 }
 
 finish()
