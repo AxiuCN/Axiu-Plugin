@@ -96,15 +96,17 @@
       <!-- 信息面板 -->
       <div class="round-info">
         <div class="info-row">
-          <!-- 敌人 -->
+          <!-- 敌人：部分幕（如部分圣牌挑战）没有敌人记录，enemies 为空时不渲染该面板 -->
           {{set enemies=round?.enemies }}
           {{set display_enemy = enemies?.[0]}}
+          {{if display_enemy}}
           <div class="info-panel info-panel-narrow">
             <div class="info-panel-header">选择敌人</div>
             <div class="info-panel-body info-panel-body-center">
-              <div class="info-icon" style="background-image:url({{display_enemy.icon}})"></div>
+              <div class="info-icon" style="background-image:url({{display_enemy?.icon}})"></div>
             </div>
           </div>
+          {{/if}}
           <!-- 辉彩祝福 -->
           {{set splendour_summary=round?.splendour_buff?.summary}}
           <div class="info-panel">
