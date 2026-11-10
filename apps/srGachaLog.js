@@ -82,19 +82,27 @@ export class srGachaLog extends plugin {
       }
     } catch {}
 
-    // 回退：NoteUser 已有 CK（账号级，扫码登录已绑定）
+    // 回退：按**目标 UID** 取同账号 CK（CK 是账号级，靠该 UID 的 ltuid 定位账号）。
+    // 不再调 QrUser.cookie(e)：那条路按「当前账号的星铁 UID」取，会覆盖本命令已解析好的目标 UID，
+    // 且星铁没有 CK 时会拿原神 CK 顶替，导致用错账号还回复成功。
     if (!cookie) {
       try {
         const user = new QrUser(e)
-        await user.cookie(e)
-        if (e.cookie) cookie = e.cookie
+        const byUid = await user.getCookieForUid(e, e.uid, 'sr')
+        if (byUid?.cookie) {
+          cookie = byUid.cookie
+          e.cookie = byUid.cookie
+        }
       } catch {}
     }
 
     if (!cookie) {
-      e.reply('未获取到星铁账号 cookie\n请先发送【#扫码登录】绑定后重试')
+      e.reply(`未获取到星铁 UID ${e.uid} 的账号 cookie\n可用【#扫码登录】绑定该账号，或去掉命令里的 UID 后重试`)
       return true
     }
+
+    // 收口：region 始终由最终 UID 生成，避免中途换号后仍带着先前算出的区域
+    e.region = getSrServer(e.uid)
 
     // 拉取并镜像 srJson
     const service = new StarRailGachaService()

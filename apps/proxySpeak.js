@@ -58,7 +58,41 @@ export class ProxySpeak extends plugin {
       user_id: targetUin
     }
 
-    // 3. 构造假事件：以原事件为基础，覆盖关键字段
+    // 3. 构造注入事件（抽成方法便于回归：身份字段清理是易错点）
+    const fakeEvent = this._buildProxyEvent(e, { targetUin, speechContent, member, sender })
+
+    // 4. 清除 CD，防止假事件被冷却拦截
+    try {
+      delete loader.groupCD[e.group_id]
+      delete loader.singleCD[`${e.group_id}.${targetUin}`]
+    } catch {}
+
+    // 5. 手动补全框架标准属性（friend、reply 等），再用 loader.deal 异步等待插件链
+    try {
+      Bot.prepareEvent(fakeEvent)
+      await loader.deal(fakeEvent)
+    } catch (err) {
+      logger.error('[Axiu-Plugin][代发言] 注入假事件失败:', err)
+      await e.reply('代发言处理失败，请检查日志')
+    }
+
+    return true
+  }
+
+  /**
+   * 构造代发言的注入事件
+   *
+   * 以原事件为基础覆盖为目标用户，并清掉所有属于「上一个身份 / 上一条消息」的字段：
+   * dealEvent 会重新计算的字段、`original_msg`（优先级高于 e.msg），以及派生的
+   * `originalUserId` / `mainUserId`——NoteUser.create 会优先取 `originalUserId`
+   * （genshin `model/mys/NoteUser.js:88`），`mainUserId` 参与主子账户绑定判定
+   * （genshin `model/user.js:622/664/708`），残留会让注入事件仍按原用户建档。
+   * `e.user` 不必清：`Runtime.init` 会按目标身份重建。
+   * @param {object} e 原事件
+   * @param {{targetUin: number|string, speechContent: string, member?: object, sender?: object}} p
+   * @returns {object} 注入事件
+   */
+  _buildProxyEvent (e, { targetUin, speechContent, member, sender }) {
     const fakeEvent = { ...e }
 
     // 显式补充不可枚举的关键属性（bot、group 等）
@@ -99,23 +133,11 @@ export class ProxySpeak extends plugin {
     // original_msg 优先于 e.msg（ProfileDetail.detail 第 17 行），
     // 必须删除，否则假事件会使用原始 #代 前缀的消息体
     delete fakeEvent.original_msg
+    // 派生身份字段，见方法注释
+    delete fakeEvent.originalUserId
+    delete fakeEvent.mainUserId
 
-    // 4. 清除 CD，防止假事件被冷却拦截
-    try {
-      delete loader.groupCD[e.group_id]
-      delete loader.singleCD[`${e.group_id}.${targetUin}`]
-    } catch {}
-
-    // 5. 手动补全框架标准属性（friend、reply 等），再用 loader.deal 异步等待插件链
-    try {
-      Bot.prepareEvent(fakeEvent)
-      await loader.deal(fakeEvent)
-    } catch (err) {
-      logger.error('[Axiu-Plugin][代发言] 注入假事件失败:', err)
-      await e.reply('代发言处理失败，请检查日志')
-    }
-
-    return true
+    return fakeEvent
   }
 
   /**

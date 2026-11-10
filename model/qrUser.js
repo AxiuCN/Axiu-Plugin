@@ -33,9 +33,12 @@ export default class QrUser {
     return res
   }
 
-  /** Cookie 管理入口：检查 cookie → 尝试从 login_ticket 换取 stoken */
-  async cookie (e) {
-    const { cookie, uid } = await this.getCookie(e)
+  /** Cookie 管理入口：检查 cookie → 尝试从 login_ticket 换取 stoken
+   *  @param {object} e 事件对象
+   *  @param {'gs'|'sr'} game 目标游戏（决定取哪个游戏的 UID / CK）
+   */
+  async cookie (e, game = 'gs') {
+    const { cookie } = await this.getCookie(e, game)
     if (!cookie) return false
 
     const stokens = this.getStoken(e.user_id)
@@ -49,18 +52,25 @@ export default class QrUser {
     return true
   }
 
-  /** 获取当前用户的 cookie 和 uid */
-  async getCookie (e) {
+  /** 获取当前用户在指定游戏下的 cookie 和 uid
+   *
+   *  只负责「按游戏取当前账号」，不做跨游戏顶替：
+   *  星铁没有绑定 CK 时返回空，由调用方决定提示还是改用其它来源。
+   *  @param {object} e 事件对象
+   *  @param {'gs'|'sr'} game
+   *  @returns {Promise<{cookie: string, uid: string, skuid?: object}>}
+   */
+  async getCookie (e, game = 'gs') {
     let skuid, cookie, uid
 
-    // 尝试从 genshin 插件获取（V3 运行时）
+    // 尝试从 genshin 插件获取（V3 运行时）：UID 与 CK 都按目标游戏取
     if (e?.user?.getUid) {
-      uid = e?.user?.getUid('gs')
-      cookie = e?.user?.mysUser?.ck
+      uid = e.user.getUid(game)
+      cookie = (e.user.getMysUser ? e.user.getMysUser(game) : e.user.mysUser)?.ck
     }
 
-    // 回退：从 MysCookie 目录读取
-    if (!uid) {
+    // 以下两条回退只对原神成立：MysCookie 目录与 _regUid 都是原神旧数据
+    if (!uid && game === 'gs') {
       try {
         skuid = gsCfg.getBingCookie(e.user_id)
         cookie = skuid?.ck
@@ -68,13 +78,33 @@ export default class QrUser {
       } catch { /* 文件不存在等 */ }
     }
 
-    if (!uid) {
+    if (!uid && game === 'gs') {
       uid = e.runtime?.user?._regUid
     }
 
-    this.e.uid = uid
+    // 调用方可能已按目标 UID 解析好 e.uid（如星铁命令带了 UID 参数），
+    // 星铁口径下不回写 uid，避免把目标覆盖成「当前账号」的 UID
+    if (game === 'gs') this.e.uid = uid
     this.e.cookie = cookie
     return { cookie, uid, skuid }
+  }
+
+  /** 按指定 UID 取同账号 CK
+   *
+   *  CK 是米游社账号级，但「哪个账号」由该 UID 的 ltuid 决定（genshin NoteUser.getMysUser 同源），
+   *  因此目标 UID 不在本用户名下时返回 null，绝不拿其它账号的 CK 顶替。
+   *  @param {object} e 事件对象
+   *  @param {string} uid 目标 UID
+   *  @param {'gs'|'sr'} game
+   *  @returns {Promise<{uid: string, cookie: string}|null>}
+   */
+  async getCookieForUid (e, uid, game = 'gs') {
+    if (!uid) return null
+    const uidData = e?.user?.getUidData?.(uid, game)
+    const ltuid = uidData?.ltuid
+    if (!ltuid) return null
+    const cookie = e?.user?.mysUsers?.[ltuid]?.ck
+    return cookie ? { uid: String(uid), cookie } : null
   }
 
   /** 从 login_ticket 换取 stoken */
