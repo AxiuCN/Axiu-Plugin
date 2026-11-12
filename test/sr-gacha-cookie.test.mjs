@@ -200,6 +200,105 @@ const run = async (e) => {
   check('拒绝提示指出具体 UID', /未获取到星铁 UID 500000003 的账号 cookie/.test(replies[0] || ''), replies[0])
 }
 
+/* ==================== 【5】stoken 分支：只能选目标账号 ==================== */
+
+console.log('\n【5】stoken 分支：只接受目标 UID 或同 ltuid 的条目，绝不取任意账号')
+const { default: stokenStore } = await importMod('model/stokenStore.js')
+const rawGetUserStoken = stokenStore.getUserStoken
+const rawGetData = QrUser.prototype.getData
+
+let stokenEntries = {}
+let credentialRequests = []
+stokenStore.getUserStoken = async () => stokenEntries
+QrUser.prototype.getData = async function (type, data) {
+  credentialRequests.push({ type, cookies: data.cookies })
+  const params = new URLSearchParams(data.cookies)
+  return { data: { cookie_token: `SYNTHETIC_TOKEN_${params.get('uid')}` } }
+}
+
+/** 目标 UID 200000002 属 ltuid 20002，该账号有有效 CK */
+const targetUser = mkUser({
+  gs: '',
+  sr: '200000002',
+  srCk: '',
+  uids: { 'sr:200000002': { ltuid: '20002' } }
+})
+targetUser.mysUsers = { '20002': { ck: 'ltuid=20002;cookie_token=SYNTHETIC_TARGET;' } }
+
+const runStoken = async (stokens, user = targetUser) => {
+  stokenEntries = stokens
+  credentialRequests = []
+  const replies = []
+  const e = { user_id: '10001', uid: '200000002', msg: '#星铁更新抽卡记录', user, reply: async (m) => { replies.push(String(m)) } }
+  serviceCalls = []
+  await new SrApp().srGachaLog(e)
+  return { calls: serviceCalls, credentialRequests: [...credentialRequests], replies }
+}
+
+// 5.1 别的账号的 stoken 不能顶替目标账号的 CK
+{
+  const wrong = { '100000001': { uid: '100000001', stuid: '20001', stoken: 'WRONG_ACC', ltoken: 'L1' } }
+  const { calls, credentialRequests: reqs } = await runStoken(wrong)
+  check('已有目标 CK 时不被别的账号 stoken 顶替', calls[0]?.cookie?.includes('ltuid=20002;') === true, String(calls[0]?.cookie))
+  check('别的账号 stoken 不会被拿去交换凭据（修复前会交换 1 次）', reqs.length === 0, JSON.stringify(reqs))
+  check('下游 uid 仍是目标 UID', calls[0]?.uid === '200000002', String(calls[0]?.uid))
+}
+
+// 5.2 同一米游社账号（ltuid 相同）的跨游戏 stoken 仍可用
+{
+  const sameAcc = { '100000001': { uid: '100000001', stuid: '20002', stoken: 'SAME_ACC', ltoken: 'L2' } }
+  const { calls, credentialRequests: reqs } = await runStoken(sameAcc)
+  check('同账号跨游戏 stoken 继续可用', calls[0]?.cookie?.includes('ltuid=20002;') === true, String(calls[0]?.cookie))
+  check('同账号 stoken 只交换一次', reqs.length === 1, JSON.stringify(reqs))
+}
+
+// 5.3 只有别的账号 stoken、且没有目标 CK → 拒绝
+{
+  const wrong = { '100000001': { uid: '100000001', stuid: '20001', stoken: 'WRONG_ACC', ltoken: 'L1' } }
+  const noCkUser = mkUser({ sr: '200000002', srCk: '', uids: { 'sr:200000002': { ltuid: '20002' } } })
+  noCkUser.mysUsers = {}
+  const { calls, replies } = await runStoken(wrong, noCkUser)
+  check('无目标 CK 时别的账号 stoken 不进服务', calls.length === 0, JSON.stringify(calls))
+  check('提示指出目标 UID（修复前会直接用错账号成功）',
+    replies.some(r => r.includes('UID 200000002')), replies.join(' | '))
+}
+
+// 5.4 精确目标 UID 的 stoken 正常使用
+{
+  const exact = { '200000002': { uid: '200000002', stuid: '20002', stoken: 'EXACT', ltoken: 'L3' } }
+  const { calls, credentialRequests: reqs } = await runStoken(exact)
+  check('精确目标 UID 的 stoken 直接使用', calls[0]?.cookie?.includes('ltuid=20002;') === true, String(calls[0]?.cookie))
+  check('精确目标 stoken 交换一次', reqs.length === 1, JSON.stringify(reqs))
+}
+
+// 5.5 无 stoken 的条目不能遮住后面同账号的可用条目
+{
+  const shadow = {
+    a: { uid: '200000002', stuid: '20002' }, // 命中 uid 但没有 stoken
+    b: { uid: '100000001', stuid: '20002', stoken: 'USABLE', ltoken: 'L4' }
+  }
+  const { calls, credentialRequests: reqs } = await runStoken(shadow)
+  check('无 stoken 的条目被跳过，改用同账号可用条目', reqs.length === 1, JSON.stringify(reqs))
+  check('使用同账号可用条目后正常进入服务', calls[0]?.cookie?.includes('ltuid=20002;') === true, String(calls[0]?.cookie))
+}
+
+stokenStore.getUserStoken = rawGetUserStoken
+QrUser.prototype.getData = rawGetData
+
+/* ==================== 【6】命令后缀 UID（入口可达性） ==================== */
+
+console.log('\n【6】命令允许在末尾附带目标 UID（此前规则以 $ 结尾，带 UID 无法命中）')
+{
+  const rule = new SrApp().rule[0].reg
+  const re = new RegExp(rule)
+  check('裸命令命中', re.test('#星铁更新抽卡记录') && re.test('#星铁更新星铁抽卡记录'))
+  check('命令 + 9 位 UID 命中', re.test('#星铁更新抽卡记录 500000003'))
+  check('命令 + 10 位 UID 命中', re.test('#星铁更新抽卡记录 2000000024'))
+  check('尾随空格仍命中', re.test('#星铁更新抽卡记录   '))
+  check('非数字后缀不命中', !re.test('#星铁更新抽卡记录 abc'))
+  check('UID 与前文之间必须有空白（避免与命令粘连）', !re.test('#星铁更新抽卡记录200000002'))
+}
+
 /* ---------------- 还原 ---------------- */
 StarRailGachaService.prototype.updateByCookie = rawUpdate
 if (stokenBackup && fs.existsSync(stokenBackup)) {

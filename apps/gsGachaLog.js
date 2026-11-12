@@ -276,10 +276,14 @@ export class gsGachaLog extends plugin {
 
 // ==================== 工具函数 ====================
 
-/** 去重合并：以 id 为键，remote 覆盖 local，按 id 降序 */
+/** 去重合并：以 id 为键，remote 覆盖 local，按 id 降序
+ *  抽卡 id 是 19 位十进制串，超过 Number 安全整数范围（相邻 id 转 Number 后相等），
+ *  所以必须按原始字符串做数值比较，不能相减。
+ */
 function mergeJson (local, remote) {
   const map = new Map()
   for (const item of local) map.set(item.id, item)
   for (const item of remote) map.set(item.id, item)
-  return [...map.values()].sort((a, b) => Number(b.id) - Number(a.id))
+  return [...map.values()].sort((a, b) =>
+    String(b.id).localeCompare(String(a.id), 'en', { numeric: true }))
 }

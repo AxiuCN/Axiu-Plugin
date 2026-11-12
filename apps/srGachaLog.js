@@ -24,8 +24,9 @@ export class srGachaLog extends plugin {
       rule: [
         // 命令1: 更新星铁抽卡记录（荷花 badge login 方案）
         // 兼容两种输入：*更新星铁抽卡记录（标准化为 #星铁更新星铁抽卡记录）与 #星铁更新抽卡记录
+        // 末尾可选跟一个 9~10 位 UID，用于显式指定目标账号（如 *更新星铁抽卡记录 200000002）
         {
-          reg: '^#星铁(星铁)?更新(星铁)?(抽卡|祈愿)?(记录|历史)$',
+          reg: '^#星铁(星铁)?更新(星铁)?(抽卡|祈愿)?(记录|历史)(\\s+[1-9]\\d{8,9})?\\s*$',
           fnc: 'srGachaLog',
           permission: 'all',
           log: true
@@ -68,9 +69,12 @@ export class srGachaLog extends plugin {
       // stoken 数据顶层键即游戏 UID
       let entry = stokenData?.[String(e.uid)] || null
       if (!entry) {
+        // 精确 UID 未命中时，只接受「同一米游社账号（ltuid 相同）」的条目；
+        // 绝不回退到任意带 stoken 的条目——那会把别的账号的凭据配给目标 UID。
+        const ltuid = e.user?.getUidData?.(e.uid, 'sr')?.ltuid
         entry = Object.values(stokenData || {}).find(s =>
-          String(s?.uid) === String(e.uid) || String(s?.stuid) === String(s?.uid) && s?.stoken
-        ) || Object.values(stokenData || {}).find(s => s?.stoken)
+          s?.stoken && (String(s?.uid) === String(e.uid) || (ltuid && String(s?.stuid) === String(ltuid)))
+        ) || null
       }
       if (entry?.stoken) {
         const qrUser = new QrUser({ user_id: e.user_id, uid: e.uid, region: e.region })
