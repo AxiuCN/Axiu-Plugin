@@ -127,6 +127,17 @@ function readCharImg (relPath) {
   }
 }
 
+/** 元素图标文件名（剧诗角色卡左上角），资源在 resources/challenge/GS/images */
+const ELEM_ICON = {
+  anemo: 'elem-wind.png',
+  geo: 'elem-rock.png',
+  electro: 'elem-thunder.png',
+  dendro: 'elem-grass.png',
+  hydro: 'elem-water.png',
+  pyro: 'elem-fire.png',
+  cryo: 'elem-ice.png'
+}
+
 /**
  * 根据 avatar_id 列表构建 avatars 映射
  * @param {number[]} ids - 角色 ID 数组
@@ -160,6 +171,7 @@ function buildAvatarsMap (ids, infoMap = {}) {
         gacha: gachaUrl || faceUrl,
         star: char.star || 4,
         elem: char.elem || 'anemo',
+        elemIcon: ELEM_ICON[char.elem] || '',
         level: info.level || 0,
         cons: info.cons || 0
       }
@@ -279,81 +291,83 @@ function buildAbyssData (raw, avatars = {}) {
   }
 }
 
+/** 剧诗难度名（difficulty_id → 文案，同官方 DIFFICULTY_ID_NAME） */
+const ROLE_DIFFICULTY = { 1: '简单', 2: '普通', 3: '困难', 4: '卓越', 5: '月谕' }
+
+/** 剧诗档期时间对象 {year, month, day} → "YYYY.MM.DD"，缺字段返回 '' */
+function scheduleDay (t) {
+  if (!t || !t.year || !t.month) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${t.year}.${pad(t.month)}.${pad(t.day || 1)}`
+}
+
 /**
- * 幻想真境剧诗 API → 模板数据
+ * 幻想真境剧诗 API → 模板数据（版式对齐米游社「演出回顾」）
+ * 结构：演出回顾（最佳记录 / 星章 / 幻剧之花 / 声援 / 支援）+ 战斗统计 + 逐幕详情
  */
 function buildRoleData (raw) {
   const stat = raw.stat || {}
   const detail = raw.detail || {}
   const fightStat = detail.fight_statisic || {}
 
-  // splendour buff summary
-  function splSummary (level) {
-    return {
-      total_level: level || 0,
-      hp_increase: (level || 0) * 800,
-      atk_increase: (level || 0) * 50,
-      def_increase: (level || 0) * 50,
-      em_increase: (level || 0) * 20
-    }
-  }
-
-  const rounds = (detail.rounds_data || []).map(r => ({
-    is_get_medal: !!r.is_get_medal,
-    title: r.is_tarot
-      ? `圣牌挑战 ${intToRoman(r.tarot_serial_no || 1)}`
-      : `第 ${r.round_id || 1} 幕`,
-    finish_time: fmtTime(r.finish_time),
-    enemies: (r.enemies || []).map(e => ({ icon: e.icon || '' })),
-    avatars: (r.avatars || []).map(a => ({
-      avatar_id: a.avatar_id,
-      level: a.level || 0,
-      avatar_type: a.avatar_type || 1  // 1=自己 2=试用 3=助演
-    })),
-    splendour_buff: {
-      summary: splSummary(r.splendour_buff?.summary?.total_level || raw.splendour_buff?.summary?.total_level),
-      buffs: (r.splendour_buff?.buffs || []).map(b => ({ icon: b.icon || '', level: b.level || 0 }))
-    },
-    choice_cards: (r.choice_cards || []).map(c => ({ icon: c.icon || '' }))
+  const rounds = (detail.rounds_data || []).map((r) => ({
+    medal: !!r.is_get_medal,
+    title: r.is_tarot ? `圣牌挑战 ${intToRoman(r.tarot_serial_no || 1)}` : `第 ${r.round_id || 1} 幕`,
+    time: fmtDatetime(r.finish_time),
+    // 敌人接口只给图标，没有名称
+    enemies: (r.enemies || []).map(e => e.icon).filter(Boolean),
+    team: (r.avatars || []).map((a) => {
+      const type = a.avatar_type || 1 // 1=自己 2=试用 3=助演
+      return {
+        id: a.avatar_id,
+        level: a.level || 0,
+        type,
+        tag: type === 2 ? '试用' : (type === 3 ? '助演' : '')
+      }
+    }),
+    buffLevel: r.splendour_buff?.summary?.total_level || raw.splendour_buff?.summary?.total_level || 0,
+    buffDesc: r.splendour_buff?.summary?.desc || '',
+    buffs: (r.splendour_buff?.buffs || []).map(b => ({ icon: b.icon || '', level: b.level || 0 })),
+    choices: (r.choice_cards || []).map(c => ({ icon: c.icon || '' })).filter(c => c.icon)
   }))
 
-  const month = raw.schedule?.start_date_time?.month || raw.schedule?.month || new Date().getMonth() + 1
-
-  // 角色统计卡（最高伤害输出/击败最多敌人/最高承受伤害）
-  const fightStatCards = []
-  const addFightCard = (title, data, fmt) => {
-    if (!data || !data.avatar_id) return
-    fightStatCards.push({
-      title,
-      avatarId: data.avatar_id,
-      avatarIcon: data.avatar_icon || '',
-      value: fmt ? fmt(data.value) : (data.value || '')
-    })
+  // 战斗统计（接口开关打开才展示），数值保留原值
+  const fightStats = []
+  const pushFight = (title, ds) => {
+    if (!ds || !ds.avatar_id) return
+    fightStats.push({ title, id: ds.avatar_id, value: ds.value ?? '-' })
   }
   if (fightStat.is_show_battle_stats) {
-    addFightCard('最高伤害输出', fightStat.max_damage_avatar, v => {
-      const n = Number(v); return isNaN(n) ? v : `${(n / 10000).toFixed(1)} W`
-    })
-    addFightCard('击败最多敌人', fightStat.max_defeat_avatar, v => `${v} 次`)
-    addFightCard('最高承受伤害', fightStat.max_take_damage_avatar, v => {
-      const n = Number(v); return isNaN(n) ? v : `${(n / 10000).toFixed(1)} W`
-    })
+    pushFight('最高伤害输出', fightStat.max_damage_avatar)
+    pushFight('击败最多敌人', fightStat.max_defeat_avatar)
+    pushFight('最高承受伤害', fightStat.max_take_damage_avatar)
   }
+
+  const start = scheduleDay(raw.schedule?.start_date_time)
+  const end = scheduleDay(raw.schedule?.end_date_time)
+  const month = raw.schedule?.start_date_time?.month || raw.schedule?.month || ''
+  const maxRound = stat.max_round_id || 0
+  const tarot = stat.tarot_finished_cnt || 0
 
   return {
     uid: '',
     role: {
-      month,
-      stat: {
-        difficulty_id: stat.difficulty_id || 0,
-        total_use_time: stat.total_use_time || detail.fight_statisic?.total_use_time || 0,
-        coin_num: stat.coin_num || 0,
-        avatar_bonus_num: stat.avatar_bonus_num || 0,
-        rent_cnt: stat.rent_cnt || 0,
-        get_medal_round_list: stat.get_medal_round_list || []
+      period: start && end ? `${start}-${end}` : (month ? `${month}月` : ''),
+      difficulty: ROLE_DIFFICULTY[stat.difficulty_id] || '',
+      best: {
+        round: maxRound,
+        total: maxRound + tarot,
+        // 纹章图标只有 heraldry-0..6 这几张，越界会取到空图
+        heraldry: Math.min(Math.max(Number(stat.heraldry) || 0, 0), 6)
       },
-      fightStatCards,
-      shortestTeam: fightStat.shortest_avatar_list || [],
+      stat: {
+        coin: stat.coin_num || 0,
+        bonus: stat.avatar_bonus_num || 0,
+        rent: stat.rent_cnt || 0
+      },
+      medals: (stat.get_medal_round_list || []).map(v => v === 1),
+      fightStats,
+      fastest: (fightStat.shortest_avatar_list || []).map(a => a.avatar_id).filter(Boolean),
       rounds
     }
   }
@@ -610,11 +624,8 @@ export async function gsRoleCombatQuery (e) {
     const avatars = buildAvatarsMap([...avatarIds], charLevels)
 
     // 数据变换 + 渲染
-    const data = buildRoleData(rawData)
-    data.uid = auth.uid
-    data.periodText = periodText
-
-    const img = await render('challenge/GS', 'role', { ...data, avatars })
+    const nickname = e.sender?.card || e.sender?.nickname || ''
+    const img = await render('challenge/GS', 'role', { ...buildRoleData(rawData), uid: auth.uid, nickname, avatars })
     if (img) await e.reply(img)
   } catch (err) {
     logger?.error(`${LOG_PREFIX}[原神] 幻想真境剧诗查询异常:`, err?.message)

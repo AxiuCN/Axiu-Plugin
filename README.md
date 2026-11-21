@@ -111,7 +111,7 @@ pnpm install --filter=Axiu-Plugin
 
 ### 终局挑战
 
-**原神终局挑战** — 完整自实现深境螺旋、幻想真境剧诗、幽境危战查询。一次 API 调用完成数据采集 + HTML 渲染 + 排行上报，不与 miao-plugin 重复调 API。查询模板移植自 miao-plugin（去掉角色武器圣遗物展示）。
+**原神终局挑战** — 完整自实现深境螺旋、幻想真境剧诗、幽境危战查询。一次 API 调用完成数据采集 + HTML 渲染 + 排行上报，不与 miao-plugin 重复调 API。深境螺旋与剧诗出图的版式以米游社「战绩」页为基底（挑战回顾 / 演出回顾、楼层卡与幕卡、官方素材），危战仍为旧版版式。
 
 | 命令 | 权限 | 说明 |
 |------|------|------|
@@ -248,6 +248,7 @@ uvicorn main:app --host 0.0.0.0 --port 9645
 - [MihoyoBBSTools](https://github.com/Womsxd/MihoyoBBSTools) — Python 签到引擎，米游社签到及游戏签到核心，以子模块引入
 - [TianRu-plugin](https://github.com/HDTianRu/TianRu-plugin) — 提瓦特小助手抽卡记录功能移植自此项目
 - [StarRail-plugin](https://github.com/Nwflower/StarRail-plugin) — 星铁终局挑战功能移植自此项目
-- [miao-plugin](https://github.com/yoimiya-kokomi/miao-plugin) — 原神终局挑战查询模板及 API 调用参考自此项目
+- [miao-plugin](https://github.com/yoimiya-kokomi/miao-plugin) — 原神终局挑战 API 调用与角色数据参考自此项目
+- [米游社「战绩」H5](https://webstatic.mihoyo.com/app/community-game-records/index.html) — 原神深境螺旋 / 剧诗出图的版式与图片素材来源
 - [FurinaWai77](https://github.com/FurinaWai77) — 代码审查与修复建议（审查基准 e9c4dae + 7fa4b3d - 88affaf）
 - [Lotus-ReFactor](https://github.com/MOPELotus/Lotus-Plugin) — 星铁抽卡记录同步思路参考自荷花重制版

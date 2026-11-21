@@ -3,13 +3,14 @@
  *
  * 背景：模板里取 `a.b` 时，若 `a` 是 `undefined`，art-template 会直接抛
  * `RuntimeError: Cannot read properties of undefined (reading 'b')`，整条命令失败。
- * 数据层虽对多数集合兜了 `[]`，但「某一幕没有敌人记录」这类合法空值仍会让
- * 形如 `{{display_enemy.icon}}` 的取值崩掉（线上 #剧诗 即此例）。
+ * 数据层虽对多数集合兜了 `[]`，但「某一幕没有敌人记录」这类合法空值曾让
+ * `{{display_enemy.icon}}` 崩掉（线上 #剧诗 即此例），因此模板一律先判空再取值。
  *
  * 覆盖口径（渲染即真理，不做启发式扫描）：
  * - 直接用边界数据编译渲染模板：字段缺失 / 集合为空 / 索引越界都不能抛错
- * - 无敌人时「选择敌人」面板不渲染（不留空图标框），其余面板照常
- * - 静态约束：`display_enemy` 的取值必须带 `?.`，且敌人面板必须被 `{{if display_enemy}}` 包裹
+ * - 剧诗：无敌人时不渲染敌人图标区，其余区块照常；辉彩祝福/队伍/神秘收获缺数据时整块不渲染
+ * - 危战：最强一击 / 最高总伤害 / 怪物信息缺失时不能崩
+ * - 静态约束：`round.enemies` 必须判空后遍历，不得裸取 `round.enemies[0]`
  *
  * 不联网、不出图：只做 art-template 编译。
  */
@@ -49,48 +50,45 @@ const renderTpl = (file, data) => {
 /* ==================== 【1】剧诗（GS/role.html） ==================== */
 
 /** 造一幕剧诗数据（字段与 modules/challenge/gsQuery.js → buildRoleData 一致） */
-const mkRound = ({ enemies = [], choiceCards = [], title = '第 1 幕' } = {}) => ({
-  is_get_medal: true,
+const mkRound = ({ enemies = ['/meta-gs/enemy.webp'], title = '第 1 幕', medal = true, choiceCards = [], team, buffs, buffLevel = 3 } = {}) => ({
+  medal,
   title,
-  finish_time: '2026-01-01 00:00',
+  time: '2026.01.01 00:00:00',
   enemies,
-  avatars: [{ avatar_id: 10000052, level: 90, avatar_type: 1 }],
-  splendour_buff: {
-    summary: { total_level: 3, hp_increase: 2400, atk_increase: 150, def_increase: 150, em_increase: 60 },
-    buffs: [{ icon: '/meta-gs/buff.webp', level: 2 }]
-  },
-  choice_cards: choiceCards
+  team: team ?? [{ id: 10000052, level: 90, type: 1, tag: '' }],
+  buffLevel,
+  buffDesc: '生命值上限提高 2400 点',
+  buffs: buffs ?? [{ icon: '/meta-gs/buff.webp', level: 2 }],
+  choices: choiceCards
 })
 
 const mkRoleData = (rounds) => ({
   uid: '100000001',
-  difficultyName: { 0: '普通', 1: '困难', 2: '大师', 3: '磨难', 4: '深渊' },
   role: {
-    month: 1,
-    stat: {
-      difficulty_id: 3,
-      total_use_time: 600,
-      coin_num: 1200,
-      avatar_bonus_num: 2,
-      rent_cnt: 1,
-      get_medal_round_list: [1, 2, 10]
-    },
-    fightStatCards: [],
-    shortestTeam: [],
+    period: '2026.01.01-2026.01.15',
+    difficulty: '困难',
+    best: { round: 8, total: 10, heraldry: 3 },
+    stat: { coin: 1200, bonus: 2, rent: 1 },
+    medals: [true, false],
+    fightStats: [{ title: '最高伤害输出', id: 10000052, value: 123456 }],
+    fastest: [10000052],
     rounds
   },
-  avatars: { 10000052: { face: '/meta-gs/x/face.webp', level: 90, name: '雷电将军', abbr: '雷神' } }
+  avatars: {
+    10000052: { face: '/meta-gs/x/face.webp', level: 90, star: 5, elemIcon: 'elem-fire.png' }
+  }
 })
 
 console.log('【1】剧诗模板：有敌人 / 无敌人 / 多幕混合 / 空 rounds 都要渲染成功')
-const withEnemy = renderTpl(roleTpl, mkRoleData([mkRound({ enemies: [{ icon: '/meta-gs/enemy.webp' }] })]))
+const withEnemy = renderTpl(roleTpl, mkRoleData([mkRound()]))
 check('有敌人时渲染成功', withEnemy.ok, withEnemy.error)
 check('有敌人时渲染出敌人图标', String(withEnemy.html || '').includes('/meta-gs/enemy.webp'))
+check('有敌人时渲染出敌人图标容器', String(withEnemy.html || '').includes('round-enemies'))
 
 const noEnemy = renderTpl(roleTpl, mkRoleData([mkRound({ enemies: [] })]))
 check('无敌人时渲染成功（修复前抛 Cannot read properties of undefined）', noEnemy.ok, noEnemy.error)
-check('无敌人时不出现空的「选择敌人」面板', noEnemy.ok && !noEnemy.html.includes('选择敌人'))
-check('无敌人时其余面板照常（辉彩祝福仍在）', noEnemy.ok && noEnemy.html.includes('辉彩祝福'))
+check('无敌人时不渲染敌人图标容器', noEnemy.ok && !noEnemy.html.includes('round-enemies'))
+check('无敌人时其余区块照常（辉彩祝福仍在）', noEnemy.ok && noEnemy.html.includes('辉彩祝福'))
 
 const noEnemyField = renderTpl(roleTpl, mkRoleData([(() => {
   const r = mkRound({})
@@ -100,16 +98,25 @@ const noEnemyField = renderTpl(roleTpl, mkRoleData([(() => {
 check('enemies 字段缺失时也能渲染', noEnemyField.ok, noEnemyField.error)
 
 const mixed = renderTpl(roleTpl, mkRoleData([
-  mkRound({ title: '第 1 幕', enemies: [{ icon: '/meta-gs/enemy.webp' }] }),
+  mkRound({ title: '第 1 幕' }),
   mkRound({ title: '第 2 幕', enemies: [] }),
   mkRound({ title: '圣牌挑战 I', enemies: [], choiceCards: [{ icon: '/meta-gs/card.webp' }] })
 ]))
 check('多幕混合（含无敌人的幕）渲染成功', mixed.ok, mixed.error)
-check('混合数据里敌人面板只出现一次', mixed.ok && (mixed.html.match(/选择敌人/g) || []).length === 1)
-check('混合数据里神秘收获面板正常', mixed.ok && mixed.html.includes('神秘收获 x 1'))
+check('混合数据里敌人图标容器只出现一次', mixed.ok && (mixed.html.match(/round-enemies/g) || []).length === 1)
+check('混合数据里神秘收获正常', mixed.ok && mixed.html.includes('神秘收获 x 1'))
 
 const emptyRounds = renderTpl(roleTpl, mkRoleData([]))
 check('完全没有幕后也能渲染（空 rounds）', emptyRounds.ok, emptyRounds.error)
+
+const noTeam = renderTpl(roleTpl, mkRoleData([mkRound({ team: [] })]))
+check('队伍为空时渲染成功且不渲染队伍区', noTeam.ok && !noTeam.html.includes('round-team'), noTeam.error)
+
+const noBuff = renderTpl(roleTpl, mkRoleData([mkRound({ buffs: [], buffLevel: 0 })]))
+check('辉彩祝福无数据时整块不渲染', noBuff.ok && !noBuff.html.includes('辉彩祝福'), noBuff.error)
+
+const noFight = renderTpl(roleTpl, mkRoleData([mkRound()]))
+check('战斗统计照常渲染', noFight.ok && noFight.html.includes('最高伤害输出'))
 
 /* ==================== 【2】危战（GS/hard.html） ==================== */
 
@@ -155,15 +162,14 @@ check('challs 为空、best 缺字段时渲染成功', hardEmpty.ok, hardEmpty.e
 
 /* ==================== 【3】静态约束 ==================== */
 
-console.log('\n【3】静态约束：display_enemy 必须判空后才取值')
+console.log('\n【3】静态约束：剧诗敌人图标必须判空后遍历')
 const roleSrc = fs.readFileSync(roleTpl, 'utf8')
-check('display_enemy 取值带可选链（不允许裸 display_enemy.icon）',
-  !/\{\{\s*display_enemy\.icon/.test(roleSrc) && /\{\{\s*display_enemy\?\.icon/.test(roleSrc))
-const guardIdx = roleSrc.indexOf('{{if display_enemy}}')
-const panelIdx = roleSrc.indexOf('选择敌人')
-const endGuardIdx = roleSrc.indexOf('{{/if}}', guardIdx)
-check('敌人面板被 {{if display_enemy}} … {{/if}} 包裹',
-  guardIdx >= 0 && panelIdx > guardIdx && endGuardIdx > panelIdx,
-  `guard=${guardIdx} panel=${panelIdx} end=${endGuardIdx}`)
+check('不存在裸取 round.enemies[0] 的写法',
+  !/round\.enemies\[0\]/.test(roleSrc) && !/\{\{\s*round\.enemies\.icon/.test(roleSrc))
+check('敌人区被 {{if round.enemies && round.enemies.length}} … {{/if}} 包裹',
+  /\{\{\s*if round\.enemies && round\.enemies\.length\s*\}\}/.test(roleSrc) &&
+  roleSrc.indexOf('round-enemies') > roleSrc.indexOf('{{if round.enemies && round.enemies.length}}'))
+
+check('角色卡取头像前用 avatars[…] || {} 兜底', /\{\{\s*set char = avatars\[member\.id\] \|\| \{\}\s*\}\}/.test(roleSrc))
 
 finish()
