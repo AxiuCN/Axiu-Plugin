@@ -104,7 +104,7 @@ const mixed = renderTpl(roleTpl, mkRoleData([
 ]))
 check('多幕混合（含无敌人的幕）渲染成功', mixed.ok, mixed.error)
 check('混合数据里敌人图标容器只出现一次', mixed.ok && (mixed.html.match(/round-enemies/g) || []).length === 1)
-check('混合数据里神秘收获正常', mixed.ok && mixed.html.includes('神秘收获 x 1'))
+check('混合数据里神秘收获正常', mixed.ok && mixed.html.includes('神秘收获 · 1'))
 
 const emptyRounds = renderTpl(roleTpl, mkRoleData([]))
 check('完全没有幕后也能渲染（空 rounds）', emptyRounds.ok, emptyRounds.error)

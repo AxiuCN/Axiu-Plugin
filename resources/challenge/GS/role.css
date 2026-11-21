@@ -225,6 +225,12 @@ body {
   color: #d3bc8e;
 }
 
+.stat-front-icon {
+  width: 26px;
+  height: 26px;
+  margin-right: 8px;
+}
+
 .stat-team {
   display: flex;
   align-items: center;
@@ -268,14 +274,60 @@ body {
   color: #f4efe8;
 }
 
-.rounds-pill {
-  height: 36px;
+/* ===== 难度 / 星章 / 演出总时长 ===== */
+.round-summary {
+  width: 690px;
+  margin: 32px auto 0;
+  padding: 0;
+}
+
+.summary-info {
+  display: flex;
+  align-items: center;
+  height: 48px;
+}
+
+.summary-diff {
+  font-size: 28px;
+  font-weight: 600;
+  color: #f4efe8;
+}
+
+.summary-heraldry {
+  width: 30px;
+  height: 30px;
+  margin-left: 12px;
+}
+
+.summary-medal {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  margin-left: 12px;
   padding: 0 16px;
-  border-radius: 70px;
-  border: 1px solid #d3bc8e;
-  font-size: 20px;
-  line-height: 34px;
-  color: #d3bc8e;
+  border-radius: 60px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.summary-medal > img {
+  width: 28px;
+  height: 28px;
+}
+
+.summary-medal .num {
+  margin-left: 6px;
+  font-family: Number, YS, sans-serif;
+  font-size: 24px;
+  line-height: 42px;
+  color: #ece5d8;
+}
+
+.summary-time {
+  margin-top: 4px;
+  font-size: 24px;
+  line-height: 36px;
+  color: rgba(255, 255, 255, 0.65);
 }
 
 .round-card {
@@ -421,8 +473,16 @@ body {
 }
 
 /* 辉彩祝福 */
-.round-buff {
+.round-detail-title {
   margin-top: 24px;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 36px;
+  color: #6a5443;
+}
+
+.round-buff {
+  margin-top: 8px;
 }
 
 .buff-head {
@@ -441,29 +501,23 @@ body {
 }
 
 .buff-level {
-  margin-left: 10px;
-  padding: 0 10px;
+  align-self: center;
   height: 26px;
+  margin-right: 4px;
+  padding: 0 10px;
   border-radius: 4px;
-  border: 1px solid #c3aa80;
-  background: #d3bc8e;
+  border: 1px solid #d8cfc1;
+  background: #e6dac5;
   font-family: Number, YS, sans-serif;
   font-size: 18px;
   line-height: 24px;
-  color: rgba(0, 0, 0, 0.9);
-}
-
-.buff-desc {
-  padding: 0 16px;
-  margin-top: 10px;
-  font-size: 20px;
-  line-height: 28px;
-  color: rgba(0, 0, 0, 0.65);
+  color: #6a5443;
 }
 
 .buff-list {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 16px;
   padding: 16px;
   background: #f2f2f2 url("./images/buff-bottom-bg.70b09d7a.png") no-repeat right 8px bottom 6px;

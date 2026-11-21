@@ -308,9 +308,11 @@ function scheduleDay (t) {
 function buildRoleData (raw) {
   const stat = raw.stat || {}
   const detail = raw.detail || {}
+  const detailStat = detail.detail_stat || {}
   const fightStat = detail.fight_statisic || {}
+  const roundsData = detail.rounds_data || []
 
-  const rounds = (detail.rounds_data || []).map((r) => ({
+  const rounds = roundsData.map((r) => ({
     medal: !!r.is_get_medal,
     title: r.is_tarot ? `圣牌挑战 ${intToRoman(r.tarot_serial_no || 1)}` : `第 ${r.round_id || 1} 幕`,
     time: fmtDatetime(r.finish_time),
@@ -326,7 +328,6 @@ function buildRoleData (raw) {
       }
     }),
     buffLevel: r.splendour_buff?.summary?.total_level || raw.splendour_buff?.summary?.total_level || 0,
-    buffDesc: r.splendour_buff?.summary?.desc || '',
     buffs: (r.splendour_buff?.buffs || []).map(b => ({ icon: b.icon || '', level: b.level || 0 })),
     choices: (r.choice_cards || []).map(c => ({ icon: c.icon || '' })).filter(c => c.icon)
   }))
@@ -343,27 +344,42 @@ function buildRoleData (raw) {
     pushFight('最高承受伤害', fightStat.max_take_damage_avatar)
   }
 
+  // 演出总时长：秒 → "X分钟Y秒"（同官方）
+  const useTime = Number(fightStat.total_use_time) || 0
+  const totalUseTime = useTime > 0 ? `${Math.floor(useTime / 60)}分钟${useTime % 60}秒` : ''
+
   const start = scheduleDay(raw.schedule?.start_date_time)
   const end = scheduleDay(raw.schedule?.end_date_time)
-  const month = raw.schedule?.start_date_time?.month || raw.schedule?.month || ''
   const maxRound = stat.max_round_id || 0
   const tarot = stat.tarot_finished_cnt || 0
+  const difficultyId = Number(stat.difficulty_id || detailStat.difficulty_id || 0)
+  // 星章进度：接口给了 medal_num 就用它，否则按「已获星章的幕数 / 总幕数」算
+  const medalGot = Number.isFinite(Number(detailStat.medal_num))
+    ? Number(detailStat.medal_num)
+    : roundsData.filter(r => r.is_get_medal).length
+  const medalTotal = Number(detailStat.medal_total) || roundsData.length
 
   return {
     uid: '',
     role: {
-      period: start && end ? `${start}-${end}` : (month ? `${month}月` : ''),
-      difficulty: ROLE_DIFFICULTY[stat.difficulty_id] || '',
+      // 档期起止接口都返回，不再用「N月」兜底
+      period: start && end ? `${start}-${end}` : '',
+      difficulty: ROLE_DIFFICULTY[difficultyId] ? `${ROLE_DIFFICULTY[difficultyId]}模式` : '',
+      difficultyId,
+      heraldry: Math.min(Math.max(Number(stat.heraldry ?? detailStat.heraldry) || 0, 0), 6),
+      medalStat: medalTotal > 0 ? `${medalGot}/${medalTotal}` : '',
+      totalUseTime,
       best: {
         round: maxRound,
-        total: maxRound + tarot,
-        // 纹章图标只有 heraldry-0..6 这几张，越界会取到空图
-        heraldry: Math.min(Math.max(Number(stat.heraldry) || 0, 0), 6)
+        tarot,
+        total: maxRound + tarot
       },
       stat: {
         coin: stat.coin_num || 0,
         bonus: stat.avatar_bonus_num || 0,
-        rent: stat.rent_cnt || 0
+        rent: stat.rent_cnt || 0,
+        // 本次消耗幻剧之花（战斗统计卡最后一行）
+        totalCoin: stat.total_coin_consumed?.value ?? stat.coin_num ?? '-'
       },
       medals: (stat.get_medal_round_list || []).map(v => v === 1),
       fightStats,

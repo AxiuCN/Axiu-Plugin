@@ -30,8 +30,11 @@
       <p class="review-label">最佳记录</p>
       <div class="review-value">
         <span>第</span><span class="num">{{role.best.round || '-'}}</span><span>幕</span>
+        {{if role.difficultyId === 5 && role.best.tarot}}
+        <span class="best-sub">圣牌 <span class="num">{{role.best.tarot}}</span></span>
+        {{/if}}
         <span class="best-sub">已完成 {{role.best.total || 0}} 场挑战</span>
-        <img class="heraldry" src="{{_res_path}}challenge/GS/images/heraldry-{{role.best.heraldry || 0}}.png">
+        <img class="heraldry" src="{{_res_path}}challenge/GS/images/heraldry-{{role.heraldry || 0}}.png">
       </div>
     </div>
     <i class="review-divider"></i>
@@ -72,6 +75,23 @@
     </div>
   </section>
 
+  <!-- ===== 难度 / 星章 / 演出总用时 ===== -->
+  {{if role.difficulty || role.medalStat || role.totalUseTime}}
+  <div class="round-summary">
+    <div class="summary-info">
+      {{if role.difficulty}}<span class="summary-diff">{{role.difficulty}}</span>{{/if}}
+      <img class="summary-heraldry" src="{{_res_path}}challenge/GS/images/heraldry-{{role.heraldry || 0}}.png">
+      {{if role.medalStat}}
+      <span class="summary-medal">
+        <img src="{{_res_path}}challenge/GS/images/medal-on.png">
+        <span class="num">{{role.medalStat}}</span>
+      </span>
+      {{/if}}
+    </div>
+    {{if role.totalUseTime}}<p class="summary-time">演出总用时：{{role.totalUseTime}}</p>{{/if}}
+  </div>
+  {{/if}}
+
   <!-- ===== 战斗统计 ===== -->
   {{if (role.fightStats && role.fightStats.length) || (role.fastest && role.fastest.length)}}
   <section class="stat-card">
@@ -92,14 +112,20 @@
       </span>
     </div>
     {{/if}}
+    {{if role.stat.totalCoin !== undefined && role.stat.totalCoin !== ''}}
+    <div class="stat-item">
+      <img class="stat-front-icon" src="{{_res_path}}challenge/GS/images/flower-icon.png">
+      <span class="stat-title">本次消耗幻剧之花：</span>
+      <span class="stat-value">{{role.stat.totalCoin}}</span>
+    </div>
+    {{/if}}
   </section>
   {{/if}}
 
   <!-- ===== 演出详情 ===== -->
   <div class="rounds">
     <div class="rounds-title">
-      <p>演出详情</p>
-      {{if role.difficulty}}<div class="rounds-pill">{{role.difficulty}}</div>{{/if}}
+      <p>参演名单</p>
     </div>
 
     {{each role.rounds round}}
@@ -136,14 +162,14 @@
       {{/if}}
 
       {{if round.buffLevel || (round.buffs && round.buffs.length)}}
+      <h3 class="round-detail-title">演出详情</h3>
       <div class="round-buff">
         <div class="buff-head">
           <span class="buff-name">辉彩祝福</span>
-          {{if round.buffLevel}}<span class="buff-level">Lv.{{round.buffLevel}}</span>{{/if}}
         </div>
-        {{if round.buffDesc}}<p class="buff-desc">{{round.buffDesc}}</p>{{/if}}
-        {{if round.buffs && round.buffs.length}}
+        {{if round.buffLevel || (round.buffs && round.buffs.length)}}
         <div class="buff-list">
+          {{if round.buffLevel}}<span class="buff-level">等级 Lv.{{round.buffLevel}}</span>{{/if}}
           {{each round.buffs buff}}
           <div class="buff-item">
             <span class="buff-icon" style="background-image:url({{buff.icon}})"></span>
@@ -157,7 +183,7 @@
 
       {{if round.choices && round.choices.length}}
       <div class="round-choices">
-        <p class="choices-title">神秘收获 x {{round.choices.length}}</p>
+        <p class="choices-title">神秘收获 · {{round.choices.length}}</p>
         <div class="choices-list">
           {{each round.choices card}}<span class="choice-icon" style="background-image:url({{card.icon}})"></span>{{/each}}
         </div>
