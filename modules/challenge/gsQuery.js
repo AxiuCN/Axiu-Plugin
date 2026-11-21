@@ -129,13 +129,13 @@ function readCharImg (relPath) {
 
 /** 元素图标文件名（剧诗角色卡左上角），资源在 resources/challenge/GS/images */
 const ELEM_ICON = {
-  anemo: 'elem-wind.png',
-  geo: 'elem-rock.png',
-  electro: 'elem-thunder.png',
-  dendro: 'elem-grass.png',
-  hydro: 'elem-water.png',
-  pyro: 'elem-fire.png',
-  cryo: 'elem-ice.png'
+  anemo: 'elemicon-anemo.png',
+  geo: 'elemicon-geo.png',
+  electro: 'elemicon-electro.png',
+  dendro: 'elemicon-dendro.png',
+  hydro: 'elemicon-hydro.png',
+  pyro: 'elemicon-pyro.png',
+  cryo: 'elemicon-cryo.png'
 }
 
 /**
@@ -324,6 +324,8 @@ function buildRoleData (raw) {
         id: a.avatar_id,
         level: a.level || 0,
         type,
+        // 接口会带角色卡立绘（米游社出图就是用它），缺失时模板回落 face
+        image: a.image || '',
         tag: type === 2 ? '试用' : (type === 3 ? '助演' : '')
       }
     }),
@@ -381,7 +383,9 @@ function buildRoleData (raw) {
         // 本次消耗幻剧之花（战斗统计卡最后一行）
         totalCoin: stat.total_coin_consumed?.value ?? stat.coin_num ?? '-'
       },
-      medals: (stat.get_medal_round_list || []).map(v => v === 1),
+      medals: (stat.get_medal_round_list || []).slice(0, 10).map(v => v === 1),
+      // 第 11 颗起是圣牌星章，与各幕星章之间画一条分隔线
+      tarotMedals: (stat.get_medal_round_list || []).slice(10).map(v => v === 1),
       fightStats,
       fastest: (fightStat.shortest_avatar_list || []).map(a => a.avatar_id).filter(Boolean),
       rounds

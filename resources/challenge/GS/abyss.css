@@ -28,7 +28,7 @@ body {
 
 .abyss {
   width: 100%;
-  font-family: "PingFang SC", PingFangSC-Regular, sans-serif;
+  font-family: YS, "PingFang SC", sans-serif;
 }
 
 /* ===== 页头 ===== */
@@ -148,7 +148,7 @@ body {
 
 .info-item > span,
 .star-value > span {
-  font-family: Number, YS, sans-serif;
+  font-family: YS, sans-serif;
   font-size: 24px;
   line-height: 24px;
   color: rgba(255, 255, 255, 0.9);
@@ -202,7 +202,7 @@ body {
 
 .reveal-count {
   margin-top: 4px;
-  font-family: Number, YS, sans-serif;
+  font-family: YS, sans-serif;
   font-size: 20px;
   font-weight: 400;
   line-height: 24px;
@@ -249,7 +249,7 @@ body {
 
 .right-box > li > span {
   flex-grow: 1;
-  font-family: Number, YS, sans-serif;
+  font-family: YS, sans-serif;
   font-size: 24px;
   line-height: 40px;
   text-align: right;
@@ -327,7 +327,7 @@ body {
 }
 
 .floor-index .text {
-  font-family: Number, YS, sans-serif;
+  font-family: YS, sans-serif;
   font-size: 32px;
   font-weight: 400;
   line-height: 72px;
@@ -355,7 +355,7 @@ body {
 
 .floor-star > .text {
   padding-left: 8px;
-  font-family: Number, YS, sans-serif;
+  font-family: YS, sans-serif;
   font-size: 32px;
   line-height: 32px;
   color: #fff;
@@ -407,7 +407,7 @@ body {
 
 .room-head .date {
   margin-top: 4px;
-  font-family: Number, YS, sans-serif;
+  font-family: YS, sans-serif;
   font-size: 20px;
   line-height: 28px;
   color: rgba(255, 255, 255, 0.7);
@@ -458,9 +458,10 @@ body {
 .role-item {
   position: relative;
   width: 116px;
-  height: 154px;
+  height: 157px;
   margin-left: 16px;
   box-sizing: border-box;
+  padding-bottom: 3px;
   border-radius: 8px;
   overflow: hidden;
   background-color: #7a5230;
@@ -482,7 +483,7 @@ body {
 
 .role-lv {
   height: 28px;
-  font-family: Number, YS, sans-serif;
+  font-family: YS, sans-serif;
   font-size: 24px;
   line-height: 28px;
   text-align: center;

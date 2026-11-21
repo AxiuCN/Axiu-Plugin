@@ -26,16 +26,19 @@
 
   <!-- ===== 演出回顾 ===== -->
   <section class="review-card">
+    <h2 class="review-title">演出回顾</h2>
     <div class="review-row">
       <p class="review-label">最佳记录</p>
       <div class="review-value">
         <span>第</span><span class="num">{{role.best.round || '-'}}</span><span>幕</span>
         {{if role.difficultyId === 5 && role.best.tarot}}
-        <span class="best-sub">圣牌 <span class="num">{{role.best.tarot}}</span></span>
+        <span class="best-tarot">圣牌<span class="num">{{role.best.tarot}}</span></span>
         {{/if}}
-        <span class="best-sub">已完成 {{role.best.total || 0}} 场挑战</span>
-        <img class="heraldry" src="{{_res_path}}challenge/GS/images/heraldry-{{role.heraldry || 0}}.png">
       </div>
+    </div>
+    <div class="best-sub-row">
+      <span class="best-sub">已完成{{role.difficulty}} <span class="num">{{role.best.total || 0}}</span> 场挑战</span>
+      <img class="heraldry" src="{{_res_path}}challenge/GS/images/heraldry-{{role.heraldry || 0}}.png">
     </div>
     <i class="review-divider"></i>
 
@@ -43,10 +46,15 @@
       <p class="review-label">明星挑战星章</p>
       {{if role.medals && role.medals.length}}
       <div class="medal-rounds">
-        {{each role.medals on idx}}
-        {{if idx === 9}}<span class="medal-gap"></span>{{/if}}
+        {{each role.medals on}}
         <img class="medal" src="{{_res_path}}challenge/GS/images/{{on ? 'medal-on' : 'medal-off'}}.png">
         {{/each}}
+        {{if role.tarotMedals && role.tarotMedals.length}}
+        <span class="medal-gap"></span>
+        {{each role.tarotMedals on}}
+        <img class="medal" src="{{_res_path}}challenge/GS/images/{{on ? 'medal-on' : 'medal-off'}}.png">
+        {{/each}}
+        {{/if}}
       </div>
       {{else}}
       <div class="review-value"><span class="num">0</span></div>
@@ -97,17 +105,17 @@
   <section class="stat-card">
     {{each role.fightStats item}}
     <div class="stat-item">
-      <span class="stat-avatar" style="background-image:url({{(avatars[item.id]||{}).face || item.icon}})"></span>
-      <span class="stat-title">{{item.title}}</span>
+      <span class="stat-avatar"><img src="{{(avatars[item.id]||{}).face || item.icon}}"></span>
+      <span class="stat-title">{{item.title}}：</span>
       <span class="stat-value">{{item.value}}</span>
     </div>
     {{/each}}
     {{if role.fastest && role.fastest.length}}
     <div class="stat-item">
-      <span class="stat-title">最快完成演出队伍</span>
+      <span class="stat-title">最快完成演出队伍：</span>
       <span class="stat-team">
         {{each role.fastest id}}
-        <span class="stat-face" style="background-image:url({{(avatars[id]||{}).face}})"></span>
+        <span class="stat-avatar stat-team-avatar"><img src="{{(avatars[id]||{}).face}}"></span>
         {{/each}}
       </span>
     </div>
@@ -148,7 +156,7 @@
         {{each round.team member}}
         {{set char = avatars[member.id] || {} }}
         <div class="role-item r{{char.star || 5}}">
-          <img class="role-face" src="{{char.face}}">
+          <img class="role-face" src="{{member.image || char.face}}">
           {{if char.elemIcon}}
           <img class="role-elem" src="{{_res_path}}challenge/GS/images/{{char.elemIcon}}">
           {{/if}}
@@ -167,25 +175,31 @@
         <div class="buff-head">
           <span class="buff-name">辉彩祝福</span>
         </div>
-        {{if round.buffLevel || (round.buffs && round.buffs.length)}}
         <div class="buff-list">
-          {{if round.buffLevel}}<span class="buff-level">等级 Lv.{{round.buffLevel}}</span>{{/if}}
+          <div class="buff-item buff-total">
+            <svg class="buff-crown" viewBox="0 0 24 22" aria-hidden="true">
+              <path d="M2 19h20l-1.6-11-4.9 3.6L12 3 8.5 11.6 3.6 8z" fill="#3f3b36"/>
+              <path d="M3 20.5h18" stroke="#3f3b36" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            <span class="buff-lv">Lv.{{round.buffLevel || 0}}</span>
+          </div>
           {{each round.buffs buff}}
           <div class="buff-item">
             <span class="buff-icon" style="background-image:url({{buff.icon}})"></span>
-            {{if buff.level}}<span class="buff-lv">Lv.{{buff.level}}</span>{{/if}}
+            <span class="buff-lv">Lv.{{buff.level || 0}}</span>
           </div>
           {{/each}}
         </div>
-        {{/if}}
       </div>
       {{/if}}
 
       {{if round.choices && round.choices.length}}
       <div class="round-choices">
-        <p class="choices-title">神秘收获 · {{round.choices.length}}</p>
+        <div class="choices-title">神秘收获 * {{round.choices.length}}</div>
         <div class="choices-list">
-          {{each round.choices card}}<span class="choice-icon" style="background-image:url({{card.icon}})"></span>{{/each}}
+          {{each round.choices card}}
+          <span class="choice-icon" style="background-image:url({{card.icon}})"></span>
+          {{/each}}
         </div>
       </div>
       {{/if}}
