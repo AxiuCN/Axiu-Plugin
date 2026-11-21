@@ -463,6 +463,10 @@ body {
   box-sizing: border-box;
   border-radius: 8px;
   overflow: hidden;
+  background-color: #7a5230;
+  background-size: 100% 100%;
+  background-position: center center;
+  background-repeat: no-repeat;
 }
 
 .role-item:first-child {
@@ -486,13 +490,13 @@ body {
   background: #e9e5dc;
 }
 
-/* 稀有度底色 */
+/* 稀有度底色：官方 roleStarBg 素材（金/紫渐变 + 暗纹） */
 .role-item.r5 {
-  background: linear-gradient(180deg, #9a6a41 0%, #7a5230 100%);
+  background-image: url("./images/star-bg-5.png");
 }
 
 .role-item.r4 {
-  background: linear-gradient(180deg, #7d5f9e 0%, #5d4779 100%);
+  background-image: url("./images/star-bg-4.png");
 }
 
 .split-text {
