@@ -172,79 +172,111 @@ function buildAvatarsMap (ids, infoMap = {}) {
 
 // ==================== 数据变换 ====================
 
+/** 深境螺旋：挑战回顾右栏的五项统计，顺序与标题对齐米游社 */
+const ABYSS_STAT_DEFS = [
+  ['defeat_rank', '最多击破数'],
+  ['take_damage_rank', '承受最多伤害'],
+  ['normal_skill_rank', '元素战技施放数'],
+  ['damage_rank', '最强一击'],
+  ['energy_skill_rank', '元素爆发次数']
+]
+
+/** 楼层中文数字（深境螺旋第 X 层） */
+const FLOOR_CN = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二', '十三', '十四', '十五']
+
+/** 时间戳(秒) → "YYYY.MM.DD HH:mm:ss"，无效时间返回 '-' */
+function fmtDatetime (ts) {
+  if (!ts) return '-'
+  const d = new Date(ts * 1000)
+  if (isNaN(d.getTime())) return '-'
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+/** 时间戳(秒) → "YYYY.MM.DD"，无效时间返回 '' */
+function fmtDay (ts) {
+  if (!ts) return ''
+  const d = new Date(ts * 1000)
+  if (isNaN(d.getTime())) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`
+}
+
 /**
- * 深境螺旋 API → 模板数据（匹配 miao-plugin Abyss 模型格式）
- * 保留: 角色统计(最强一击/最高承伤等)、楼层队伍卡、各间头像、楼层星数、用时
- * 去掉: 武器、圣遗物
+ * 深境螺旋 API → 模板数据（版式对齐米游社「深境螺旋战绩」）
+ * 结构：挑战回顾（最深抵达/战斗次数/获取星数/出战次数 + 五项统计）+ 最高层楼层卡
+ * 不展示武器、圣遗物
+ * @param {object} raw - spiralAbyss 接口 data
+ * @param {object} avatars - buildAvatarsMap 的结果，用于取头像与稀有度
  */
-function buildAbyssData (raw) {
-  // 统计段（stat 顶级变量）
-  const stat = []
-  const addMsg = (title, ds) => {
-    if (!ds || !ds.avatar_id) return
-    const char = MiaoCharacter.get(ds.avatar_id)
-    if (!char) { stat.push({ title, id: ds.avatar_id, value: `${(ds.value / 10000).toFixed(1)} W` }); return }
-    stat.push({ title, id: char.id, value: `${(ds.value / 10000).toFixed(1)} W` })
-  }
-  addMsg('最强一击', raw.damage_rank?.[0])
-  addMsg('最高承伤', raw.take_damage_rank?.[0])
-  for (const [key, title] of Object.entries({ defeat_rank: '最多击破', normal_skill_rank: '元素战技', energy_skill_rank: '元素爆发' })) {
-    const entry = raw[key]?.[0]
-    if (entry) stat.push({ title, id: entry.avatar_id || 0, value: `${entry.value} 次` })
-    else stat.push({})
-  }
+function buildAbyssData (raw, avatars = {}) {
+  // 五项统计：数字保持接口原值（米游社同样不折算万）
+  const stats = ABYSS_STAT_DEFS.map(([key, title]) => {
+    const ds = raw[key]?.[0]
+    const id = ds?.avatar_id || 0
+    return {
+      title,
+      id,
+      icon: avatars[id]?.face || ds?.avatar_icon || '',
+      value: ds?.value ?? '-'
+    }
+  })
 
-  // abyss 对象（仅最高层）
-  const floors = {}
+  // 出战次数：接口直接给 reveal_rank（含 value 与 rarity），最多显示 4 个
+  const reveal = (raw.reveal_rank || []).slice(0, 4).map((it) => ({
+    id: it.avatar_id,
+    star: it.rarity || avatars[it.avatar_id]?.star || 5,
+    value: it.value ?? '-'
+  }))
+
+  // 最高层楼层卡
+  const floors = []
   const rawFloors = raw.floors || []
-  const maxFloorIdx = Math.max(...rawFloors.map(f => f.index))
-  for (const f of rawFloors) {
-    if (f.index !== maxFloorIdx) continue
-    const levels = {}
-    for (const l of f.levels || []) {
-      const ds = { star: l.star || 0 }
-      for (const b of l.battles || []) {
-        const key = b.index === 1 ? 'up' : 'down'
-        const time = new Date((b.timestamp || 0) * 1000)
-        const pad = (n) => String(n).padStart(2, '0')
-        ds[key] = {
-          timestamp: b.timestamp || 0,
-          time: time.getTime() ? `${pad(time.getMonth() + 1)}-${pad(time.getDate())} ${pad(time.getHours())}:${pad(time.getMinutes())}:${pad(time.getSeconds())}` : '--',
-          avatars: (b.avatars || []).map(a => a.id)
-        }
+  if (rawFloors.length) {
+    const maxIdx = Math.max(...rawFloors.map(f => f.index))
+    const floor = rawFloors.find(f => f.index === maxIdx) || {}
+    const rooms = (floor.levels || []).map((l) => {
+      const battles = l.battles || []
+      const pick = (n) => battles.find(b => b.index === n)?.avatars?.map(a => a.id) || []
+      const star = l.star || 0
+      return {
+        index: l.index,
+        star,
+        max_star: 3,
+        // 三颗星逐个标记亮/暗，模板不做算术
+        starList: [0, 1, 2].map(i => i < star),
+        time: fmtDatetime(battles[0]?.timestamp),
+        up: pick(1),
+        down: pick(2)
       }
-      levels[l.index] = ds
-    }
-    const lastIdx = Math.max(...Object.keys(levels).map(Number))
-    floors[f.index] = {
-      star: f.star || 0,
-      index: f.index || 0,
-      display: levels[lastIdx] || {},
-      levels
-    }
+    })
+    floors.push({
+      index: maxIdx,
+      cn: FLOOR_CN[maxIdx] || String(maxIdx),
+      star: floor.star || 0,
+      max_star: 9,
+      // 楼层底图按 1-8 / 9-11 / 12+ 三套（同官方）
+      bgClass: maxIdx <= 8 ? 'bg-1' : (maxIdx <= 11 ? 'bg-2' : 'bg-3'),
+      rooms
+    })
   }
 
-  const st = new Date((raw.start_time || 0) * 1000)
+  const start = new Date((raw.start_time || 0) * 1000)
   const now = new Date()
   const pad = (n) => String(n).padStart(2, '0')
 
   return {
     uid: '',
-    stat,
     abyss: {
-      floors,
-      schedule: st.getTime() ? `${st.getMonth() + 1}月` : '',
+      period: raw.start_time && raw.end_time ? `${fmtDay(raw.start_time)}-${fmtDay(raw.end_time)}` : '',
+      schedule: start.getTime() ? `${start.getMonth() + 1}月` : '',
       total: raw.total_battle_times || 0,
       maxFloor: raw.max_floor || '',
       total_star: raw.total_star || 0,
-      time: `${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`,
-      stat: {
-        dmg: raw.damage_rank?.[0] ? { id: raw.damage_rank[0].avatar_id, value: raw.damage_rank[0].value } : {},
-        takeDmg: raw.take_damage_rank?.[0] ? { id: raw.take_damage_rank[0].avatar_id, value: raw.take_damage_rank[0].value } : {},
-        defeat: raw.defeat_rank?.[0] ? { id: raw.defeat_rank[0].avatar_id, value: raw.defeat_rank[0].value } : {},
-        e: raw.normal_skill_rank?.[0] ? { id: raw.normal_skill_rank[0].avatar_id, value: raw.normal_skill_rank[0].value } : {},
-        q: raw.energy_skill_rank?.[0] ? { id: raw.energy_skill_rank[0].avatar_id, value: raw.energy_skill_rank[0].value } : {}
-      }
+      reveal,
+      stats,
+      floors,
+      time: `${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
     }
   }
 }
@@ -508,8 +540,8 @@ export async function gsSpiralAbyssQuery (e) {
     const avatars = buildAvatarsMap([...avatarIds], charLevels)
 
     // 数据变换 + 渲染
-    const { abyss, stat } = buildAbyssData(rawData)
-    const img = await render('challenge/GS', 'abyss', { uid: auth.uid, abyss, stat, avatars })
+    const { abyss } = buildAbyssData(rawData, avatars)
+    const img = await render('challenge/GS', 'abyss', { uid: auth.uid, periodText, abyss, avatars })
     if (img) await e.reply(img)
   } catch (err) {
     logger?.error(`${LOG_PREFIX}[原神] 深境螺旋查询异常:`, err?.message)
