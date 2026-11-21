@@ -1,16 +1,15 @@
 /**
  * 深境螺旋战绩 — 版式对齐米游社「深境螺旋战绩」页
  *
- * 尺寸一律用 px（按官方 750 设计稿 × 700/750 折算）。
- * 不能用 vw：框架截图取的是 #container 元素（lib 里 body.screenshot），
- * 单页截图不会先把视口设成页面宽度，vw 会按浏览器默认 800px 视口算，
- * 导致 92vw = 736px 撑破 700px 的画布、右侧被裁掉。
+ * 尺寸一律用 px：官方是 750 基准的 vw 流式稿，这里 1vw = 7.5px 直接折算成固定 px。
+ * 不能用 vw：框架单页截图取的是 #container 元素，且不会先把视口设成页面宽度，
+ * vw 会按浏览器默认视口（约 800）计算，92vw 撑破画布、右侧被裁掉。
  *
  * 字体：标题 NZBZ，数字 Number，正文与「上半/下半」YS（= 官方 HYWenHei 同款）。
  */
 
 body {
-  width: 700px;
+  width: 750px;
   margin: 0;
   transform: none;
   background: #080b1f;
@@ -18,7 +17,7 @@ body {
 
 /* 页面底色与上下装饰图挂在 container 上（截图对象就是它），版权行因此落在背景内 */
 .container {
-  width: 700px;
+  width: 750px;
   padding: 0;
   background-color: #080b1f;
   background-image: url("./images/detail-page-bg-top.42c03fee.png"), url("./images/detail-page-bg-bottom.605642a7.png");
@@ -37,21 +36,21 @@ body {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 45px 28px 0;
+  padding: 48px 30px 0;
 }
 
 .page-title {
   font-family: NZBZ, "印品南征北战NZBZ体", YS, sans-serif;
-  font-size: 48px;
-  line-height: 56px;
+  font-size: 52px;
+  line-height: 60px;
   letter-spacing: 0.5px;
   color: #d3bc8e;
 }
 
 .page-range {
   margin-top: 8px;
-  font-size: 20px;
-  line-height: 30px;
+  font-size: 22px;
+  line-height: 32px;
   color: rgba(255, 255, 255, 0.65);
 }
 
@@ -62,22 +61,22 @@ body {
 }
 
 .head-name {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 600;
-  line-height: 34px;
+  line-height: 36px;
   color: rgba(255, 255, 255, 0.9);
 }
 
 .head-uid {
   margin-top: 4px;
-  font-size: 20px;
-  line-height: 30px;
+  font-size: 22px;
+  line-height: 32px;
   color: rgba(255, 255, 255, 0.65);
 }
 
 .head-divider {
-  height: 11px;
-  margin: 22px 28px 0;
+  height: 12px;
+  margin: 24px 30px 0;
   background: url("./images/share-divider.png") no-repeat center center;
   background-size: 100% 100%;
   opacity: 0.85;
@@ -86,11 +85,11 @@ body {
 /* ===== 挑战回顾 ===== */
 .look-back {
   position: relative;
-  width: 644px;
-  margin: 30px auto 0;
-  padding: 30px 0;
+  width: 690px;
+  margin: 32px auto 0;
+  padding: 32px 0;
   box-sizing: border-box;
-  border-radius: 15px;
+  border-radius: 16px;
   background-color: #1b1a38;
   background-image: url("./images/home-bg.9cbae158.png");
   background-size: 100% auto;
@@ -116,12 +115,12 @@ body {
   position: relative;
   z-index: 2;
   display: flex;
-  width: 588px;
+  width: 630px;
   margin: 0 auto;
 }
 
 .left-box {
-  width: 254px;
+  width: 272px;
   flex-shrink: 0;
 }
 
@@ -129,8 +128,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 41px;
-  padding: 0 15px;
+  height: 44px;
+  padding: 0 16px;
   box-sizing: border-box;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -142,16 +141,16 @@ body {
 }
 
 .info-item > p {
-  font-size: 20px;
-  line-height: 20px;
+  font-size: 22px;
+  line-height: 22px;
   color: rgba(255, 255, 255, 0.9);
 }
 
 .info-item > span,
 .star-value > span {
   font-family: Number, YS, sans-serif;
-  font-size: 22px;
-  line-height: 22px;
+  font-size: 24px;
+  line-height: 24px;
   color: rgba(255, 255, 255, 0.9);
 }
 
@@ -161,15 +160,15 @@ body {
 }
 
 .star-value > img {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   margin-right: 4px;
 }
 
 /* 出战次数：先标签、后一排头像 */
 .info-item.reveal-item {
-  height: 131px;
-  padding: 11px 15px;
+  height: 140px;
+  padding: 12px 16px;
   align-items: flex-start;
   flex-wrap: wrap;
   align-content: flex-start;
@@ -178,21 +177,21 @@ body {
 .reveal-list {
   display: flex;
   width: 100%;
-  margin-top: 11px;
+  margin-top: 12px;
 }
 
 .reveal-role {
-  width: 45px;
+  width: 48px;
   box-sizing: border-box;
 }
 
 .reveal-role + .reveal-role {
-  margin-left: 15px;
+  margin-left: 16px;
 }
 
 .reveal-role > div {
-  width: 45px;
-  height: 45px;
+  width: 48px;
+  height: 48px;
   box-sizing: border-box;
   border: 1px solid #4e6173;
   border-radius: 100%;
@@ -204,18 +203,18 @@ body {
 .reveal-count {
   margin-top: 4px;
   font-family: Number, YS, sans-serif;
-  font-size: 19px;
+  font-size: 20px;
   font-weight: 400;
-  line-height: 22px;
+  line-height: 24px;
   text-align: center;
   color: rgba(255, 255, 255, 0.65);
 }
 
 .right-box {
-  width: 319px;
-  height: 276px;
-  margin: 0 0 0 15px;
-  padding: 15px 15px 15px 8px;
+  width: 342px;
+  height: 296px;
+  margin: 0 0 0 16px;
+  padding: 16px 16px 16px 8px;
   box-sizing: border-box;
   list-style: none;
   border-radius: 8px;
@@ -226,33 +225,33 @@ body {
 .right-box > li {
   display: flex;
   align-items: center;
-  height: 37px;
+  height: 40px;
 }
 
 .right-box > li + li {
-  margin-top: 15px;
+  margin-top: 16px;
 }
 
 .right-box > li > img {
-  width: 41px;
-  height: 41px;
+  width: 44px;
+  height: 44px;
   margin-right: 4px;
   border-radius: 100%;
   object-fit: cover;
-  transform: translateY(-9px);
+  transform: translateY(-10px);
 }
 
 .right-box > li > p {
-  font-size: 20px;
-  line-height: 37px;
+  font-size: 22px;
+  line-height: 40px;
   color: rgba(255, 255, 255, 0.9);
 }
 
 .right-box > li > span {
   flex-grow: 1;
   font-family: Number, YS, sans-serif;
-  font-size: 22px;
-  line-height: 37px;
+  font-size: 24px;
+  line-height: 40px;
   text-align: right;
   color: rgba(255, 255, 255, 0.9);
 }
@@ -260,14 +259,14 @@ body {
 /* ===== 楼层卡 ===== */
 .floor-card {
   position: relative;
-  width: 644px;
-  margin: 37px auto 0;
+  width: 690px;
+  margin: 40px auto 0;
   padding: 4px;
   box-sizing: border-box;
-  border-radius: 13px;
+  border-radius: 14px;
   background-repeat: no-repeat, no-repeat;
   background-position: left top, left bottom;
-  background-size: 644px 377px, 644px 377px;
+  background-size: 690px 404px, 690px 404px;
 }
 
 /* 1-8 层 / 9-11 层 / 12 层以上各一套底图与底色 */
@@ -290,12 +289,12 @@ body {
   position: absolute;
   left: 6px;
   top: 6px;
-  width: calc(100% - 11px);
-  height: calc(100% - 11px);
+  width: calc(100% - 12px);
+  height: calc(100% - 12px);
   background-image: url("./images/floor-border-top.png"), url("./images/floor-border-mid.png"), url("./images/floor-border-bottom.png");
   background-repeat: no-repeat, repeat-y, no-repeat;
-  background-size: calc(100% - 11px) auto, 100% calc(100% - 86px), calc(100% - 11px) auto;
-  background-position: center 6px, center 43px, center calc(100% - 6px);
+  background-size: calc(100% - 12px) auto, 100% calc(100% - 92px), calc(100% - 12px) auto;
+  background-position: center 6px, center 46px, center calc(100% - 6px);
   pointer-events: none;
   z-index: 1;
 }
@@ -309,7 +308,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 30px 24px 0;
+  padding: 32px 26px 0;
 }
 
 .floor-head-left {
@@ -321,26 +320,26 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 67px;
-  height: 67px;
+  width: 72px;
+  height: 72px;
   background: url("./images/UI_Icon_Tower_Stage@2x.f8255b9e.png") no-repeat;
   background-size: 100% auto;
 }
 
 .floor-index .text {
   font-family: Number, YS, sans-serif;
-  font-size: 30px;
+  font-size: 32px;
   font-weight: 400;
-  line-height: 67px;
+  line-height: 72px;
   color: #3b4354;
 }
 
 .floor-title {
   margin-left: 8px;
   font-family: YS, "PingFang SC", sans-serif;
-  font-size: 32px;
+  font-size: 34px;
   font-weight: 400;
-  line-height: 32px;
+  line-height: 34px;
   color: #fff;
 }
 
@@ -350,15 +349,15 @@ body {
 }
 
 .floor-star > img {
-  width: 45px;
+  width: 48px;
   height: auto;
 }
 
 .floor-star > .text {
   padding-left: 8px;
   font-family: Number, YS, sans-serif;
-  font-size: 30px;
-  line-height: 30px;
+  font-size: 32px;
+  line-height: 32px;
   color: #fff;
 }
 
@@ -366,7 +365,7 @@ body {
 .floor-divider {
   position: relative;
   height: 1px;
-  margin: 15px 24px 0;
+  margin: 16px 26px 0;
   background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0));
 }
 
@@ -382,11 +381,11 @@ body {
 }
 
 .room-list {
-  padding: 0 24px;
+  padding: 0 26px;
 }
 
 .room {
-  padding: 22px 0 0;
+  padding: 24px 0 0;
 }
 
 .room + .room {
@@ -395,22 +394,22 @@ body {
 
 .room-head {
   position: relative;
-  height: 60px;
+  height: 64px;
   box-sizing: border-box;
 }
 
 .room-head .idx {
   font-family: YS, "PingFang SC", sans-serif;
-  font-size: 22px;
-  line-height: 30px;
+  font-size: 24px;
+  line-height: 32px;
   color: #d3bc8e;
 }
 
 .room-head .date {
   margin-top: 4px;
   font-family: Number, YS, sans-serif;
-  font-size: 19px;
-  line-height: 26px;
+  font-size: 20px;
+  line-height: 28px;
   color: rgba(255, 255, 255, 0.7);
 }
 
@@ -424,8 +423,8 @@ body {
 }
 
 .room-star .star {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
 }
 
 .room-star .star-off {
@@ -441,7 +440,7 @@ body {
   position: relative;
   display: flex;
   align-items: center;
-  padding: 11px;
+  padding: 12px;
   box-sizing: border-box;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.03);
@@ -449,18 +448,18 @@ body {
 }
 
 .roles + .roles {
-  margin-top: 15px;
+  margin-top: 16px;
 }
 
 .roles.empty {
-  height: 84px;
+  height: 90px;
 }
 
 .role-item {
   position: relative;
-  width: 108px;
-  height: 144px;
-  margin-left: 15px;
+  width: 116px;
+  height: 154px;
+  margin-left: 16px;
   box-sizing: border-box;
   border-radius: 8px;
   overflow: hidden;
@@ -473,15 +472,15 @@ body {
 .role-face {
   display: block;
   width: 100%;
-  height: 118px;
+  height: 126px;
   object-fit: cover;
 }
 
 .role-lv {
-  height: 26px;
+  height: 28px;
   font-family: Number, YS, sans-serif;
-  font-size: 22px;
-  line-height: 26px;
+  font-size: 24px;
+  line-height: 28px;
   text-align: center;
   color: #3b4252;
   background: #e9e5dc;
@@ -500,20 +499,20 @@ body {
   margin-left: auto;
   padding-right: 8px;
   font-family: YS, "PingFang SC", sans-serif;
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.65);
 }
 
 /* 提示：靠左、灰色底框承托，允许未来多行 */
 .abyss-notice {
-  margin: 30px 28px 0;
+  margin: 32px 30px 0;
   padding: 12px 16px;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(255, 255, 255, 0.05);
-  font-size: 19px;
-  line-height: 28px;
+  font-size: 20px;
+  line-height: 30px;
   text-align: left;
   color: rgba(255, 255, 255, 0.55);
 }
@@ -521,7 +520,7 @@ body {
 /* 版权行：与提示紧凑衔接，整行同一字体、同一字号 */
 .copyright {
   margin: 10px 0 0;
-  padding: 0 0 22px;
+  padding: 0 0 24px;
   font-family: YS, "PingFang SC", sans-serif;
   font-size: 16px;
   line-height: 22px;
