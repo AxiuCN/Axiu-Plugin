@@ -458,10 +458,9 @@ body {
 .role-item {
   position: relative;
   width: 116px;
-  height: 157px;
+  height: 154px;
   margin-left: 16px;
   box-sizing: border-box;
-  padding-bottom: 3px;
   border-radius: 8px;
   overflow: hidden;
   background-color: #7a5230;
@@ -474,11 +473,19 @@ body {
   margin-left: 0;
 }
 
+.role-art {
+  height: 126px;
+  overflow: hidden;
+}
+
 .role-face {
   display: block;
   width: 100%;
   height: 126px;
   object-fit: cover;
+  /* 本地只有方形头像，放大裁切以贴近官方角色卡取景 */
+  transform: scale(1.15);
+  transform-origin: center top;
 }
 
 .role-lv {

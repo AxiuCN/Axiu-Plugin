@@ -92,9 +92,9 @@ body {
 .review-card {
   position: relative;
   width: 750px;
-  height: 546px;
+  height: 475px;
   margin: 32px auto 0;
-  padding: 116px 70px 0;
+  padding: 106px 70px 0;
   box-sizing: border-box;
   background: url("./images/top-panel-bg.8a9cb222.png") no-repeat left top;
   background-size: 100% 100%;
@@ -104,7 +104,7 @@ body {
 .review-title {
   position: absolute;
   left: 0;
-  top: 36px;
+  top: 34px;
   width: 100%;
   font-family: YS, sans-serif;
   font-size: 28px;
@@ -118,7 +118,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 34px;
+  min-height: 44px;
 }
 
 .review-label {
@@ -155,13 +155,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 34px;
+  height: 44px;
 }
 
 .best-sub {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 400;
-  line-height: 34px;
+  line-height: 44px;
   color: #8b6a4c;
 }
 
@@ -186,7 +186,7 @@ body {
   display: block;
   width: 100%;
   height: 1px;
-  margin: 12px 0;
+  margin: 5px 0;
   background: rgba(106, 84, 67, 0.12);
 }
 
@@ -433,9 +433,8 @@ body {
 .role-item {
   position: relative;
   width: 128px;
-  height: 163px;
+  height: 160px;
   box-sizing: border-box;
-  padding-bottom: 3px;
   border: 1px solid #ded8d1;
   border-radius: 8px;
   overflow: hidden;
@@ -458,11 +457,19 @@ body {
   background-image: url("./images/star-bg-4.png");
 }
 
+.role-art {
+  height: 126px;
+  overflow: hidden;
+}
+
 .role-face {
   display: block;
   width: 100%;
   height: 126px;
   object-fit: cover;
+  /* 本地只有方形头像，放大裁切以贴近官方角色卡取景 */
+  transform: scale(1.15);
+  transform-origin: center top;
 }
 
 .role-elem {
@@ -566,8 +573,14 @@ body {
 }
 
 .buff-crown {
-  width: 26px;
-  height: 24px;
+  width: 31px;
+  height: 32px;
+  object-fit: contain;
+}
+
+/* Lv.0 的祝福在官方是禁用态（整项半透明） */
+.buff-item.is-zero {
+  opacity: 0.45;
 }
 
 .buff-icon {
@@ -628,7 +641,8 @@ body {
   background-position: center center;
   background-size: 38px 38px;
   background-repeat: no-repeat;
-  opacity: 0.5;
+  filter: grayscale(1) brightness(0.72);
+  opacity: 0.6;
 }
 
 /* ===== 提示（灰底框、靠左、多行） ===== */

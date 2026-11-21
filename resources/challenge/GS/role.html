@@ -36,6 +36,7 @@
         {{/if}}
       </div>
     </div>
+    <i class="review-divider"></i>
     <div class="best-sub-row">
       <span class="best-sub">已完成{{role.difficulty}} <span class="num">{{role.best.total || 0}}</span> 场挑战</span>
       <img class="heraldry" src="{{_res_path}}challenge/GS/images/heraldry-{{role.heraldry || 0}}.png">
@@ -156,7 +157,7 @@
         {{each round.team member}}
         {{set char = avatars[member.id] || {} }}
         <div class="role-item r{{char.star || 5}}">
-          <img class="role-face" src="{{member.image || char.face}}">
+          <div class="role-art"><img class="role-face" src="{{member.image || char.face}}"></div>
           {{if char.elemIcon}}
           <img class="role-elem" src="{{_res_path}}challenge/GS/images/{{char.elemIcon}}">
           {{/if}}
@@ -177,14 +178,11 @@
         </div>
         <div class="buff-list">
           <div class="buff-item buff-total">
-            <svg class="buff-crown" viewBox="0 0 24 22" aria-hidden="true">
-              <path d="M2 19h20l-1.6-11-4.9 3.6L12 3 8.5 11.6 3.6 8z" fill="#3f3b36"/>
-              <path d="M3 20.5h18" stroke="#3f3b36" stroke-width="1.6" stroke-linecap="round"/>
-            </svg>
+            <img class="buff-crown" src="{{_res_path}}challenge/GS/images/buff-level-crown.png">
             <span class="buff-lv">Lv.{{round.buffLevel || 0}}</span>
           </div>
           {{each round.buffs buff}}
-          <div class="buff-item">
+          <div class="buff-item{{(buff.level || 0) === 0 ? ' is-zero' : ''}}">
             <span class="buff-icon" style="background-image:url({{buff.icon}})"></span>
             <span class="buff-lv">Lv.{{buff.level || 0}}</span>
           </div>

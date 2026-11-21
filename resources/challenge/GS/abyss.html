@@ -111,7 +111,7 @@
               {{each room.up id}}
               {{set char = avatars[id] || {} }}
               <div class="role-item r{{char.star || 5}}">
-                <img class="role-face" src="{{char.face}}">
+                <div class="role-art"><img class="role-face" src="{{char.face}}"></div>
                 <p class="role-lv">Lv.{{char.level || '-'}}</p>
               </div>
               {{/each}}
@@ -126,7 +126,7 @@
               {{each room.down id}}
               {{set char = avatars[id] || {} }}
               <div class="role-item r{{char.star || 5}}">
-                <img class="role-face" src="{{char.face}}">
+                <div class="role-art"><img class="role-face" src="{{char.face}}"></div>
                 <p class="role-lv">Lv.{{char.level || '-'}}</p>
               </div>
               {{/each}}
