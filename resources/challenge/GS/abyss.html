@@ -9,20 +9,21 @@
 
   <!-- ===== 页头 ===== -->
   <header class="page-head">
-    <div class="page-title">深境螺旋战绩</div>
-    <div class="period-switch">
-      <span class="{{periodText === '本期' ? 'active' : ''}}">本期</span>
-      <span class="{{periodText === '上期' ? 'active' : ''}}">上期</span>
+    <div class="head-left">
+      <div class="page-title">深境螺旋</div>
+      <div class="page-range">统计周期：{{abyss.period}}</div>
     </div>
-    <div class="period-range">统计周期：{{abyss.period}}</div>
+    <div class="head-right">
+      {{if nickname}}
+      <div class="head-name">{{nickname}}</div>
+      {{/if}}
+      <div class="head-uid">UID：{{uid}}</div>
+    </div>
   </header>
+  <div class="head-divider"></div>
 
   <!-- ===== 挑战回顾 ===== -->
   <section class="look-back">
-    <div class="look-back-title">
-      <img class="title-icon" src="{{_res_path}}challenge/GS/images/lookback-icon.png">
-      <span>挑战回顾</span>
-    </div>
     <div class="look-back-content">
       <div class="left-box">
         <div class="info-item">
@@ -46,9 +47,9 @@
           <div class="reveal-list">
             {{each abyss.reveal item}}
             <div class="reveal-role">
-              <div class="reveal-face r{{item.star}}"
+              <div class="reveal-face"
                    style="background-image:url({{(avatars[item.id]||{}).face || item.icon}})"></div>
-              <p>{{item.value}}</p>
+              <p class="reveal-count">{{item.value}}</p>
             </div>
             {{/each}}
           </div>
@@ -72,7 +73,7 @@
     </div>
   </section>
 
-  <!-- ===== 楼层 ===== -->
+  <!-- ===== 楼层：由高层到低层 ===== -->
   {{each abyss.floors floor}}
   <section class="floor-card {{floor.bgClass}}">
     <div class="floor-border"></div>
@@ -142,7 +143,7 @@
   </section>
   {{/each}}
 
-  <div class="abyss-notice">本次查询成绩会上报群排行榜</div>
+  <div class="abyss-notice">查询的深境螺旋统计数据会上报排行榜，参与深境螺旋排行榜</div>
 
 </div>
 {{/block}}

@@ -2,97 +2,94 @@
  * 深境螺旋战绩 — 版式对齐米游社「深境螺旋战绩」页
  *
  * 尺寸体系沿用官方 H5 的 vw 值，输出宽度由 body 宽度决定：
- *   body 宽 900px → 1vw = 9px（换算比例与官方 750 设计稿一致，只整体放大 1.2 倍）
- * 因此 body 必须清掉 common.css 的 transform: scale(1.4)，否则 vw 按缩放后的视口算，会整体溢出。
+ *   body 宽 700px → 1vw = 7px
+ * 因此 body 必须清掉 common.css 的 transform: scale(1.4)，
+ * 否则 vw 按缩放后的视口算，整页会溢出。
+ *
+ * 字体：标题用 NZBZ，数字用 Number（全局 @font-face 已在 common.css 定义），
+ * 正文与「上半/下半」用 YS（汉仪文黑，官方 HYWenHei 同款）。
  */
 
 body {
-  width: 900px;
+  width: 700px;
   margin: 0;
   transform: none;
   background: #080b1f;
 }
 
-/* 官方用 HYWenHei（汉仪文黑）排数字与标题，本地复用它同一套字体文件 */
-@font-face {
-  font-family: HYWenHei;
-  src: url("../../common/font/HYWH-65W.woff") format("woff"),
-       url("../../common/font/HYWH-65W.ttf") format("truetype");
-  font-weight: 400;
-  font-style: normal;
-}
-
+/* 页面底色与上下装饰图挂在 container 上，版权行才算在背景之内 */
 .container {
-  width: 900px;
+  width: 700px;
   padding: 0;
-  background: none;
-}
-
-.abyss {
-  width: 100%;
-  padding-bottom: 5.33vw;
   background-color: #080b1f;
   background-image: url("./images/detail-page-bg-top.42c03fee.png"), url("./images/detail-page-bg-bottom.605642a7.png");
   background-size: 100% auto, 100% auto;
   background-repeat: no-repeat, no-repeat;
   background-position: top center, bottom center;
+}
+
+.abyss {
+  width: 100%;
+  padding-bottom: 4vw;
   font-family: "PingFang SC", PingFangSC-Regular, sans-serif;
 }
 
 /* ===== 页头 ===== */
 .page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   padding: 6.4vw 4vw 0;
 }
 
 .page-title {
-  font-family: "PingFang SC", PingFangSC-Medium, sans-serif;
-  font-size: 4.8vw;
-  font-weight: 500;
-  line-height: 6.4vw;
-  color: #fff;
-  text-align: center;
+  font-family: NZBZ, "印品南征北战NZBZ体", YS, sans-serif;
+  font-size: 6.93vw;
+  line-height: 8vw;
+  letter-spacing: 0.5px;
+  color: #d3bc8e;
 }
 
-/* 本期 / 上期：静态出图只高亮当前期数 */
-.period-switch {
-  display: flex;
-  width: 86vw;
-  height: 8vw;
-  margin: 4.27vw auto 0;
-  padding: 0.53vw;
-  box-sizing: border-box;
-  border-radius: 4.27vw;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.period-switch > span {
-  flex: 1;
-  border-radius: 4.27vw;
-  font-size: 3.2vw;
-  font-weight: 500;
-  line-height: 6.94vw;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.period-switch > span.active {
-  background: #ece5d8;
-  color: #675856;
-}
-
-.period-range {
-  margin: 3.2vw 4vw 0;
-  font-size: 3.2vw;
+.page-range {
+  margin-top: 1.07vw;
+  font-size: 2.93vw;
   line-height: 4.27vw;
   color: rgba(255, 255, 255, 0.65);
+}
+
+.head-right {
+  flex-shrink: 0;
+  padding-top: 1.07vw;
+  text-align: right;
+}
+
+.head-name {
+  font-size: 3.2vw;
+  font-weight: 600;
+  line-height: 4.8vw;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.head-uid {
+  margin-top: 0.53vw;
+  font-size: 2.93vw;
+  line-height: 4.27vw;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.head-divider {
+  height: 1.6vw;
+  margin: 3.2vw 4vw 0;
+  background: url("./images/share-divider.png") no-repeat center center;
+  background-size: 100% 100%;
+  opacity: 0.85;
 }
 
 /* ===== 挑战回顾 ===== */
 .look-back {
   position: relative;
   width: 92vw;
-  margin: 5.33vw auto 0;
+  margin: 4.27vw auto 0;
   padding: 4.27vw 0;
   box-sizing: border-box;
   border-radius: 2.13vw;
@@ -117,30 +114,12 @@ body {
   z-index: 1;
 }
 
-.look-back-title {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  padding: 0 4vw;
-  font-size: 3.73vw;
-  font-weight: 500;
-  line-height: 4.8vw;
-  color: #d3bc8e;
-}
-
-.look-back-title .title-icon {
-  width: 4.8vw;
-  height: 4.8vw;
-  margin-right: 1.07vw;
-}
-
 .look-back-content {
   position: relative;
   z-index: 2;
   display: flex;
   width: 84vw;
-  margin: 4.27vw auto 0;
+  margin: 0 auto;
 }
 
 .left-box {
@@ -165,16 +144,16 @@ body {
 }
 
 .info-item > p {
-  font-size: 2.67vw;
-  line-height: 2.67vw;
+  font-size: 2.93vw;
+  line-height: 2.93vw;
   color: rgba(255, 255, 255, 0.9);
 }
 
 .info-item > span,
 .star-value > span {
-  font-family: HYWenHei, YS, sans-serif;
-  font-size: 2.67vw;
-  line-height: 2.67vw;
+  font-family: Number, YS, sans-serif;
+  font-size: 3.2vw;
+  line-height: 3.2vw;
   color: rgba(255, 255, 255, 0.9);
 }
 
@@ -224,8 +203,9 @@ body {
   background-position: center;
 }
 
-.reveal-role > p {
+.reveal-count {
   margin-top: 0.53vw;
+  font-family: Number, YS, sans-serif;
   font-size: 2.67vw;
   font-weight: 400;
   line-height: 3.2vw;
@@ -265,15 +245,15 @@ body {
 }
 
 .right-box > li > p {
-  font-size: 2.67vw;
+  font-size: 2.93vw;
   line-height: 5.33vw;
   color: rgba(255, 255, 255, 0.9);
 }
 
 .right-box > li > span {
   flex-grow: 1;
-  font-family: HYWenHei, YS, sans-serif;
-  font-size: 2.67vw;
+  font-family: Number, YS, sans-serif;
+  font-size: 3.2vw;
   line-height: 5.33vw;
   text-align: right;
   color: rgba(255, 255, 255, 0.9);
@@ -350,8 +330,8 @@ body {
 }
 
 .floor-index .text {
-  font-family: HYWenHei, YS, sans-serif;
-  font-size: 3.73vw;
+  font-family: Number, YS, sans-serif;
+  font-size: 4.27vw;
   font-weight: 400;
   line-height: 9.6vw;
   color: #3b4354;
@@ -359,10 +339,10 @@ body {
 
 .floor-title {
   margin-left: 1.07vw;
-  font-family: HYWenHei, YS, sans-serif;
-  font-size: 4.27vw;
+  font-family: YS, "PingFang SC", sans-serif;
+  font-size: 4.53vw;
   font-weight: 400;
-  line-height: 4.27vw;
+  line-height: 4.53vw;
   color: #fff;
 }
 
@@ -378,9 +358,9 @@ body {
 
 .floor-star > .text {
   padding-left: 1.07vw;
-  font-family: HYWenHei, YS, sans-serif;
-  font-size: 3.73vw;
-  line-height: 3.73vw;
+  font-family: Number, YS, sans-serif;
+  font-size: 4.27vw;
+  line-height: 4.27vw;
   color: #fff;
 }
 
@@ -396,7 +376,7 @@ body {
   content: "";
   position: absolute;
   left: 50%;
-  top: -0.53vw;
+  top: -0.4vw;
   width: 1.07vw;
   height: 1.07vw;
   transform: translateX(-50%) rotate(45deg);
@@ -422,7 +402,7 @@ body {
 }
 
 .room-head .idx {
-  font-family: HYWenHei, YS, sans-serif;
+  font-family: YS, "PingFang SC", sans-serif;
   font-size: 3.2vw;
   line-height: 4.27vw;
   color: #d3bc8e;
@@ -430,6 +410,7 @@ body {
 
 .room-head .date {
   margin-top: 0.53vw;
+  font-family: Number, YS, sans-serif;
   font-size: 2.67vw;
   line-height: 3.73vw;
   color: rgba(255, 255, 255, 0.7);
@@ -500,7 +481,7 @@ body {
 
 .role-lv {
   height: 3.73vw;
-  font-family: HYWenHei, YS, sans-serif;
+  font-family: Number, YS, sans-serif;
   font-size: 3.2vw;
   line-height: 3.73vw;
   text-align: center;
@@ -520,18 +501,19 @@ body {
 .split-text {
   margin-left: auto;
   padding-right: 1.07vw;
-  font-family: HYWenHei, YS, sans-serif;
-  font-size: 3.2vw;
+  font-family: YS, "PingFang SC", sans-serif;
+  font-size: 3.73vw;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.65);
 }
 
+/* 提示：靠左，允许未来多行 */
 .abyss-notice {
   margin: 4.27vw 4vw 0;
-  font-size: 2.4vw;
-  line-height: 3.2vw;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.35);
+  font-size: 2.67vw;
+  line-height: 4vw;
+  text-align: left;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .copyright {

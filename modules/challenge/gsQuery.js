@@ -204,7 +204,7 @@ function fmtDay (ts) {
 
 /**
  * 深境螺旋 API → 模板数据（版式对齐米游社「深境螺旋战绩」）
- * 结构：挑战回顾（最深抵达/战斗次数/获取星数/出战次数 + 五项统计）+ 最高层楼层卡
+ * 结构：挑战回顾（最深抵达/战斗次数/获取星数/出战次数 + 五项统计）+ 全部楼层卡（高层→低层）
  * 不展示武器、圣遗物
  * @param {object} raw - spiralAbyss 接口 data
  * @param {object} avatars - buildAvatarsMap 的结果，用于取头像与稀有度
@@ -229,37 +229,35 @@ function buildAbyssData (raw, avatars = {}) {
     value: it.value ?? '-'
   }))
 
-  // 最高层楼层卡
-  const floors = []
-  const rawFloors = raw.floors || []
-  if (rawFloors.length) {
-    const maxIdx = Math.max(...rawFloors.map(f => f.index))
-    const floor = rawFloors.find(f => f.index === maxIdx) || {}
-    const rooms = (floor.levels || []).map((l) => {
-      const battles = l.battles || []
-      const pick = (n) => battles.find(b => b.index === n)?.avatars?.map(a => a.id) || []
-      const star = l.star || 0
+  // 楼层卡：全部有记录的楼层，展示顺序由高层到低层（间内仍按第 1/2/3 间升序）
+  const floors = [...(raw.floors || [])]
+    .sort((a, b) => b.index - a.index)
+    .map((floor) => {
+      const rooms = (floor.levels || []).map((l) => {
+        const battles = l.battles || []
+        const pick = (n) => battles.find(b => b.index === n)?.avatars?.map(a => a.id) || []
+        const star = l.star || 0
+        return {
+          index: l.index,
+          star,
+          max_star: 3,
+          // 三颗星逐个标记亮/暗，模板不做算术
+          starList: [0, 1, 2].map(i => i < star),
+          time: fmtDatetime(battles[0]?.timestamp),
+          up: pick(1),
+          down: pick(2)
+        }
+      })
       return {
-        index: l.index,
-        star,
-        max_star: 3,
-        // 三颗星逐个标记亮/暗，模板不做算术
-        starList: [0, 1, 2].map(i => i < star),
-        time: fmtDatetime(battles[0]?.timestamp),
-        up: pick(1),
-        down: pick(2)
+        index: floor.index,
+        cn: FLOOR_CN[floor.index] || String(floor.index),
+        star: floor.star || 0,
+        max_star: 9,
+        // 楼层底图按 1-8 / 9-11 / 12+ 三套（同官方）
+        bgClass: floor.index <= 8 ? 'bg-1' : (floor.index <= 11 ? 'bg-2' : 'bg-3'),
+        rooms
       }
     })
-    floors.push({
-      index: maxIdx,
-      cn: FLOOR_CN[maxIdx] || String(maxIdx),
-      star: floor.star || 0,
-      max_star: 9,
-      // 楼层底图按 1-8 / 9-11 / 12+ 三套（同官方）
-      bgClass: maxIdx <= 8 ? 'bg-1' : (maxIdx <= 11 ? 'bg-2' : 'bg-3'),
-      rooms
-    })
-  }
 
   const start = new Date((raw.start_time || 0) * 1000)
   const now = new Date()
@@ -541,7 +539,8 @@ export async function gsSpiralAbyssQuery (e) {
 
     // 数据变换 + 渲染
     const { abyss } = buildAbyssData(rawData, avatars)
-    const img = await render('challenge/GS', 'abyss', { uid: auth.uid, periodText, abyss, avatars })
+    const nickname = e.sender?.card || e.sender?.nickname || ''
+    const img = await render('challenge/GS', 'abyss', { uid: auth.uid, nickname, abyss, avatars })
     if (img) await e.reply(img)
   } catch (err) {
     logger?.error(`${LOG_PREFIX}[原神] 深境螺旋查询异常:`, err?.message)
