@@ -292,6 +292,10 @@ check('深渊房间区与楼层都判空后才渲染',
 check('深渊角色卡用 avatars[…] || {} 兜底', /\{\{\s*set c = avatars\[a\.id\] \|\| \{\}\s*\}\}/.test(abyssSrc))
 check('深渊上/下半标注按官方口径（两场战斗才出现）',
   /\{\{\s*if room\.battles\.length === 2\s*\}\}/.test(abyssSrc))
+// 官方 role-card-v2 的立绘高度走内联 style（组件传 height=58），CSS 默认的 12.8vw 会被覆盖，
+// 线上立绘是正方形；漏了这条会渲染成偏矮的卡（脸部被裁）
+check('深渊角色卡立绘沿用官方内联高度（116px 见方）',
+  /class="icon" style="height:116px"/.test(abyssSrc))
 
 /* 赋光之人的数据口径：官方取当前期条目的 blings[]，不是 avatars[].is_plus
    （曾按 avatars 取，真实数据里没有该字段，导致赋光区块整段不渲染） */
