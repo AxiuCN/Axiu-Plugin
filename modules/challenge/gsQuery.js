@@ -32,15 +32,6 @@ function intToRoman (num) {
          ones[num % 10]
 }
 
-/** 时间戳(秒) → "MM-DD HH:mm:ss" */
-function fmtTime (ts) {
-  if (!ts) return '--'
-  const d = new Date(ts * 1000)
-  if (isNaN(d.getTime())) return '--'
-  const pad = (n) => String(n).padStart(2, '0')
-  return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-}
-
 /** 时间戳(秒) → "M月" */
 function fmtMonth (ts) {
   if (!ts) return ''
@@ -393,64 +384,70 @@ function buildRoleData (raw) {
   }
 }
 
+/** 危战难度名（difficulty_id → 文案） */
+const HARD_DIFFICULTY = { 1: '普通', 2: '进阶', 3: '困难', 4: '险恶', 5: '无畏', 6: '绝境' }
+
 /**
- * 幽境危战 API → 模板数据
+ * 幽境危战 API → 模板数据（版式对齐米游社「幽境危战」页）
  * @param {object} raw - 从 API 提取的当前期数据（raw = res.data 或 res.data[0]）
  * @param {string} mode - 'single' | 'mp' | 'best'
  */
 function buildHardData (raw, mode) {
-  // 选模式
-  let modeData
   const hasSingle = raw.single?.has_data
   const hasMp = raw.mp?.has_data
+  const calc = (d) => (d?.has_data ? (d.best?.difficulty || 0) * 1000 - (d.best?.second || 0) : 0)
 
-  if (mode === 'single') {
-    modeData = raw.single || {}
-  } else if (mode === 'mp') {
-    modeData = raw.mp || {}
-  } else {
-    // best: 比较 single 和 mp
-    const calc = (d) => (d?.has_data ? (d.best?.difficulty || 0) * 1000 - (d.best?.second || 0) : 0)
-    modeData = calc(raw.single) >= calc(raw.mp) ? (raw.single || {}) : (raw.mp || {})
-  }
+  // 选模式：单/多人；best 取成绩更好的一侧
+  let mdKey = 'single'
+  if (mode === 'mp') mdKey = 'mp'
+  else if (mode === 'best') mdKey = calc(raw.mp) > calc(raw.single) ? 'mp' : 'single'
+  const md = raw[mdKey] || {}
 
-  const best = modeData.best || modeData || {}
-  const challs = (best.challenge || modeData.challenge || []).map(c => ({
-    name: c.name || '',
-    second: c.second || 0,
-    monster: {
-      icon: c.monster?.icon || '',
-      level: c.monster?.level || 0,
-      desc: (c.monster?.desc || []).filter(d => d !== '').map(d =>
-        d.replace(/<color=([^>]+)>/g, '<span style="color:$1">').replace(/<\/color>/g, '</span>')
-      )
-    },
-    // 阵容角色
-    avatars: (c.teams || []).map(t => ({
-      avatar_id: t.avatar_id,
-      name: t.name || '',
-      level: t.level || 0,
-      rarity: t.rarity || 4,
-      cons: t.rank || 0   // 命座
-    })),
-    // 最强一击/最高总伤害
-    best_avatars: (c.best_avatar || []).map(ba => ({
-      avatar_id: ba.avatar_id,
-      dps: ba.dps || 0
-    }))
-  }))
+  const best = md.best || {}
+  const challenge = best.challenge || md.challenge || []
+  const bosses = challenge.map((c) => {
+    const bas = c.best_avatar || []
+    // 接口用 type 区分：1=最强一击，2=最高总伤害；缺 type 时按顺序兜底
+    const byType = (t) => {
+      const hit = bas.find(b => Number(b.type) === t)
+      return hit ? { id: hit.avatar_id, dps: hit.dps ?? 0 } : null
+    }
+    return {
+      name: c.name || '',
+      second: c.second || 0,
+      monster: { icon: c.monster?.icon || '', level: c.monster?.level || 0 },
+      team: (c.teams || []).map(t => ({ id: t.avatar_id, level: t.level || 0, cons: t.rank || 0 })),
+      topHit: byType(1) || (bas[0] ? { id: bas[0].avatar_id, dps: bas[0].dps ?? 0 } : null),
+      topTotal: byType(2) || (bas[1] ? { id: bas[1].avatar_id, dps: bas[1].dps ?? 0 } : null)
+    }
+  })
 
   const sched = raw.schedule || {}
+  const difficulty = best.difficulty || 0
+  const second = best.second || 0
+  // 难度徽章：6 档 180 秒内用 vi_plus，其余按档位取
+  let medal = ''
+  if (difficulty === 6) medal = second > 0 && second <= 180 ? 'hard-medal-6-plus.png' : 'hard-medal-6.png'
+  else if (difficulty >= 1 && difficulty <= 5) medal = `hard-medal-${difficulty}.png`
+
+  // 赋光之人：顶层 avatars 里带 is_plus 的
+  const plus = (raw.avatars || md.avatars || [])
+    .filter(a => a?.is_plus)
+    .map(a => a.avatar_id)
+    .filter(Boolean)
+
   return {
     uid: '',
     hard: {
-      start_time: fmtTime(sched.start_time),
-      end_time: fmtTime(sched.end_time),
-      best: {
-        difficulty: best.difficulty || 0,
-        second: best.second || 0
-      },
-      challs
+      period: sched.start_time && sched.end_time ? `${fmtDay(sched.start_time)}-${fmtDay(sched.end_time)}` : '',
+      mode: mdKey,
+      modeLabel: mdKey === 'mp' ? '多人模式' : '单人模式',
+      difficulty,
+      difficultyName: HARD_DIFFICULTY[difficulty] || '',
+      second,
+      medal,
+      plus,
+      bosses
     }
   }
 }
@@ -736,13 +733,15 @@ export async function gsHardChallengeQuery (e) {
         }
       }
     }
+    // 赋光之人（is_plus）也要有头像
+    for (const a of (rawData.avatars || [])) {
+      if (a?.is_plus && a.avatar_id) avatarIds.add(a.avatar_id)
+    }
     const avatars = buildAvatarsMap([...avatarIds], charLevels)
 
     // 数据变换 + 渲染
-    const data = buildHardData(rawData, mode)
-    data.uid = auth.uid
-
-    const img = await render('challenge/GS', 'hard', { ...data, avatars, mode })
+    const nickname = e.sender?.card || e.sender?.nickname || ''
+    const img = await render('challenge/GS', 'hard', { ...buildHardData(rawData, mode), uid: auth.uid, nickname, avatars })
     if (img) await e.reply(img)
   } catch (err) {
     logger?.error(`${LOG_PREFIX}[原神] 幽境危战查询异常:`, err?.message)

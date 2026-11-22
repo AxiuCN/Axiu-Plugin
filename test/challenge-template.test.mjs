@@ -121,44 +121,59 @@ check('战斗统计照常渲染', noFight.ok && noFight.html.includes('最高伤
 /* ==================== 【2】危战（GS/hard.html） ==================== */
 
 console.log('\n【2】危战模板：最强一击 / 最高总伤害 / 怪物信息缺失时不能崩')
-const mkHardData = (challOver = {}) => ({
+const mkBoss = (over = {}) => ({
+  name: '第一间',
+  second: 60,
+  monster: { icon: '/meta-gs/monster.webp', level: 110 },
+  team: [{ id: 10000052, level: 90, cons: 2 }],
+  topHit: { id: 10000052, dps: 123456 },
+  topTotal: { id: 10000052, dps: 654321 },
+  ...over
+})
+
+const mkHardData = (bossOver = {}, hardOver = {}) => ({
   uid: '100000001',
   hard: {
-    start_time: '2026-01-01',
-    end_time: '2026-01-15',
-    best: { difficulty: 5, second: 120 },
-    challs: [{
-      name: '第一间',
-      second: 60,
-      monster: { icon: '/meta-gs/monster.webp', level: 103, desc: ['测试描述'] },
-      avatars: [{ avatar_id: 10000052, name: '雷电将军', level: 90, rarity: 5, cons: 2 }],
-      best_avatars: [{ avatar_id: 10000052, dps: 123456 }, { avatar_id: 10000052, dps: 654321 }],
-      ...challOver
-    }]
+    period: '2026-01-01-2026-01-15',
+    modeLabel: '单人模式',
+    difficulty: 6,
+    difficultyName: '绝境',
+    second: 120,
+    medal: 'hard-medal-6.png',
+    plus: [10000052],
+    bosses: [mkBoss(bossOver)],
+    ...hardOver
   },
-  avatars: { 10000052: { face: '/meta-gs/x/face.webp', level: 90, name: '雷电将军', abbr: '雷神', cons: 2 } }
+  avatars: { 10000052: { face: '/meta-gs/x/face.webp', level: 90, star: 5, elemIcon: 'elemicon-pyro.png' } }
 })
+
 const hardFull = renderTpl(hardTpl, mkHardData())
 check('完整数据渲染成功', hardFull.ok, hardFull.error)
-// 用面板标题元素判定：模板里有同名 HTML 注释，注释会保留在输出里，不能当依据
-const hasPanel = (r, title) => r.ok && r.html.includes(`stat-panel-title">${title}`)
-check('完整数据里两个统计面板都在', hasPanel(hardFull, '最强一击') && hasPanel(hardFull, '最高总伤害'))
+// 用统计格标题判定：模板里有同名 HTML 注释，注释会保留在输出里，不能当依据
+const hasCell = (r, title) => r.ok && r.html.includes(`stat-label">${title}`)
+check('完整数据里两个统计格都在', hasCell(hardFull, '最强一击') && hasCell(hardFull, '最高总伤害'))
+check('完整数据里渲染出队伍与赋光之人', hardFull.ok && hardFull.html.includes('boss-team') && hardFull.html.includes('赋光之人'))
 
-const hardNoBest = renderTpl(hardTpl, mkHardData({ best_avatars: [] }))
-check('best_avatars 为空时渲染成功（索引越界）', hardNoBest.ok, hardNoBest.error)
-check('best_avatars 为空时不渲染统计面板',
-  hardNoBest.ok && !hasPanel(hardNoBest, '最强一击') && !hasPanel(hardNoBest, '最高总伤害'))
+const hardNoBest = renderTpl(hardTpl, mkHardData({ topHit: null, topTotal: null }))
+check('最强一击/最高总伤害都为空时渲染成功', hardNoBest.ok, hardNoBest.error)
+check('两者都为空时不渲染统计行',
+  hardNoBest.ok && !hasCell(hardNoBest, '最强一击') && !hasCell(hardNoBest, '最高总伤害'))
 
-const hardOneBest = renderTpl(hardTpl, mkHardData({ best_avatars: [{ avatar_id: 10000052, dps: 1 }] }))
-check('best_avatars 只有 1 条时渲染成功', hardOneBest.ok, hardOneBest.error)
-check('只有 1 条时只渲染最强一击',
-  hasPanel(hardOneBest, '最强一击') && !hasPanel(hardOneBest, '最高总伤害'))
+const hardOneBest = renderTpl(hardTpl, mkHardData({ topTotal: null }))
+check('只有 1 条时渲染成功', hardOneBest.ok, hardOneBest.error)
+check('只有 1 条时只渲染最强一击', hasCell(hardOneBest, '最强一击') && !hasCell(hardOneBest, '最高总伤害'))
 
-const hardNoMonster = renderTpl(hardTpl, mkHardData({ monster: { icon: '', level: 0, desc: [] } }))
-check('怪物图标与描述都为空时渲染成功', hardNoMonster.ok, hardNoMonster.error)
+const hardNoMonster = renderTpl(hardTpl, mkHardData({ monster: { icon: '', level: 0 } }))
+check('怪物图标为空时渲染成功且不渲染怪物图', hardNoMonster.ok && !hardNoMonster.html.includes('monster-img'), hardNoMonster.error)
 
-const hardEmpty = renderTpl(hardTpl, { uid: '1', hard: { start_time: '', end_time: '', best: {}, challs: [] } })
-check('challs 为空、best 缺字段时渲染成功', hardEmpty.ok, hardEmpty.error)
+const hardNoTeam = renderTpl(hardTpl, mkHardData({ team: [] }))
+check('队伍为空时渲染成功且不渲染队伍区', hardNoTeam.ok && !hardNoTeam.html.includes('boss-team'), hardNoTeam.error)
+
+const hardEmpty = renderTpl(hardTpl, { uid: '1', hard: { period: '', modeLabel: '', bosses: [] } })
+check('bosses 为空、best 缺字段时渲染成功', hardEmpty.ok, hardEmpty.error)
+
+const hardNoPlus = renderTpl(hardTpl, mkHardData({}, { plus: [] }))
+check('赋光之人为空时不渲染该区块', hardNoPlus.ok && !hardNoPlus.html.includes('plus-card'), hardNoPlus.error)
 
 /* ==================== 【3】静态约束 ==================== */
 
@@ -171,5 +186,11 @@ check('敌人区被 {{if round.enemies && round.enemies.length}} … {{/if}} 包
   roleSrc.indexOf('round-enemies') > roleSrc.indexOf('{{if round.enemies && round.enemies.length}}'))
 
 check('角色卡取头像前用 avatars[…] || {} 兜底', /\{\{\s*set char = avatars\[member\.id\] \|\| \{\}\s*\}\}/.test(roleSrc))
+
+const hardSrc = fs.readFileSync(hardTpl, 'utf8')
+check('怪物图与队伍区都判空后才渲染',
+  /\{\{\s*if boss\.monster && boss\.monster\.icon\s*\}\}/.test(hardSrc) &&
+  /\{\{\s*if boss\.team && boss\.team\.length\s*\}\}/.test(hardSrc))
+check('危战角色卡同样用 avatars[…] || {} 兜底', /\{\{\s*set c = avatars\[m\.id\] \|\| \{\}\s*\}\}/.test(hardSrc))
 
 finish()
