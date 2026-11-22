@@ -54,8 +54,8 @@
       <p class="tw-text-[14px] tw-font-semibold tw-leading-[18px] tw-relative tw-z-10" data-v-1335dd8d>{{boss.name}}</p>
 
       <div class="tw-mb-2.5 tw-mt-[7px] tw-h-5 tw-w-[168px] tw-translate-x-[-4px] tw-px-[7px] duration-time tw-text-xxs-m tw-leading-[14px] tw-flex tw-items-center tw-justify-between" data-v-1335dd8d>
-        <span class="tw-font-semibold">战斗用时</span>
-        <span class="tw-font-genshinfont">{{boss.second}}秒</span>
+        <span class="tw-font-semibold" data-v-1335dd8d>战斗用时</span>
+        <span class="tw-font-genshinfont" data-v-1335dd8d>{{boss.second}}秒</span>
       </div>
 
       <div class="tw-mb-2.5 tw-h-[47px] tw-text-[0px]" data-v-1335dd8d>
@@ -64,12 +64,12 @@
         {{set c = avatars[m.id] || {} }}
         <div class="avatar-item tw-relative tw-inline-block tw-overflow-hidden tw-rounded-[2px] tw-bg-[linear-gradient(180deg,transparent_0%,rgba(236,229,216,0.7)_50%,#ECE5D8_100%)] tw-mr-1.5" data-v-1335dd8d>
           <div class="gt-avatar gt-avatar--size-xs" data-v-1335dd8d>
-            <div class="gt-avatar-img">
-              {{if c.starBg}}<div class="gt-avatar-star-bg"><img src="{{_res_path}}challenge/GS/images/{{c.starBg}}"></div>{{/if}}
-              <img class="gt-avatar-face" src="{{c.face}}">
+            <div class="gt-avatar-img" data-v-1335dd8d>
+              {{if c.starBg}}<div class="gt-avatar-star-bg" data-v-1335dd8d><img src="{{_res_path}}challenge/GS/images/{{c.starBg}}" data-v-1335dd8d></div>{{/if}}
+              <img class="gt-avatar-face" src="{{c.face}}" data-v-1335dd8d>
             </div>
             {{if c.elemIcon}}
-            <div class="gt-avatar-left"><div class="gt-avatar-left-block"><img class="gt-avatar-elem" src="{{_res_path}}challenge/GS/images/{{c.elemIcon}}"></div></div>
+            <div class="gt-avatar-left" data-v-1335dd8d><div class="gt-avatar-left-block" data-v-1335dd8d><img class="gt-avatar-elem" src="{{_res_path}}challenge/GS/images/{{c.elemIcon}}" data-v-1335dd8d></div></div>
             {{/if}}
           </div>
           {{if m.cons}}<div class="tw-absolute tw-right-0 tw-top-0 tw-h-[9px] tw-w-[9px] tw-rounded-bl-[2px] tw-bg-gt-g-grey-black-9 tw-text-center tw-text-[6px] tw-leading-[8px]" data-v-1335dd8d>{{m.cons}}</div>{{/if}}
@@ -83,24 +83,24 @@
       <div class="tw-flex tw-items-center tw-justify-between" data-v-1335dd8d>
         {{if boss.topHit}}
         <div class="tw-flex tw-items-center tw-justify-between tw-h-[26px] tw-px-1.5 tw-py-1 tw-text-xxs-m tw-leading-[14px] tw-text-gt-l-text-white-2 tw-border-[0.5px] tw-border-solid tw-border-[rgba(255,255,255,0.03)] tw-bg-[rgba(146,126,222,0.10)] tw-w-[156px] tw-mr-0.5" data-v-1335dd8d>
-          <div class="tw-flex tw-items-center">
-            <div class="tw-bg-[#2A1B2E] tw-mr-1.5 tw-h-[18px] tw-w-[18px] tw-rounded-full tw-inline-flex tw-items-center tw-justify-center tw-border-[0.5px] tw-border-solid tw-border-[#635493]">
-              <img class="tw-h-[24px] tw-w-[24px] tw-translate-y-[-4px]" src="{{(avatars[boss.topHit.id]||{}).face}}">
+          <div class="tw-flex tw-items-center" data-v-1335dd8d>
+            <div class="tw-bg-[#2A1B2E] tw-mr-1.5 tw-h-[18px] tw-w-[18px] tw-rounded-full tw-inline-flex tw-items-center tw-justify-center tw-border-[0.5px] tw-border-solid tw-border-[#635493]" data-v-1335dd8d>
+              <img class="tw-h-[24px] tw-w-[24px] tw-translate-y-[-4px]" src="{{(avatars[boss.topHit.id]||{}).face}}" data-v-1335dd8d>
             </div>
-            <span class="tw-font-semibold">最强一击</span>
+            <span class="tw-font-semibold" data-v-1335dd8d>最强一击</span>
           </div>
-          <span class="tw-font-genshinfont">{{boss.topHit.dps}}</span>
+          <span class="tw-font-genshinfont" data-v-1335dd8d>{{boss.topHit.dps}}</span>
         </div>
         {{/if}}
         {{if boss.topTotal}}
         <div class="tw-flex tw-items-center tw-justify-between tw-h-[26px] tw-px-1.5 tw-py-1 tw-text-xxs-m tw-leading-[14px] tw-text-gt-l-text-white-2 tw-border-[0.5px] tw-border-solid tw-border-[rgba(255,255,255,0.03)] tw-bg-[rgba(146,126,222,0.10)] tw-w-[156px]" data-v-1335dd8d>
-          <div class="tw-flex tw-items-center">
-            <div class="tw-bg-[#2A1B2E] tw-mr-1.5 tw-h-[18px] tw-w-[18px] tw-rounded-full tw-inline-flex tw-items-center tw-justify-center tw-border-[0.5px] tw-border-solid tw-border-[#635493]">
-              <img class="tw-h-[24px] tw-w-[24px] tw-translate-y-[-4px]" src="{{(avatars[boss.topTotal.id]||{}).face}}">
+          <div class="tw-flex tw-items-center" data-v-1335dd8d>
+            <div class="tw-bg-[#2A1B2E] tw-mr-1.5 tw-h-[18px] tw-w-[18px] tw-rounded-full tw-inline-flex tw-items-center tw-justify-center tw-border-[0.5px] tw-border-solid tw-border-[#635493]" data-v-1335dd8d>
+              <img class="tw-h-[24px] tw-w-[24px] tw-translate-y-[-4px]" src="{{(avatars[boss.topTotal.id]||{}).face}}" data-v-1335dd8d>
             </div>
-            <span class="tw-font-semibold">最高总伤害</span>
+            <span class="tw-font-semibold" data-v-1335dd8d>最高总伤害</span>
           </div>
-          <span class="tw-font-genshinfont">{{boss.topTotal.dps}}</span>
+          <span class="tw-font-genshinfont" data-v-1335dd8d>{{boss.topTotal.dps}}</span>
         </div>
         {{/if}}
       </div>
@@ -108,10 +108,10 @@
 
       {{if boss.monster && boss.monster.icon}}
       <div class="tw-absolute tw-bottom-[0] tw-right-[-3px] tw-h-[142px] tw-w-[142px]" data-v-1335dd8d>
-        <img class="monster-img tw-pointer-events-none tw-h-full tw-w-full" src="{{boss.monster.icon}}">
+        <img class="monster-img tw-pointer-events-none tw-h-full tw-w-full" src="{{boss.monster.icon}}" data-v-1335dd8d>
         {{if boss.monster.level}}
-        <div class="tw-absolute tw-bottom-9 tw-left-0 tw-flex tw-w-full tw-items-center tw-justify-center">
-          <div class="tw-text-xxs-m tw-leading-[14px] tw-text-gt-l-text-white-2 tw-inline-block tw-rounded-full tw-px-2 tw-bg-gt-g-grey-black-2 tw-backdrop-blur-[2px] tw-border-[0.5px] tw-border-solid tw-border-gt-g-grey-white-4">Lv.{{boss.monster.level}}</div>
+        <div class="tw-absolute tw-bottom-9 tw-left-0 tw-flex tw-w-full tw-items-center tw-justify-center" data-v-1335dd8d>
+          <div class="tw-text-xxs-m tw-leading-[14px] tw-text-gt-l-text-white-2 tw-inline-block tw-rounded-full tw-px-2 tw-bg-gt-g-grey-black-2 tw-backdrop-blur-[2px] tw-border-[0.5px] tw-border-solid tw-border-gt-g-grey-white-4" data-v-1335dd8d>Lv.{{boss.monster.level}}</div>
         </div>
         {{/if}}
       </div>
@@ -124,20 +124,20 @@
   {{if hard.plus && hard.plus.length}}
   <div class="plus-block" data-v-205cb0c1>
     <div class="plus-role-title tw-h-7.5 tw-px-4 tw-flex tw-items-center" data-v-205cb0c1>
-      <p class="plus-title tw-font-genshinfont tw-text-[10px] tw-leading-[12px] tw-text-gt-l-text-white-2">为以下角色赋予了「辉光」</p>
+      <p class="plus-title tw-font-genshinfont tw-text-[10px] tw-leading-[12px] tw-text-gt-l-text-white-2" data-v-205cb0c1>为以下角色赋予了「辉光」</p>
     </div>
     <div class="tw-p-4 tw-pb-1.5 tw-relative tw-text-[0px]" data-v-205cb0c1>
       <div class="role-bg" data-v-205cb0c1><div class="role-bg-1" data-v-205cb0c1></div><div class="role-bg-2" data-v-205cb0c1></div></div>
       {{each hard.plus id}}
       {{set p = avatars[id] || {} }}
       <div class="tw-h-[45px] tw-w-[45px] tw-relative tw-mb-2.5 tw-inline-block tw-mr-2" data-v-205cb0c1>
-        <div class="gt-avatar gt-avatar--size-s tw-origin-top-left tw-scale-[0.865]">
-          <div class="gt-avatar-img">
-            {{if p.starBg}}<div class="gt-avatar-star-bg"><img src="{{_res_path}}challenge/GS/images/{{p.starBg}}"></div>{{/if}}
-            <img class="gt-avatar-face" src="{{p.face}}">
+        <div class="gt-avatar gt-avatar--size-s tw-origin-top-left tw-scale-[0.865]" data-v-205cb0c1>
+          <div class="gt-avatar-img" data-v-205cb0c1>
+            {{if p.starBg}}<div class="gt-avatar-star-bg" data-v-205cb0c1><img src="{{_res_path}}challenge/GS/images/{{p.starBg}}" data-v-205cb0c1></div>{{/if}}
+            <img class="gt-avatar-face" src="{{p.face}}" data-v-205cb0c1>
           </div>
           {{if p.elemIcon}}
-          <div class="gt-avatar-left"><div class="gt-avatar-left-block"><img class="gt-avatar-elem" src="{{_res_path}}challenge/GS/images/{{p.elemIcon}}"></div></div>
+          <div class="gt-avatar-left" data-v-205cb0c1><div class="gt-avatar-left-block" data-v-205cb0c1><img class="gt-avatar-elem" src="{{_res_path}}challenge/GS/images/{{p.elemIcon}}" data-v-205cb0c1></div></div>
           {{/if}}
         </div>
       </div>

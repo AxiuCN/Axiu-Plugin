@@ -12,13 +12,14 @@ body {
   width: 750px;
   margin: 0;
   transform: none;
-  background: #1b1024;
+  /* 官方页面底色：上下两张底图的内缘渐变到的正是这个颜色 */
+  background: #23212d;
 }
 
 .container {
   width: 750px;
   padding: 0;
-  background-color: #1b1024;
+  background-color: #23212d;
   background-image: url("./images/detail_top_bg.931e5865.png"), url("./images/detail_bottom_bg.8c671579.png");
   background-size: 100% auto, 100% auto;
   background-repeat: no-repeat, no-repeat;
@@ -27,7 +28,8 @@ body {
 
 .hard {
   width: 100%;
-  font-family: YS, "PingFang SC", sans-serif;
+  /* 字体在 hard-official.css 注册：HYWenHei / ysfont 均指向原神官方字体合集 */
+  font-family: HYWenHei, ysfont, "PingFang SC", sans-serif;
 }
 
 /* ===== 页头（自有） ===== */
@@ -144,7 +146,7 @@ body {
 }
 
 .best-time {
-  font-family: YS, sans-serif;
+  font-family: HYWenHei, ysfont, sans-serif;
   font-size: 28px;
   color: #f5d492;
 }
@@ -213,7 +215,7 @@ body {
 .copyright {
   margin: 10px 0 0;
   padding: 0 0 24px;
-  font-family: YS, "PingFang SC", sans-serif;
+  font-family: HYWenHei, ysfont, "PingFang SC", sans-serif;
   font-size: 16px;
   line-height: 22px;
   text-align: center;
@@ -222,7 +224,7 @@ body {
 }
 
 .copyright .version {
-  font-family: YS, "PingFang SC", sans-serif;
+  font-family: HYWenHei, ysfont, "PingFang SC", sans-serif;
   font-size: 16px;
   color: #d3bc8e;
 }

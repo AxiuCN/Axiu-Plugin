@@ -89,15 +89,23 @@ const header = `/**
   --gpx: 2px;
 }
 
-/* 官方字体 HYWenHei = 汉仪文黑，插件已有同款文件 */
+/* 字体：统一使用 resources/common/font/hk4e_zh-cn.ttf
+   （原神官方字体合集 HYWenHei-85W，CJK + Latin + 数字全覆盖）。
+   官方的排版链是 HYWenHei → ysfont，这里两个名字指向同一份文件，
+   于是不论规则写哪个名字，出来的都是同一个官方字形。 */
 @font-face {
   font-family: "HYWenHei";
-  src: url("../../common/font/HYWH-65W.woff") format("woff"),
-       url("../../common/font/HYWH-65W.ttf") format("truetype");
+  src: url("../../common/font/hk4e_zh-cn.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
 }
 
+@font-face {
+  font-family: "ysfont";
+  src: url("../../common/font/hk4e_zh-cn.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
 `
 
 fs.writeFileSync(outPath, header + collected.join('\n') + '\n', 'utf8')

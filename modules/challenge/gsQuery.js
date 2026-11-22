@@ -699,10 +699,9 @@ export async function gsHardChallengeQuery (e) {
 
   try {
     const mys = new GenshinMysApi(auth.uid, auth.ck, { game: 'gs', log: false })
-    // 官方详情页带 need_detail，赋光之人（blings）等明细只在详情里返回
-    const hardParams = { need_detail: true }
-    let res = await mys.getData('hard_challenge', hardParams)
-    res = await checkGsCode(e, res, 'hard_challenge', mys, hardParams)
+    // 注意：need_detail 由 apiTool 的 hard_challenge url 模板固定携带，这里不要再传
+    let res = await mys.getData('hard_challenge', {})
+    res = await checkGsCode(e, res, 'hard_challenge', mys, {})
     if (!res || res.retcode !== 0) return true
 
     // hard_challenge 返回 { data: [{current}, {previous}] } 结构
