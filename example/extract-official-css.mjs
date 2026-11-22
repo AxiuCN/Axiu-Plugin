@@ -41,6 +41,9 @@ const classes = new Set(BASE_CLASSES)
 for (const m of html.matchAll(/class="([^"]+)"/g)) {
   for (const t of m[1].split(/\s+/)) if (t) classes.add(t)
 }
+// 模板里的条件 class（如 {{if …}}tw-mr-2{{/if}}）会被拆碎，这里再全量扫一遍 tw-* token
+const twScan = html.match(/tw-[A-Za-z0-9_[\]().,%#/-]+/g) || []
+for (const t of twScan) classes.add(t.replace(/[),]+$/, ''))
 
 const scopes = scopeArgs.map((s) => (s.startsWith('data-v-') ? s : `data-v-${s}`))
 

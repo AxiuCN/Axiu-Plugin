@@ -110,6 +110,7 @@ html[mi18n-lang=th-th] .plus-title[data-v-205cb0c1]{font-size:26px;line-height:3
 .tw-mb-4{margin-bottom:calc(16 * var(--gpx))}
 .tw-mr-0\.5{margin-right:calc(2 * var(--gpx))}
 .tw-mr-1\.5{margin-right:calc(6 * var(--gpx))}
+.tw-mr-2{margin-right:calc(8 * var(--gpx))}
 .tw-mt-4{margin-top:calc(16 * var(--gpx))}
 .tw-mt-\[7px\]{margin-top:14px}
 .tw-inline-block{display:inline-block}

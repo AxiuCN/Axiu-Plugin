@@ -169,6 +169,13 @@ body {
   margin: 0 auto;
 }
 
+/* 赋光标题：官方模板写的是 10px，但线上截图实测 ink 高 24.3@750 → 字号约 28px(14 CSS)，
+   以截图为准（用户对照的就是截图） */
+.plus-block .plus-title {
+  font-size: 28px;
+  line-height: 36px;
+}
+
 /* 官方 gt-avatar 内部用的是组件自己的 img 节点。我们的结构里：
    - 稀有度底图 .gt-avatar-star-bg>img 带 z-index:1（官方规则），必须压到 0
    - 立绘抬到 1，否则会被底图整块盖住（实机“角色图丢失”就是这个）
