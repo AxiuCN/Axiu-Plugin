@@ -430,10 +430,10 @@ function buildHardData (raw, mode) {
   if (difficulty === 6) medal = second > 0 && second <= 180 ? 'hard-medal-6-plus.png' : 'hard-medal-6.png'
   else if (difficulty >= 1 && difficulty <= 5) medal = `hard-medal-${difficulty}.png`
 
-  // 赋光之人：顶层 avatars 里带 is_plus 的
-  const plus = (raw.avatars || md.avatars || [])
-    .filter(a => a?.is_plus)
-    .map(a => a.avatar_id)
+  // 赋光之人：官方取自当前期条目的 blings[]（is_plus=true 的为赋光）
+  const plus = (raw.blings || [])
+    .filter(b => b?.is_plus)
+    .map(b => b.avatar_id)
     .filter(Boolean)
 
   return {
@@ -733,9 +733,9 @@ export async function gsHardChallengeQuery (e) {
         }
       }
     }
-    // 赋光之人（is_plus）也要有头像
-    for (const a of (rawData.avatars || [])) {
-      if (a?.is_plus && a.avatar_id) avatarIds.add(a.avatar_id)
+    // 赋光之人（blings 里 is_plus）也要有头像
+    for (const b of (rawData.blings || [])) {
+      if (b?.is_plus && b.avatar_id) avatarIds.add(b.avatar_id)
     }
     const avatars = buildAvatarsMap([...avatarIds], charLevels)
 

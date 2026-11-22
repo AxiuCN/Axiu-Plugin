@@ -110,6 +110,7 @@ body {
 }
 
 /* ===== 最佳纪录 ===== */
+/* 官方 .vi-bg：best_vi_bg 整条拉伸（不是 wenli 布条，那是「赋予辉光」标题条的底图） */
 .best-bar {
   display: flex;
   align-items: center;
@@ -119,16 +120,14 @@ body {
   margin: 18px auto 0;
   padding: 0 30px;
   box-sizing: border-box;
-  border-radius: 6px;
-  background-color: #4a2a58;
-  background-image: url("./images/wenli_left.cbc06bf1.png"), url("./images/wenli-right.png");
-  background-position: left top, right top;
-  background-size: 124px 100%, calc(100% - 124px) 100%;
-  background-repeat: no-repeat, no-repeat;
+  background-image: url("./images/best_vi_bg.fcc16d87.png");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: center center;
 }
 
 .best-title {
-  font-size: 30px;
+  font-size: 28px;
   font-weight: 500;
   color: #fff;
 }

@@ -193,4 +193,12 @@ check('怪物图与队伍区都判空后才渲染',
   /\{\{\s*if boss\.team && boss\.team\.length\s*\}\}/.test(hardSrc))
 check('危战角色卡同样用 avatars[…] || {} 兜底', /\{\{\s*set c = avatars\[m\.id\] \|\| \{\}\s*\}\}/.test(hardSrc))
 
+/* 赋光之人的数据口径：官方取当前期条目的 blings[]，不是 avatars[].is_plus
+   （曾按 avatars 取，真实数据里没有该字段，导致赋光区块整段不渲染） */
+const querySrc = fs.readFileSync(path.join(pluginRoot, 'modules', 'challenge', 'gsQuery.js'), 'utf8')
+check('赋光之人取自当前期条目的 blings[]',
+  /const plus = \(raw\.blings \|\| \[\]\)[\s\S]{0,160}\.filter\(b => b\?\.is_plus\)/.test(querySrc))
+check('不再从 avatars[].is_plus 取赋光', !/raw\.avatars \|\| md\.avatars/.test(querySrc))
+check('赋光头像收集同样走 blings', /for \(const b of \(rawData\.blings \|\| \[\]\)\)/.test(querySrc))
+
 finish()
