@@ -449,16 +449,26 @@ function buildHardData (raw, mode) {
 
   // 赋光之人：官方取自当前期条目的 blings[]（is_plus=true 的为赋光）；
   // 部分接口版本不带 blings，回落到顶层 avatars[].is_plus
+  // 官方把 blings 分成两段渲染：
+  //   hard_challenge_plus    「为以下角色赋予了「恒昼辉光」」→ is_plus === true
+  //   hard_challenge_no_plus 「为以下角色赋予了「辉光」」    → is_plus === false
   const plusIds = []
+  const noPlusIds = []
   for (const b of (raw.blings || [])) {
-    if (b?.is_plus && b.avatar_id) plusIds.push(b.avatar_id)
+    if (!b?.avatar_id) continue
+    if (b.is_plus) plusIds.push(b.avatar_id)
+    else noPlusIds.push(b.avatar_id)
   }
-  if (!plusIds.length) {
+  // 部分接口版本不带 blings，回落到顶层 avatars[].is_plus
+  if (!plusIds.length && !noPlusIds.length) {
     for (const a of (raw.avatars || md.avatars || [])) {
-      if (a?.is_plus && a.avatar_id) plusIds.push(a.avatar_id)
+      if (!a?.avatar_id) continue
+      if (a.is_plus) plusIds.push(a.avatar_id)
+      else noPlusIds.push(a.avatar_id)
     }
   }
   const plus = [...new Set(plusIds)]
+  const noPlus = [...new Set(noPlusIds)]
 
   return {
     uid: '',
@@ -471,6 +481,7 @@ function buildHardData (raw, mode) {
       second,
       medal,
       plus,
+      noPlus,
       bosses
     }
   }
@@ -760,7 +771,7 @@ export async function gsHardChallengeQuery (e) {
     }
     // 赋光之人（blings 里 is_plus，缺省回落 avatars）也要有头像
     for (const b of (rawData.blings || [])) {
-      if (b?.is_plus && b.avatar_id) avatarIds.add(b.avatar_id)
+      if (b?.avatar_id) avatarIds.add(b.avatar_id)
     }
     for (const a of (rawData.avatars || [])) {
       if (a?.is_plus && a.avatar_id) avatarIds.add(a.avatar_id)

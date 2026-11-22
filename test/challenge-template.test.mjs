@@ -198,11 +198,16 @@ check('危战角色卡同样用 avatars[…] || {} 兜底', /\{\{\s*set c = avat
 /* 赋光之人的数据口径：官方取当前期条目的 blings[]，不是 avatars[].is_plus
    （曾按 avatars 取，真实数据里没有该字段，导致赋光区块整段不渲染） */
 const querySrc = fs.readFileSync(path.join(pluginRoot, 'modules', 'challenge', 'gsQuery.js'), 'utf8')
-check('赋光之人优先取当前期条目的 blings[]',
-  /for \(const b of \(raw\.blings \|\| \[\]\)\)/.test(querySrc))
-check('blings 为空时回落 avatars[].is_plus', /if \(!plusIds\.length\)/.test(querySrc))
-check('赋光头像收集同时覆盖 blings 与 avatars',
+check('赋光两段都取自当前期条目的 blings[]',
+  /for \(const b of \(raw\.blings \|\| \[\]\)\)/.test(querySrc) &&
+  /if \(b\.is_plus\) plusIds\.push\(b\.avatar_id\)/.test(querySrc) &&
+  /else noPlusIds\.push\(b\.avatar_id\)/.test(querySrc))
+check('blings 缺失时回落 avatars[].is_plus',
+  /if \(!plusIds\.length && !noPlusIds\.length\)/.test(querySrc))
+check('赋光头像收集覆盖全部 blings',
   /for \(const b of \(rawData\.blings \|\| \[\]\)\)/.test(querySrc) &&
-  /for \(const a of \(rawData\.avatars \|\| \[\]\)\)/.test(querySrc))
+  /if \(b\?\.avatar_id\) avatarIds\.add\(b\.avatar_id\)/.test(querySrc))
+check('模板渲染 is_plus 与其余两段赋光',
+  /hard\.plus && hard\.plus\.length/.test(hardSrc) && /hard\.noPlus && hard\.noPlus\.length/.test(hardSrc))
 
 finish()

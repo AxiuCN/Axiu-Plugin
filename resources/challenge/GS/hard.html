@@ -124,11 +124,37 @@
   {{if hard.plus && hard.plus.length}}
   <div class="plus-block" data-v-205cb0c1>
     <div class="plus-role-title tw-h-7.5 tw-px-4 tw-flex tw-items-center" data-v-205cb0c1>
-      <p class="plus-title tw-font-genshinfont tw-text-[10px] tw-leading-[12px] tw-text-gt-l-text-white-2" data-v-205cb0c1>为以下角色赋予了「辉光」</p>
+      <p class="plus-title tw-font-genshinfont tw-text-[10px] tw-leading-[12px] tw-text-gt-l-text-white-2" data-v-205cb0c1>为以下角色赋予了「恒昼辉光」</p>
     </div>
     <div class="tw-p-4 tw-pb-1.5 tw-relative tw-text-[0px]" data-v-205cb0c1>
       <div class="role-bg" data-v-205cb0c1><div class="role-bg-1" data-v-205cb0c1></div><div class="role-bg-2" data-v-205cb0c1></div></div>
       {{each hard.plus id}}
+      {{set p = avatars[id] || {} }}
+      <div class="tw-h-[45px] tw-w-[45px] tw-relative tw-mb-2.5 tw-inline-block tw-mr-2" data-v-205cb0c1>
+        <div class="gt-avatar gt-avatar--size-s tw-origin-top-left tw-scale-[0.865]" data-v-205cb0c1>
+          <div class="gt-avatar-img" data-v-205cb0c1>
+            {{if p.starBg}}<div class="gt-avatar-star-bg" data-v-205cb0c1><img src="{{_res_path}}challenge/GS/images/{{p.starBg}}" data-v-205cb0c1></div>{{/if}}
+            <img class="gt-avatar-face" src="{{p.face}}" data-v-205cb0c1>
+          </div>
+          {{if p.elemIcon}}
+          <div class="gt-avatar-left" data-v-205cb0c1><div class="gt-avatar-left-block" data-v-205cb0c1><img class="gt-avatar-elem" src="{{_res_path}}challenge/GS/images/{{p.elemIcon}}" data-v-205cb0c1></div></div>
+          {{/if}}
+        </div>
+      </div>
+      {{/each}}
+    </div>
+  </div>
+  {{/if}}
+
+  <!-- ===== 赋光之人（is_plus 之外的那段） ===== -->
+  {{if hard.noPlus && hard.noPlus.length}}
+  <div class="plus-block tw-mt-4" data-v-205cb0c1>
+    <div class="plus-role-title tw-h-7.5 tw-px-4 tw-flex tw-items-center" data-v-205cb0c1>
+      <p class="plus-title tw-font-genshinfont tw-text-[10px] tw-leading-[12px] tw-text-gt-l-text-white-2" data-v-205cb0c1>为以下角色赋予了「辉光」</p>
+    </div>
+    <div class="tw-p-4 tw-pb-1.5 tw-relative tw-text-[0px]" data-v-205cb0c1>
+      <div class="role-bg" data-v-205cb0c1><div class="role-bg-1" data-v-205cb0c1></div><div class="role-bg-2" data-v-205cb0c1></div></div>
+      {{each hard.noPlus id}}
       {{set p = avatars[id] || {} }}
       <div class="tw-h-[45px] tw-w-[45px] tw-relative tw-mb-2.5 tw-inline-block tw-mr-2" data-v-205cb0c1>
         <div class="gt-avatar gt-avatar--size-s tw-origin-top-left tw-scale-[0.865]" data-v-205cb0c1>
