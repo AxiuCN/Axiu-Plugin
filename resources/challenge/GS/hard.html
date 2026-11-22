@@ -47,6 +47,7 @@
   <!-- ===== 每个 boss ===== -->
   {{each hard.bosses boss}}
   <section class="boss">
+    <div class="boss-border"></div>
     <h2 class="boss-name">{{boss.name}}</h2>
 
     <div class="boss-time">
@@ -71,28 +72,29 @@
       </div>
       {{/if}}
 
-      {{if boss.monster && boss.monster.icon}}
-      <div class="boss-monster">
-        <img class="monster-img" src="{{boss.monster.icon}}">
-        {{if boss.monster.level}}
-        <span class="monster-lv">Lv.{{boss.monster.level}}</span>
-        {{/if}}
-      </div>
+    </div>
+
+    {{if boss.monster && boss.monster.icon}}
+    <div class="boss-monster">
+      <img class="monster-img" src="{{boss.monster.icon}}">
+      {{if boss.monster.level}}
+      <span class="monster-lv">Lv.{{boss.monster.level}}</span>
       {{/if}}
     </div>
+    {{/if}}
 
     {{if boss.topHit || boss.topTotal}}
     <div class="boss-stats">
       {{if boss.topHit}}
       <div class="stat-cell">
-        <span class="stat-face" style="background-image:url({{(avatars[boss.topHit.id]||{}).face}})"></span>
+        <span class="stat-avatar"><img src="{{(avatars[boss.topHit.id]||{}).face}}"></span>
         <span class="stat-label">最强一击</span>
         <span class="stat-value">{{boss.topHit.dps}}</span>
       </div>
       {{/if}}
       {{if boss.topTotal}}
       <div class="stat-cell">
-        <span class="stat-face" style="background-image:url({{(avatars[boss.topTotal.id]||{}).face}})"></span>
+        <span class="stat-avatar"><img src="{{(avatars[boss.topTotal.id]||{}).face}}"></span>
         <span class="stat-label">最高总伤害</span>
         <span class="stat-value">{{boss.topTotal.dps}}</span>
       </div>
