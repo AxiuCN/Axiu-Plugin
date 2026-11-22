@@ -39,6 +39,10 @@ if (!h5Dir || !htmlPath || !outPath) {
 const flags = rest.filter((a) => a.startsWith('--'))
 const scopeArgs = rest.filter((a) => !a.startsWith('--'))
 const twOnly = flags.includes('--tw-only')
+// --drop-dead：丢掉「选择器里的 class 在模板里根本没出现」的规则。
+// 官方一个组件会连着上界、访客态、分享态、弹窗等一堆变体，这些规则我们永远命中不了，
+// 但它们引用的底图会因此被判定成「有人在用」而一直留在仓库里。
+const dropDead = flags.includes('--drop-dead')
 const extraClasses = flags
   .filter((a) => a.startsWith('--classes='))
   .flatMap((a) => a.slice('--classes='.length).split(','))
@@ -65,6 +69,15 @@ const BASE_CLASSES = [
 const PC_SCOPES = ['data-v-0f16c268', 'data-v-3afa13e2', 'data-v-306522d0']
 
 const html = fs.readFileSync(htmlPath, 'utf8')
+// 模板里真的会出现的 class（遮掉 {{if}}/{{each}} 之后再切，三元里的字符串字面量也算）
+const htmlClasses = new Set()
+for (const m of html.matchAll(/class="([^"]*)"/g)) {
+  const raw = m[1]
+  for (const t of raw.replace(/\{\{[^}]*\}\}/g, ' ').split(/\s+/)) if (t) htmlClasses.add(t)
+  for (const q of raw.matchAll(/'([^']+)'/g)) {
+    for (const t of q[1].split(/\s+/)) if (t) htmlClasses.add(t)
+  }
+}
 const classes = new Set(twOnly ? extraClasses : [...BASE_CLASSES, ...extraClasses])
 if (!twOnly) {
   for (const m of html.matchAll(/class="([^"]+)"/g)) {
@@ -74,6 +87,15 @@ if (!twOnly) {
 // 模板里的条件 class（如 {{if …}}tw-mr-2{{/if}}）会被拆碎，这里再全量扫一遍 tw-* token
 const twScan = html.match(/tw-[A-Za-z0-9_[\]().,%#/-]+/g) || []
 for (const t of twScan) classes.add(t.replace(/[),]+$/, ''))
+
+/** --drop-dead 用的「活跃 class」：只看模板里能出现 + 显式点名的，不含 BASE_CLASSES */
+const liveClasses = new Set([...htmlClasses, ...extraClasses, ...twScan.map((t) => t.replace(/[),]+$/, ''))])
+/** 选择器有没有可能命中：任一分组里的 class 必须全部在模板里出现过 */
+const isLive = (sel) => sel.split(',').some((part) => {
+  // Tailwind 的任意值类（tw-bg-[linear-gradient(...)]）在 CSS 里带反斜杠转义，要原样还原
+  const cls = [...part.matchAll(/\.((?:[A-Za-z0-9_-]|\\.)+)/g)].map((x) => x[1].replace(/\\(.)/g, '$1'))
+  return cls.length === 0 || cls.every((c) => liveClasses.has(c))
+})
 
 const scopes = scopeArgs.map((s) => (s.startsWith('data-v-') ? s : `data-v-${s}`))
 
@@ -101,6 +123,7 @@ for (const fn of CSS_FILES) {
     const body = m[2].trim()
     scanned++
     if (PC_SCOPES.some((s) => sel.includes(s))) continue
+    if (dropDead && !isLive(sel)) continue
     const hit = patterns.some((p) => p.test(sel)) || scopes.some((s) => sel.includes(s))
     if (!hit) continue
     const key = sel + '|' + body

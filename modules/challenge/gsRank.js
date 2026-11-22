@@ -17,6 +17,17 @@ export const DIFF_NAMES = { 1: '普通', 2: '进阶', 3: '困难', 4: '险恶', 
 /** 幽境危战徽章名称 */
 export const BADGE_NAMES = { 1: '普通', 2: '进阶', 3: '困难', 4: '险恶', 5: '无畏', 6: '绝境', 7: '虹彩' }
 
+/** 幽境危战徽章图片（官方勋章原件，7 = 虹彩，对应 diff 6 且用时 ≤180s 的 vi_plus） */
+export const BADGE_MEDAL = {
+  1: 'medal_i.af3dcf06.png',
+  2: 'medal_ii.9b87164a.png',
+  3: 'medal_iii.733d64af.png',
+  4: 'medal_iv.3b112633.png',
+  5: 'medal_v.0cd07c5d.png',
+  6: 'medal_vi.cba7750d.png',
+  7: 'medal_vi_plus.2f4f73d2.png'
+}
+
 /** 秒 → 分:秒 */
 function fmtDuration (sec) {
   if (sec == null) return '-'
@@ -62,7 +73,11 @@ export function buildGsCols (extra, challengeType) {
         { v: DIFF_NAMES[extra.difficulty] || extra.difficulty || '-', l: '难度' },
         { v: extra.time_second != null ? `${extra.time_second}秒` : '-', l: '用时' },
         extra.badge
-          ? { v: BADGE_NAMES[extra.badge] || '-', l: '', img: `images/medal_${extra.badge === 7 ? '6_plus' : extra.badge}.png` }
+          ? {
+              v: BADGE_NAMES[extra.badge] || '-',
+              l: '',
+              ...(BADGE_MEDAL[extra.badge] ? { img: `images/${BADGE_MEDAL[extra.badge]}` } : {})
+            }
           : { v: '-', l: '徽章' }
       ]
     default: return []
