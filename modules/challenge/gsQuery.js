@@ -447,11 +447,18 @@ function buildHardData (raw, mode) {
   if (difficulty === 6) medal = second > 0 && second <= 180 ? MEDAL_FILE['6_1'] : MEDAL_FILE[6]
   else if (difficulty >= 1 && difficulty <= 5) medal = MEDAL_FILE[difficulty]
 
-  // 赋光之人：官方取自当前期条目的 blings[]（is_plus=true 的为赋光）
-  const plus = (raw.blings || [])
-    .filter(b => b?.is_plus)
-    .map(b => b.avatar_id)
-    .filter(Boolean)
+  // 赋光之人：官方取自当前期条目的 blings[]（is_plus=true 的为赋光）；
+  // 部分接口版本不带 blings，回落到顶层 avatars[].is_plus
+  const plusIds = []
+  for (const b of (raw.blings || [])) {
+    if (b?.is_plus && b.avatar_id) plusIds.push(b.avatar_id)
+  }
+  if (!plusIds.length) {
+    for (const a of (raw.avatars || md.avatars || [])) {
+      if (a?.is_plus && a.avatar_id) plusIds.push(a.avatar_id)
+    }
+  }
+  const plus = [...new Set(plusIds)]
 
   return {
     uid: '',
@@ -692,8 +699,10 @@ export async function gsHardChallengeQuery (e) {
 
   try {
     const mys = new GenshinMysApi(auth.uid, auth.ck, { game: 'gs', log: false })
-    let res = await mys.getData('hard_challenge', {})
-    res = await checkGsCode(e, res, 'hard_challenge', mys, {})
+    // 官方详情页带 need_detail，赋光之人（blings）等明细只在详情里返回
+    const hardParams = { need_detail: true }
+    let res = await mys.getData('hard_challenge', hardParams)
+    res = await checkGsCode(e, res, 'hard_challenge', mys, hardParams)
     if (!res || res.retcode !== 0) return true
 
     // hard_challenge 返回 { data: [{current}, {previous}] } 结构
@@ -750,9 +759,12 @@ export async function gsHardChallengeQuery (e) {
         }
       }
     }
-    // 赋光之人（blings 里 is_plus）也要有头像
+    // 赋光之人（blings 里 is_plus，缺省回落 avatars）也要有头像
     for (const b of (rawData.blings || [])) {
       if (b?.is_plus && b.avatar_id) avatarIds.add(b.avatar_id)
+    }
+    for (const a of (rawData.avatars || [])) {
+      if (a?.is_plus && a.avatar_id) avatarIds.add(a.avatar_id)
     }
     const avatars = buildAvatarsMap([...avatarIds], charLevels)
 

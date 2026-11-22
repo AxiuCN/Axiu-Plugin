@@ -149,6 +149,11 @@ body {
   color: #f5d492;
 }
 
+/* 条与第一张卡之间留出官方截图同款间距（924 图 432→477 ≈ 36） */
+.best-bar + .boss {
+  margin-top: 36px;
+}
+
 /* ===== 官方卡片的容器定位（盒模型交给官方 class） ===== */
 .boss {
   width: 690px;
@@ -162,8 +167,17 @@ body {
   margin: 0 auto;
 }
 
-/* 官方 gt-avatar 内部是 <img>，这里补两条只服务于图片的规则 */
+/* 官方 gt-avatar 内部用的是组件自己的 img 节点。我们的结构里：
+   - 稀有度底图 .gt-avatar-star-bg>img 带 z-index:1（官方规则），必须压到 0
+   - 立绘抬到 1，否则会被底图整块盖住（实机“角色图丢失”就是这个）
+   这两条是结构差异的适配，不是版式数值。 */
+.gt-avatar-star-bg > img {
+  z-index: 0;
+}
+
 .gt-avatar-face {
+  position: relative;
+  z-index: 1;
   display: block;
   width: 100%;
   height: 100%;
@@ -171,6 +185,8 @@ body {
 }
 
 .gt-avatar-elem {
+  position: relative;
+  z-index: 1;
   display: block;
   width: 100%;
   height: 100%;
