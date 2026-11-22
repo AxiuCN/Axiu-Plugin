@@ -405,6 +405,12 @@ export class MysSigninApp extends plugin {
     const cfg = getSigninConfig()
     if (!cfg.enable) return true
 
+    // 默认 onDemand：不定时全量刷新，改由签到失败时按需刷新（减少换 ck、降低 -464 概率）
+    if (cfg.refreshMode !== 'scheduled') {
+      logger?.info(`${SIGNIN_LOG_PREFIX} 定时刷新已关闭（refreshMode=${cfg.refreshMode}），改为签到失败时按需刷新`)
+      return true
+    }
+
     if (!tryAcquireAutoSignin()) {
       logger?.warn(`${SIGNIN_LOG_PREFIX} 定时刷新cookie跳过: 签到/刷新任务正在执行中`)
       return true

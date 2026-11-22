@@ -6,28 +6,24 @@ import md5 from 'md5'
 import _ from 'lodash'
 import fetch from 'node-fetch'
 import fs from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import YAML from 'yaml'
 import * as mys from './passportTool.js'
 import * as utils from './passportUtils.js'
 
 const DEVICE_ID = utils.randomString(32).toUpperCase()
 const DEVICE_NAME = utils.randomString(_.random(1, 10))
+const LIFECYCLE_ID = randomUUID()
+/** 扫码建码/轮询用的 x4 盐（DS v2），与登录侧一致 */
+const QR_SALT_X4 = 'xV8v4Qu54lUKrEYFZkJhB8cuOh9Asafs'
 
-/** 从 uid=..&stoken=..[&mid=..] 查询串构造 stoken Cookie（bbsGetCookie 认证，对齐 TRSS）
- *  返回形如 stuid=Y;stoken=X;mid=Z;，缺 stuid/stoken 时返回空串
+/** 把 stoken 查询串规范化为 uid/stoken/mid（getLtoken / bbsGetCookie 通用）
+ *  `;` → `&`，并把缺失的 uid 用 stuid 补齐（新版 xiaoyao 的 normalizeSTokenQuery）
  */
-function buildStokenCookie (cookies) {
-  const map = {}
-  for (const pair of String(cookies || '').split('&')) {
-    const idx = pair.indexOf('=')
-    if (idx < 0) continue
-    const key = pair.slice(0, idx)
-    const val = pair.slice(idx + 1)
-    map[key === 'uid' ? 'stuid' : key] = val
-  }
-  if (!map.stuid || !map.stoken) return ''
-  return ['stuid=' + map.stuid, 'stoken=' + map.stoken, map.mid ? 'mid=' + map.mid : '']
-    .filter(Boolean).join(';') + ';'
+function normalizeSTokenQuery (cookies = '') {
+  const params = new URLSearchParams(String(cookies || '').replace(/;/g, '&'))
+  if (!params.get('uid') && params.get('stuid')) params.set('uid', params.get('stuid'))
+  return params.toString()
 }
 
 export default class PassportApi {
@@ -161,12 +157,12 @@ export default class PassportApi {
       qrCodeLogin: {
         url: `${mys.pass_api}/account/ma-cn-passport/app/createQRLogin`,
         body: {},
-        types: 'pass'
+        types: 'qrcode'
       },
       qrCodeQuery: {
         url: `${mys.pass_api}/account/ma-cn-passport/app/queryQRLoginStatus`,
         body: { ticket: data.ticket },
-        types: 'pass'
+        types: 'qrcode'
       },
       getTokenByGameToken: {
         url: `${mys.pass_api}/account/ma-cn-session/app/getTokenByGameToken`,
@@ -177,16 +173,17 @@ export default class PassportApi {
         types: 'pass'
       },
       exchange: {
+        // 换票接口：用 v2 stoken 换 ltoken_v2(2) / cookie_token_v2(4)（老 getCookieAccountInfoBySToken 已废弃 -464）
         url: `${mys.pass_api}/account/ma-cn-session/app/exchange`,
         body: {
+          dst_token_type: data.dstTokenType || 2,
           src_token: {
             token: data.token,
             token_type: 1
           },
-          mid: data.mid,
-          dst_token_type: 2
+          mid: data.mid
         },
-        types: 'pass'
+        types: 'exchange'
       },
       getCookieAccountInfoByGameToken: {
         url: `${mys.web_api}/auth/api/getCookieAccountInfoByGameToken`,
@@ -195,12 +192,10 @@ export default class PassportApi {
 
       // === BBS / Auth ===
       bbsGetCookie: {
-        // 参考 TRSS-Plugin：passport host + DS 签名 + Cookie header（原 api-takumi host 该路径已 405）
-        // Cookie 头优先取显式 cookieHeader，否则从 data.cookies 自动构造 stoken 串
+        // 参考新版 xiaoyao：passport host + stokenCookie 专属头（Hyperion UA），Cookie 由 query 自动构造
         url: `${mys.pass_api}/account/auth/api/getCookieAccountInfoBySToken`,
         query: `${data.cookies}`,
-        types: 'pass',
-        cookie: data.cookieHeader || buildStokenCookie(data.cookies)
+        types: 'stokenCookie'
       },
       bbsStoken: {
         url: `${this.apiMap.apiWeb}/auth/api/getMultiTokenByLoginTicket`,
@@ -209,7 +204,8 @@ export default class PassportApi {
       },
       getLtoken: {
         url: `${mys.pass_api}/account/auth/api/getLTokenBySToken`,
-        query: `${data?.cookies?.replace(/;/g, '&')}`
+        query: normalizeSTokenQuery(data?.cookies),
+        types: 'stokenCookie'
       },
 
       // === AuthKey（抽卡记录用，原神+星铁通用：game_biz 按游戏传，默认原神）===
@@ -233,8 +229,10 @@ export default class PassportApi {
     if (body) body = JSON.stringify(body)
 
     const headers = this.getHeaders(types, sign, body, query)
-    // 端点显式指定 stoken Cookie 头时覆盖默认（bbsGetCookie 对齐 TRSS：query + Cookie 双认证）
+    // 端点显式指定 stoken Cookie 头时覆盖默认（bbsGetCookie：stoken 走 query + Cookie 双认证）
     if (cookie) headers.Cookie = cookie
+    // 扫码接口：把本次扫码的 device 写进请求头，保证 建码/轮询 使用同一个 x-rpc-device_id
+    if (types === 'qrcode' && data.device) headers['x-rpc-device_id'] = data.device
     return { url, headers, body }
   }
 
@@ -321,6 +319,60 @@ export default class PassportApi {
         }
         break
 
+      case 'qrcode':
+        // 扫码建码/轮询：必须用米游社 App 身份（app_id=bll8iq97cem8、game_biz=bbs_cn）。
+        // 用其它 app_id 建码时，换票虽然能成功，但会话不属于米游社 App，
+        // 社区签到等 App 侧接口会判 -100 登录失效（实测）
+        header = {
+          'User-Agent': 'Mozilla/5.0 miHoYoBBS/2.90.1 Capture/2.2.0',
+          Accept: '*/*',
+          'Accept-Language': 'zh-cn',
+          'Content-Type': 'application/json; charset=UTF-8',
+          DS: this.getDs2('', body, QR_SALT_X4),
+          'x-rpc-app_id': 'bll8iq97cem8',
+          'x-rpc-client_type': '3',
+          'x-rpc-app_version': '2.90.1',
+          'x-rpc-sdk_version': '2.90.1',
+          'x-rpc-account_version': '2.90.1',
+          'x-rpc-game_biz': 'bbs_cn',
+          'x-rpc-device_id': DEVICE_ID
+        }
+        break
+
+      case 'stokenCookie': {
+        // 换 ck / 取 ltoken：伪装 Hyperion 客户端（新版 xiaoyao）
+        // Cookie 由 query（uid/stoken/mid）自动构造，stuid 用 uid 回填
+        let stokenCookie = query
+        try {
+          const params = new URLSearchParams(query)
+          stokenCookie = [
+            params.get('stoken') ? `stoken=${params.get('stoken')}` : '',
+            params.get('uid') ? `stuid=${params.get('uid')}` : '',
+            params.get('mid') ? `mid=${params.get('mid')}` : ''
+          ].filter(Boolean).join(';')
+        } catch {
+          stokenCookie = String(query || '').replace(/&/g, ';')
+        }
+        header = {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'Hyperion/550 CFNetwork/3860.500.112 Darwin/25.4.0',
+          'x-rpc-app_version': '2.104.0',
+          'x-rpc-app_id': 'bll8iq97cem8',
+          'x-rpc-aigis': '',
+          'x-rpc-game_biz': 'bbs_cn',
+          'x-rpc-sys_version': '12',
+          'x-rpc-device_id': DEVICE_ID,
+          'x-rpc-device_fp': utils.randomString(13, true),
+          'x-rpc-device_name': DEVICE_NAME,
+          'x-rpc-device_model': utils.randomString(16, true),
+          'x-rpc-client_type': '2',
+          DS: this.getDs2('', '', mys.passSalt),
+          Cookie: stokenCookie
+        }
+        break
+      }
+
       case 'authKey':
         header = {
           'x-rpc-app_version': mys.APP_VERSION,
@@ -349,6 +401,25 @@ export default class PassportApi {
             Host: 'api-os-takumi.mihoyo.com',
             'x-rpc-channel': 'hoyolab'
           })
+        }
+        break
+
+      case 'exchange':
+        // 换票接口专属头（与实测通过的 MiyoQian 一致）：DS 用 passSalt 对 body 加签
+        header = {
+          'content-type': 'application/json',
+          DS: this.getDs2('', body, mys.passSalt),
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 12; Unspecified Device) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/103.0.5060.129 Mobile Safari/537.36 miHoYoBBS/2.106.2',
+          'x-rpc-app_version': '2.106.2',
+          'x-rpc-client_type': '2',
+          'x-rpc-app_id': 'bll8iq97cem8',
+          'x-rpc-device_id': DEVICE_ID,
+          'x-rpc-device_name': 'Mihoyo Capture',
+          'x-rpc-device_model': 'Mi 14',
+          'x-rpc-game_biz': 'bbs_cn',
+          'x-rpc-sdk_version': '2.44.0',
+          'x-rpc-account_version': '2.44.0',
+          'x-rpc-lifecycle_id': LIFECYCLE_ID
         }
         break
 

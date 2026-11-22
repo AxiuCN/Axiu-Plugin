@@ -165,14 +165,34 @@ export default class QrUser {
       let v2Sk
 
       if (this.e.sk) {
+        const stuid = this.e.sk.get('stuid') || this.e.stuid
+        const mid = this.e.sk.get('mid') || ''
+        ltoken = this.e.sk.get('ltoken') || ''
         if (this.e.sk.get('stoken')?.includes('v2_')) {
-          const res = await this.getData('getLtoken', { cookies: this.e.raw_message }, false)
-          ltoken = res?.data?.ltoken
+          // 扫码结果已直接带 ltoken_v2，不再调用已废弃的 getLTokenBySToken
+          if (!ltoken) {
+            const res = await this.getData('getLtoken', { cookies: this.e.raw_message }, false)
+            ltoken = res?.data?.ltoken
+          }
+          // 全 v2 cookie（cookie_token 由 exchange 换得）+ 兼容旧别名
+          this.e.cookie = [
+            `account_id_v2=${stuid}`,
+            mid ? `account_mid_v2=${mid}` : '',
+            `cookie_token_v2=${data.data.cookie_token}`,
+            mid ? `ltmid_v2=${mid}` : '',
+            `ltoken_v2=${ltoken}`,
+            `ltuid_v2=${stuid}`,
+            `account_id=${stuid}`,
+            `ltuid=${stuid}`,
+            mid ? `mid=${mid}` : '',
+            `ltoken=${ltoken}`,
+            `cookie_token=${data.data.cookie_token}`
+          ].filter(Boolean).join(';') + ';'
         } else {
           v2Sk = await this.getData('getByStokenV2', { headers: { Cookie: this.e.raw_message } }, false)
+          this.e.cookie =
+            `ltoken=${this.e.sk?.get('ltoken') || ltoken};ltuid=${stuid};cookie_token=${data.data.cookie_token}; account_id=${stuid};`
         }
-        this.e.cookie =
-          `ltoken=${this.e.sk?.get('ltoken') || ltoken};ltuid=${this.e.sk?.get('stuid')};cookie_token=${data.data.cookie_token}; account_id=${this.e.sk?.get('stuid')};`
       } else {
         this.e.cookie = this.e.original_msg
         this.cookies = `stuid=${this.e.stuid};stoken=${data?.data?.list[0].token};ltoken=${data?.data?.list[1].token}`
@@ -258,7 +278,7 @@ export default class QrUser {
   }
 
   // ====================================================
-  // === #刷新ck 核心：迭代 stoken → bbsGetCookie → 返回新 cookie ===
+  // === #刷新ck 核心：迭代 stoken → exchange 换票 → 返回新 cookie ===
   // ====================================================
 
   /**
@@ -284,32 +304,50 @@ export default class QrUser {
       logger.error(`[Axiu-Plugin] 用户 ${userId} 的stoken数据不完整`)
       return null
     }
-
-    let cookiesForRefresh = `uid=${accountStoken.stuid}&stoken=${accountStoken.stoken}`
-    if (accountStoken?.mid) {
-      cookiesForRefresh += `&mid=${accountStoken.mid}`
-    }
-
-    const cookieHeader = [
-      `stuid=${accountStoken.stuid}`,
-      `stoken=${accountStoken.stoken}`,
-      accountStoken?.mid ? `mid=${accountStoken.mid}` : ''
-    ].filter(Boolean).join(';') + ';'
-
-    const res = await user.getData('bbsGetCookie', { cookies: cookiesForRefresh, cookieHeader }, false)
-    if (!res?.data?.cookie_token) {
-      logger.error(`[Axiu-Plugin] 刷新cookie_token失败: ${res?.message || res?.retcode}`)
+    // v1 stoken 换不了 v2 凭证，只能重新扫码
+    if (!String(accountStoken.stoken).startsWith('v2_')) {
+      logger.error(`[Axiu-Plugin] 用户 ${userId} 的stoken不是v2_格式，无法换票，请重新扫码绑定`)
       return null
     }
 
-    const ck = res.data.cookie_token
-    const fullCookie = `ltoken=${accountStoken.ltoken};ltuid=${accountStoken.stuid};cookie_token=${ck};account_id=${accountStoken.stuid};`
+    // 老的 getCookieAccountInfoBySToken 已废弃（-464「请使用最新版本产品/链接」），改走换票接口：
+    // dst_token_type=2 → ltoken_v2；dst_token_type=4 → cookie_token_v2
+    const mid = accountStoken.mid || ''
+    const ex2 = await user.getData('exchange', { token: accountStoken.stoken, mid, dstTokenType: 2 }, false)
+    const ex4 = await user.getData('exchange', { token: accountStoken.stoken, mid, dstTokenType: 4 }, false)
+    const ltoken = ex2?.data?.token?.token
+    const cookieToken = ex4?.data?.token?.token
+
+    if (!ltoken) {
+      logger.error(`[Axiu-Plugin] 换取ltoken_v2失败: ${ex2?.message || ex2?.retcode || '接口返回为空'}`)
+      return null
+    }
+    if (!cookieToken) {
+      logger.error(`[Axiu-Plugin] 换取cookie_token_v2失败: ${ex4?.message || ex4?.retcode || '接口返回为空'}`)
+      return null
+    }
+
+    // 全 v2 cookie + 兼容 Axiu 内部按 ltuid/account_id 解析的旧别名（与 qrLogin._buildLoginResult 一致）
+    const fullCookie = [
+      `account_id_v2=${accountStoken.stuid}`,
+      mid ? `account_mid_v2=${mid}` : '',
+      `cookie_token_v2=${cookieToken}`,
+      mid ? `ltmid_v2=${mid}` : '',
+      `ltoken_v2=${ltoken}`,
+      `ltuid_v2=${accountStoken.stuid}`,
+      `account_id=${accountStoken.stuid}`,
+      `ltuid=${accountStoken.stuid}`,
+      mid ? `mid=${mid}` : '',
+      `ltoken=${ltoken}`,
+      `cookie_token=${cookieToken}`
+    ].filter(Boolean).join(';') + ';'
 
     return {
       cookie: fullCookie,
+      ltoken,
       stuid: accountStoken.stuid,
       stoken: accountStoken.stoken,
-      mid: accountStoken.mid || ''
+      mid
     }
   }
 }

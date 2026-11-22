@@ -4,12 +4,14 @@
  */
 
 import QrUser from './qrUser.js'
-import { sleepAsync } from './mys/passportUtils.js'
+import { sleepAsync, randomString } from './mys/passportUtils.js'
 
 export default class QrLogin {
   constructor (e) {
     this.e = e
     this.sendMsgUser = '免责声明:您将通过扫码完成获取米游社sk以及ck。\n请使用米游社扫描二维码登录。'
+    // 本次扫码的 device，建码 → 轮询 全程复用，写入请求头 x-rpc-device_id（对齐新版 xiaoyao）
+    this.device = randomString(16, true)
   }
 
   async init () {
@@ -26,7 +28,7 @@ export default class QrLogin {
       return false
     }
 
-    const res = await this.user.getData('qrCodeLogin', {}, false)
+    const res = await this.user.getData('qrCodeLogin', { device: this.device }, false)
     if (!res?.data?.url) {
       this.e.reply('获取二维码失败，请稍后再试')
       return false
@@ -57,7 +59,7 @@ export default class QrLogin {
 
     for (let n = 1; n < 60; n++) {
       await sleepAsync(5000)
-      res = await this.user.getData('qrCodeQuery', { ticket }, false)
+      res = await this.user.getData('qrCodeQuery', { device: this.device, ticket }, false)
 
       if (res?.retcode && res.retcode !== 0) {
         await redis.del(redisKey)
@@ -119,32 +121,42 @@ export default class QrLogin {
     if (!SToken || !stuid) {
       return { error: '扫码登录返回信息不完整，未能获取stoken' }
     }
+    if (!String(SToken).startsWith('v2_')) {
+      return { error: '扫码返回的 stoken 不是 v2_ 格式，无法换票，请重新扫码' }
+    }
 
-    const stokenCookie = [`stuid=${stuid}`, `stoken=${SToken}`, mid ? `mid=${mid}` : ''].filter(Boolean).join(';') + ';'
-
-    // ltoken：只认具名（strict，不兜底）→ getLtoken 接口的返回值
-    const ltokenRes = await this.user.getData('getLtoken', { cookies: stokenCookie }, false)
-    const namedLtoken = this.pickToken(res?.data?.tokens, ['ltoken', 'ltoken_v2'], false)?.token
-    const picked = namedLtoken || ltokenRes?.data?.ltoken || ltokenRes?.data?.token?.token
-    // 防御：取到的值与 stoken 相同 ⇒ 来源错了，按「没取到」处理，绝不写进任何凭据
-    const ltoken = picked && picked !== SToken ? picked : ''
-
-    // 获取 cookie_token
-    let cookies = `uid=${stuid}&stoken=${SToken}`
-    if (mid) cookies += `&mid=${mid}`
-    const ck = await this.user.getData('bbsGetCookie', { cookies, cookieHeader: stokenCookie }, false)
+    // 走换票接口（老的 getCookieAccountInfoBySToken 已废弃，会 -464「请使用最新版本」）
+    // dst_token_type=2 → ltoken_v2；dst_token_type=4 → cookie_token_v2
+    const ex2 = await this.user.getData('exchange', { token: SToken, mid, dstTokenType: 2 }, false)
+    const ex4 = await this.user.getData('exchange', { token: SToken, mid, dstTokenType: 4 }, false)
+    const ltoken = ex2?.data?.token?.token
+    const cookieToken = ex4?.data?.token?.token
 
     if (!ltoken) {
-      const why = picked ? '接口返回的 ltoken 与 stoken 相同' : '接口返回不完整'
-      return { error: `扫码登录未取到 ltoken（${why}），请重试` }
+      return { error: `扫码换取 ltoken_v2 失败：${ex2?.message || '接口返回为空'}` }
     }
-    if (!ck?.data?.cookie_token) {
-      return { error: `获取ck失败：${ck?.message || '接口返回为空'}` }
+    if (!cookieToken) {
+      return { error: `扫码换取 cookie_token_v2 失败：${ex4?.message || '接口返回为空'}` }
     }
+
+    // 全 v2 cookie（与 MiyoQian build_cookie 一致）+ 兼容 Axiu 内部按 ltuid/account_id 解析的旧别名
+    const cookie = [
+      `account_id_v2=${stuid}`,
+      mid ? `account_mid_v2=${mid}` : '',
+      `cookie_token_v2=${cookieToken}`,
+      mid ? `ltmid_v2=${mid}` : '',
+      `ltoken_v2=${ltoken}`,
+      `ltuid_v2=${stuid}`,
+      `account_id=${stuid}`,
+      `ltuid=${stuid}`,
+      mid ? `mid=${mid}` : '',
+      `ltoken=${ltoken}`,
+      `cookie_token=${cookieToken}`
+    ].filter(Boolean).join(';') + ';'
 
     return {
       ltoken,
-      cookie: `ltoken=${ltoken};ltuid=${stuid};cookie_token=${ck.data.cookie_token};account_id=${stuid};`,
+      cookie,
       stoken: `stoken=${SToken};stuid=${stuid};ltoken=${ltoken};${mid ? `mid=${mid};` : ''}`
     }
   }

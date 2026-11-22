@@ -37,9 +37,21 @@ export function getSigninMainSchema () {
       componentProps: { placeholder: '0 0 5 * * ? *' }
     },
     {
+      field: 'signin.refreshMode',
+      label: 'Cookie 刷新策略',
+      bottomHelpMessage: '按需刷新：签到失败时才换 cookie（推荐，降低风控）；定时全量：每天按下面的 cron 刷新全部账号',
+      component: 'Select',
+      componentProps: {
+        options: [
+          { label: '按需刷新（推荐）', value: 'onDemand' },
+          { label: '定时全量刷新', value: 'scheduled' }
+        ]
+      }
+    },
+    {
       field: 'signin.refreshSchedule',
       label: '刷新Cookie时间 (Cron)',
-      bottomHelpMessage: '每日自动刷新全体用户cookie的cron，默认 0 30 4 * * ? * 表示每天4:30',
+      bottomHelpMessage: '仅「定时全量刷新」策略下生效，默认 0 30 4 * * ? * 表示每天4:30',
       component: 'Input',
       required: true,
       componentProps: { placeholder: '0 30 4 * * ? *' }
