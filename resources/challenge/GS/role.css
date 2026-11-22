@@ -20,11 +20,18 @@ body {
   width: 750px;
   padding: 0;
   background-color: #151214;
-  /* 官方把页面底图拆成两块：顶部在 .role-combat-page，底部在 .main-content */
-  background-image: url("./images/page-bg-bottom.2f85ea53.png");
-  background-size: 100% auto;
-  background-repeat: no-repeat;
-  background-position: left bottom;
+  /* 官方把页面底图拆成两块（顶部在 .role-combat-page、底部在 .main-content）；
+     我们的 .main-content 不存在、版权行又在 .role-combat-page 之外，
+     底图会被不透明的页面 div 截断（末端出现硬边），所以统一提到 #container 上 */
+  background-image: url("./images/page-bg-top.5615069e.png"), url("./images/page-bg-bottom.2f85ea53.png");
+  background-size: 100% auto, 100% auto;
+  background-repeat: no-repeat, no-repeat;
+  background-position: left top, left bottom;
+}
+
+/* 页面 div 不再自己铺底图，否则会挡住 #container 上的底图 */
+#container .role-combat-page {
+  background: none;
 }
 
 .role-combat-page {
@@ -91,11 +98,22 @@ body {
 }
 
 /* 幕头的敌人图标：官方那里是「敌人详情」按钮（点击开弹窗），
-   静态图直接排图标，尺寸按图标清晰度放大到 24 */
-.role-combat-detail-round-content .round-item > h2 .enemy-icon > img {
-  width: 24px;
-  height: 24px;
-  margin-left: 4px;
+   静态图直接排图标并推到卡片右上角（40 见方，同卡片里的小头像） */
+#container .role-combat-detail-round-content .round-item > h2 .enemy-icon {
+  margin-left: auto;
+}
+
+#container .role-combat-detail-round-content .round-item > h2 .enemy-icon > img {
+  width: 40px;
+  height: 40px;
+  margin-left: 8px;
+  border-radius: 50%;
+}
+
+/* 辉彩祝福：官方内容区顶部那段 24 的间距是留给富文本说明的，
+   我们不展示说明，去掉后上下 padding 才对称（否则整块偏上） */
+#container .role-combat-detail-round-content .round-item .round-buff-item .not-expand-buff.splendour-buff .total-buff-list {
+  margin-top: 0;
 }
 
 /* ===== 提示 / 版权（自有） ===== */
