@@ -299,7 +299,7 @@ function buildAbyssData (raw, avatars = {}) {
 }
 
 /** 剧诗难度名（difficulty_id → 文案，同官方 DIFFICULTY_ID_NAME） */
-const ROLE_DIFFICULTY = { 1: '简单', 2: '普通', 3: '困难', 4: '卓越', 5: '月谕' }
+const ROLE_DIFFICULTY = { 1: '轻简', 2: '普通', 3: '困难', 4: '卓越', 5: '月谕' }
 
 /** 剧诗档期时间对象 {year, month, day} → "YYYY.MM.DD"，缺字段返回 '' */
 function scheduleDay (t) {
@@ -319,27 +319,38 @@ function buildRoleData (raw) {
   const fightStat = detail.fight_statisic || {}
   const roundsData = detail.rounds_data || []
 
-  const rounds = roundsData.map((r) => ({
-    medal: !!r.is_get_medal,
-    title: r.is_tarot ? `圣牌挑战 ${intToRoman(r.tarot_serial_no || 1)}` : `第 ${r.round_id || 1} 幕`,
-    time: fmtDatetime(r.finish_time),
-    // 敌人接口只给图标，没有名称
-    enemies: (r.enemies || []).map(e => e.icon).filter(Boolean),
-    team: (r.avatars || []).map((a) => {
-      const type = a.avatar_type || 1 // 1=自己 2=试用 3=助演
-      return {
-        id: a.avatar_id,
-        level: a.level || 0,
-        type,
-        // 接口会带角色卡立绘（米游社出图就是用它），缺失时模板回落 face
-        image: a.image || '',
-        tag: type === 2 ? '试用' : (type === 3 ? '助演' : '')
-      }
-    }),
-    buffLevel: r.splendour_buff?.summary?.total_level || raw.splendour_buff?.summary?.total_level || 0,
-    buffs: (r.splendour_buff?.buffs || []).map(b => ({ icon: b.icon || '', level: b.level || 0 })),
-    choices: (r.choice_cards || []).map(c => ({ icon: c.icon || '' })).filter(c => c.icon)
-  }))
+  const rounds = roundsData.map((r) => {
+    // 辉彩祝福既可能挂在本幕，也可能只有整期一份（同官方两处兜底）
+    const splendour = r.splendour_buff || raw.splendour_buff || {}
+    return {
+      medal: !!r.is_get_medal,
+      isTarot: !!r.is_tarot,
+      // 圣牌挑战用罗马数字（官方 TAROT_CNT_MAP 只有 I / II）
+      tarot: intToRoman(r.tarot_serial_no || 1),
+      roundId: r.round_id || 1,
+      time: fmtDatetime(r.finish_time),
+      // 敌人接口只给图标，没有名称
+      enemies: (r.enemies || []).map(e => e.icon).filter(Boolean),
+      team: (r.avatars || []).map((a) => {
+        const type = a.avatar_type || 1 // 1=自己 2=试用 3=助演
+        return {
+          id: a.avatar_id,
+          level: a.level || 0,
+          type,
+          // 接口会带角色卡立绘（米游社出图就是用它），缺失时模板回落 face
+          image: a.image || '',
+          tag: type === 2 ? '试用' : (type === 3 ? '助演' : '')
+        }
+      }),
+      // 辉彩祝福：总等级 + 各祝福（等级 0 的置灰）
+      buffLevel: splendour.summary?.total_level || 0,
+      splendourBuffs: (splendour.buffs || []).map(b => ({ icon: b.icon || '', level: b.level || 0 })).filter(b => b.icon),
+      // 奇妙助益：本幕的助益卡
+      buffs: (r.buffs || []).map(b => ({ icon: b.icon || '' })).filter(b => b.icon),
+      // 神秘收获：本幕的选择卡
+      choices: (r.choice_cards || []).map(c => ({ icon: c.icon || '' })).filter(c => c.icon)
+    }
+  })
 
   // 战斗统计（接口开关打开才展示），数值保留原值
   const fightStats = []
@@ -390,9 +401,8 @@ function buildRoleData (raw) {
         // 本次消耗幻剧之花（战斗统计卡最后一行）
         totalCoin: stat.total_coin_consumed?.value ?? stat.coin_num ?? '-'
       },
-      medals: (stat.get_medal_round_list || []).slice(0, 10).map(v => v === 1),
-      // 第 11 颗起是圣牌星章，与各幕星章之间画一条分隔线
-      tarotMedals: (stat.get_medal_round_list || []).slice(10).map(v => v === 1),
+      // 官方把全部星章排成一行，月谕模式在第 10 颗前插一条竖分隔线（见模板）
+      medals: (stat.get_medal_round_list || []).map(v => v === 1),
       fightStats,
       fastest: (fightStat.shortest_avatar_list || []).map(a => a.avatar_id).filter(Boolean),
       rounds

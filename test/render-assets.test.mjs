@@ -98,4 +98,24 @@ for (const file of htmlFiles) {
 check('扫描覆盖到模板里的 pluResPath 链接', linkCount >= 5, `${linkCount} 处`)
 check('模板引用的样式/资源文件都存在', badLinks.length === 0, badLinks.slice(0, 8).join(' | '))
 
+/* ==================== 【5】模板里的静态图片路径存在 ==================== */
+
+// 图片路径写错时浏览器同样只是空图（出图看不出），而模板里的路径常常是手写的文件名。
+// 这里只校验“字面量”路径：含 {{ }} 插值（如角色底图角色名、稀有度底图）无法静态判断，跳过。
+console.log('\n【5】模板里的静态图片 src 必须指向存在的文件')
+const badSrcs = []
+let srcCount = 0
+for (const file of htmlFiles) {
+  const html = fs.readFileSync(file, 'utf8')
+  for (const m of html.matchAll(/src="\{\{\s*(?:_res_path|pluResPath)\s*\}\}([^"]*)"/g)) {
+    const rel = m[1].trim()
+    if (!rel || rel.includes('{{')) continue
+    srcCount++
+    const target = path.join(resRoot, rel)
+    if (!fs.existsSync(target)) badSrcs.push(`${path.relative(resRoot, file)} -> ${rel}`)
+  }
+}
+check('扫描覆盖到模板里的静态图片引用', srcCount >= 10, `${srcCount} 处`)
+check('模板里的静态图片都存在（写错只会静默空图）', badSrcs.length === 0, badSrcs.slice(0, 8).join(' | '))
+
 finish()

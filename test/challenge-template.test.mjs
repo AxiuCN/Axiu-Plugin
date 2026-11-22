@@ -50,15 +50,28 @@ const renderTpl = (file, data) => {
 /* ==================== 【1】剧诗（GS/role.html） ==================== */
 
 /** 造一幕剧诗数据（字段与 modules/challenge/gsQuery.js → buildRoleData 一致） */
-const mkRound = ({ enemies = ['/meta-gs/enemy.webp'], title = '第 1 幕', medal = true, choiceCards = [], team, buffs, buffLevel = 3 } = {}) => ({
+const mkRound = ({
+  enemies = ['/meta-gs/enemy.webp'],
+  medal = true,
+  isTarot = false,
+  tarot = 'I',
+  roundId = 1,
+  choiceCards = [],
+  buffCards = [],
+  team,
+  splendourBuffs,
+  buffLevel = 3
+} = {}) => ({
   medal,
-  title,
+  isTarot,
+  tarot,
+  roundId,
   time: '2026.01.01 00:00:00',
   enemies,
-  team: team ?? [{ id: 10000052, level: 90, type: 1, tag: '' }],
+  team: team ?? [{ id: 10000052, level: 90, type: 1, tag: '', image: '' }],
   buffLevel,
-  buffDesc: '生命值上限提高 2400 点',
-  buffs: buffs ?? [{ icon: '/meta-gs/buff.webp', level: 2 }],
+  splendourBuffs: splendourBuffs ?? [{ icon: '/meta-gs/buff.webp', level: 2 }],
+  buffs: buffCards,
   choices: choiceCards
 })
 
@@ -67,15 +80,19 @@ const mkRoleData = (rounds) => ({
   role: {
     period: '2026.01.01-2026.01.15',
     difficulty: '困难',
+    difficultyId: 3,
+    heraldry: 3,
+    medalStat: '3/5',
+    totalUseTime: '5分钟',
     best: { round: 8, total: 10, heraldry: 3 },
-    stat: { coin: 1200, bonus: 2, rent: 1 },
+    stat: { coin: 1200, bonus: 2, rent: 1, totalCoin: 1200 },
     medals: [true, false],
-    fightStats: [{ title: '最高伤害输出', id: 10000052, value: 123456 }],
+    fightStats: [{ title: '最高伤害输出', id: 10000052, icon: '/meta-gs/x/face.webp', value: 123456 }],
     fastest: [10000052],
     rounds
   },
   avatars: {
-    10000052: { face: '/meta-gs/x/face.webp', level: 90, star: 5, elemIcon: 'elem-fire.png' }
+    10000052: { face: '/meta-gs/x/face.webp', level: 90, star: 5, elemIcon: 'elem-fire.png', starBg: 'roleStarBg5.1ff411a0.png' }
   }
 })
 
@@ -83,11 +100,13 @@ console.log('【1】剧诗模板：有敌人 / 无敌人 / 多幕混合 / 空 ro
 const withEnemy = renderTpl(roleTpl, mkRoleData([mkRound()]))
 check('有敌人时渲染成功', withEnemy.ok, withEnemy.error)
 check('有敌人时渲染出敌人图标', String(withEnemy.html || '').includes('/meta-gs/enemy.webp'))
-check('有敌人时渲染出敌人图标容器', String(withEnemy.html || '').includes('round-enemies'))
+check('有敌人时渲染出敌人图标容器', String(withEnemy.html || '').includes('class="enemy-icon"'))
+check('渲染出官方演出回顾面板与参演名单',
+  withEnemy.ok && withEnemy.html.includes('role-combat-detail-top-panel') && withEnemy.html.includes('role-combat-detail-round-content'))
 
 const noEnemy = renderTpl(roleTpl, mkRoleData([mkRound({ enemies: [] })]))
 check('无敌人时渲染成功（修复前抛 Cannot read properties of undefined）', noEnemy.ok, noEnemy.error)
-check('无敌人时不渲染敌人图标容器', noEnemy.ok && !noEnemy.html.includes('round-enemies'))
+check('无敌人时不渲染敌人图标容器', noEnemy.ok && !noEnemy.html.includes('class="enemy-icon"'))
 check('无敌人时其余区块照常（辉彩祝福仍在）', noEnemy.ok && noEnemy.html.includes('辉彩祝福'))
 
 const noEnemyField = renderTpl(roleTpl, mkRoleData([(() => {
@@ -98,22 +117,28 @@ const noEnemyField = renderTpl(roleTpl, mkRoleData([(() => {
 check('enemies 字段缺失时也能渲染', noEnemyField.ok, noEnemyField.error)
 
 const mixed = renderTpl(roleTpl, mkRoleData([
-  mkRound({ title: '第 1 幕' }),
-  mkRound({ title: '第 2 幕', enemies: [] }),
-  mkRound({ title: '圣牌挑战 I', enemies: [], choiceCards: [{ icon: '/meta-gs/card.webp' }] })
+  mkRound({ roundId: 1 }),
+  mkRound({ roundId: 2, enemies: [] }),
+  mkRound({ roundId: 3, enemies: [], isTarot: true, tarot: 'I', choiceCards: [{ icon: '/meta-gs/card.webp' }] })
 ]))
 check('多幕混合（含无敌人的幕）渲染成功', mixed.ok, mixed.error)
-check('混合数据里敌人图标容器只出现一次', mixed.ok && (mixed.html.match(/round-enemies/g) || []).length === 1)
+check('混合数据里敌人图标容器只出现一次', mixed.ok && (mixed.html.match(/class="enemy-icon"/g) || []).length === 1)
 check('混合数据里神秘收获正常', mixed.ok && mixed.html.includes('神秘收获 * 1'))
+check('圣牌挑战用罗马数字标注', mixed.ok && mixed.html.includes('圣牌挑战'))
 
 const emptyRounds = renderTpl(roleTpl, mkRoleData([]))
 check('完全没有幕后也能渲染（空 rounds）', emptyRounds.ok, emptyRounds.error)
 
 const noTeam = renderTpl(roleTpl, mkRoleData([mkRound({ team: [] })]))
-check('队伍为空时渲染成功且不渲染队伍区', noTeam.ok && !noTeam.html.includes('round-team'), noTeam.error)
+check('队伍为空时渲染成功且不渲染队伍区', noTeam.ok && !noTeam.html.includes('class="roles"'), noTeam.error)
 
-const noBuff = renderTpl(roleTpl, mkRoleData([mkRound({ buffs: [], buffLevel: 0 })]))
+const noBuff = renderTpl(roleTpl, mkRoleData([mkRound({ splendourBuffs: [], buffLevel: 0 })]))
 check('辉彩祝福无数据时整块不渲染', noBuff.ok && !noBuff.html.includes('辉彩祝福'), noBuff.error)
+check('辉彩祝福/奇妙助益/神秘收获都没有时不渲染演出详情标题',
+  noBuff.ok && !noBuff.html.includes('演出详情'), noBuff.error)
+
+const withBuffCards = renderTpl(roleTpl, mkRoleData([mkRound({ buffCards: [{ icon: '/meta-gs/gift.webp' }] })]))
+check('奇妙助益有数据时渲染该区块', withBuffCards.ok && withBuffCards.html.includes('奇妙助益 * 1'), withBuffCards.error)
 
 const noFight = renderTpl(roleTpl, mkRoleData([mkRound()]))
 check('战斗统计照常渲染', noFight.ok && noFight.html.includes('最高伤害输出'))
@@ -275,9 +300,11 @@ check('不存在裸取 round.enemies[0] 的写法',
   !/round\.enemies\[0\]/.test(roleSrc) && !/\{\{\s*round\.enemies\.icon/.test(roleSrc))
 check('敌人区被 {{if round.enemies && round.enemies.length}} … {{/if}} 包裹',
   /\{\{\s*if round\.enemies && round\.enemies\.length\s*\}\}/.test(roleSrc) &&
-  roleSrc.indexOf('round-enemies') > roleSrc.indexOf('{{if round.enemies && round.enemies.length}}'))
+  roleSrc.indexOf('class="enemy-icon"') > roleSrc.indexOf('{{if round.enemies && round.enemies.length}}'))
 
-check('角色卡取头像前用 avatars[…] || {} 兜底', /\{\{\s*set char = avatars\[member\.id\] \|\| \{\}\s*\}\}/.test(roleSrc))
+check('角色卡取头像前用 avatars[…] || {} 兜底', /\{\{\s*set char = avatars\[m\.id\] \|\| \{\}\s*\}\}/.test(roleSrc))
+check('剧诗角色卡立绘走官方 background 内联样式',
+  /class="avatar" style="background-image:url\(\{\{m\.image \|\| char\.face\}\}\)"/.test(roleSrc))
 
 const hardSrc = fs.readFileSync(hardTpl, 'utf8')
 check('怪物图与队伍区都判空后才渲染',

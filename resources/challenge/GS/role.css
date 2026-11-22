@@ -1,10 +1,12 @@
 /**
- * 幻想真境剧诗·演出回顾 — 版式对齐米游社「演出回顾」页
+ * 幻想真境剧诗·演出回顾 — 自有外框（页头 / 页面底色 / 提示 / 版权）
  *
- * 尺寸一律用 px：官方 750 基准 vw 流式稿，这里 1vw = 7.5px 折算。
- * 不能用 vw（框架截 #container 且不设视口，vw 会按浏览器默认视口算，整页溢出）。
+ * 演出回顾面板、难度行、战斗统计、参演名单与逐幕卡一律复用官方版式：
+ * 结构与 class 与官方模板一致，样式来自 role-official.css（官方编译 CSS 子集，
+ * 来源是剧诗路由自己的 CSS chunk 40_<hash>.css），尺寸由 --gpx: 2px 统一放大
+ * （750 画布 = 官方 375 设计稿 × 2）。
  *
- * 字体：标题 NZBZ，数字 Number，正文与标签 YS（= 官方 HYWenHei 同款）。
+ * 本文件只保留官方没有的“我们自己的东西”，不要再往里加卡面样式。
  */
 
 body {
@@ -18,23 +20,30 @@ body {
   width: 750px;
   padding: 0;
   background-color: #151214;
-  background-image: url("./images/page-bg-top.5615069e.png"), url("./images/page-bg-bottom.2f85ea53.png");
-  background-size: 100% auto, 100% auto;
-  background-repeat: no-repeat, no-repeat;
-  background-position: left top, left bottom;
+  /* 官方把页面底图拆成两块：顶部在 .role-combat-page，底部在 .main-content */
+  background-image: url("./images/page-bg-bottom.2f85ea53.png");
+  background-size: 100% auto;
+  background-repeat: no-repeat;
+  background-position: left bottom;
 }
 
-.role {
+.role-combat-page {
   width: 100%;
-  font-family: YS, "PingFang SC", sans-serif;
+  /* 字体在 role-official.css 注册：HYWenHei / ysfont 均指向原神官方字体合集 */
+  font-family: HYWenHei, ysfont, "PingFang SC", sans-serif;
 }
 
-/* ===== 页头（与深渊一致） ===== */
+/* ===== 页头（自有） ===== */
 .page-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   padding: 48px 30px 0;
+}
+
+.head-left {
+  flex: 1;
+  min-width: 0;
 }
 
 .page-title {
@@ -44,11 +53,6 @@ body {
   letter-spacing: 0.5px;
   white-space: nowrap;
   color: #d3bc8e;
-}
-
-.head-left {
-  flex: 1;
-  min-width: 0;
 }
 
 .page-range {
@@ -86,563 +90,15 @@ body {
   opacity: 0.85;
 }
 
-/* ===== 演出回顾（浅色羊皮纸） ===== */
-/* 底图自带透明外边距、描边、蝴蝶与羊皮纸，按原比例铺满整张画布宽度：
-   卡片本体因此落在 28px 处（官方也是 92.5%），外描边与四角蝴蝶才不会被裁掉 */
-.review-card {
-  position: relative;
-  width: 750px;
-  height: 475px;
-  margin: 32px auto 0;
-  padding: 106px 70px 0;
-  box-sizing: border-box;
-  background: url("./images/top-panel-bg.8a9cb222.png") no-repeat left top;
-  background-size: 100% 100%;
-}
-
-/* 卡片标题落在底图上方的深色横条里 */
-.review-title {
-  position: absolute;
-  left: 0;
-  top: 34px;
-  width: 100%;
-  font-family: YS, sans-serif;
-  font-size: 28px;
-  font-weight: 500;
-  line-height: 38px;
-  text-align: center;
-  color: #d3bc8e;
-}
-
-.review-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 44px;
-}
-
-.review-label {
-  font-size: 24px;
-  font-weight: 500;
-  line-height: 34px;
-  color: #6a5443;
-}
-
-.review-value {
-  display: flex;
-  align-items: center;
-  font-size: 24px;
-  font-weight: 500;
-  line-height: 34px;
-  color: #6a5443;
-}
-
-.review-value .num {
-  margin: 0 2px;
-  font-family: YS, sans-serif;
-  font-size: 26px;
-}
-
-.review-value .unit {
-  margin-left: 2px;
-}
-
-.best-tarot {
-  margin-left: 14px;
-}
-
-.best-sub-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 44px;
-}
-
-.best-sub {
-  font-size: 24px;
-  font-weight: 400;
-  line-height: 44px;
-  color: #8b6a4c;
-}
-
-.best-sub .num {
-  font-family: YS, sans-serif;
-  font-size: 24px;
-}
-
-.heraldry {
-  width: 28px;
-  height: 28px;
-  margin-left: 10px;
-}
-
-.flower {
-  width: 26px;
-  height: 26px;
-  margin-right: 6px;
-}
-
-.review-divider {
-  display: block;
-  width: 100%;
-  height: 1px;
-  margin: 5px 0;
-  background: rgba(106, 84, 67, 0.12);
-}
-
-/* 明星挑战星章：一排亮/暗星章 */
-.medal-rounds {
-  display: flex;
-  align-items: center;
-  padding: 8px;
-  border-radius: 24px;
-  background: rgba(207, 190, 174, 0.5);
-}
-
-.medal {
-  width: 28px;
-  height: 28px;
-  margin: 0 1px;
-}
-
-.medal-gap {
-  width: 1px;
-  height: 24px;
-  margin: 0 6px;
-  background: rgba(106, 84, 67, 0.28);
-}
-
-/* ===== 战斗统计（暗卡） ===== */
-.stat-card {
-  width: 690px;
-  margin: 24px auto 0;
-  padding: 32px;
-  box-sizing: border-box;
-  background: url("./images/battle-stat-panel-bg.a37fdc99.png") no-repeat center center;
-  background-size: 100% 100%;
-}
-
-.stat-item {
-  display: flex;
-  align-items: center;
-  padding: 16px 0;
-}
-
-/* 头像：40px 圆环里放 52px 头像（官方 avtar_icon 自带留白，按同样比例放大填满） */
-.stat-avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  margin-right: 16px;
-  border-radius: 100%;
-  border: 1px solid #5d4e3f;
-  background: #221e23;
-  overflow: hidden;
-}
-
-.stat-avatar > img {
-  width: 52px;
-  height: 52px;
-  object-fit: cover;
-}
-
-.stat-title {
-  font-size: 24px;
-  font-weight: 500;
-  color: #ece5d8;
-}
-
-.stat-value {
-  margin-left: auto;
-  font-family: YS, sans-serif;
-  font-size: 24px;
-  color: #d3bc8e;
-}
-
-.stat-front-icon {
-  width: 40px;
-  height: 40px;
-  margin-right: 16px;
-}
-
-.stat-team {
-  display: flex;
-  align-items: center;
-  margin-left: auto;
-}
-
-.stat-team-avatar {
-  margin-right: 0;
-  margin-left: 8px;
-}
-
-/* ===== 演出详情（暗底容器 + 浅色幕卡） ===== */
-.rounds {
-  width: 690px;
-  margin: 44px auto 0;
-  padding: 32px;
-  box-sizing: border-box;
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  background-color: #211d1f;
-  background-image: url("./images/detail-rounds-bg.df44819e.png");
-  background-repeat: no-repeat;
-  background-position: left top;
-  background-size: 100% auto;
-}
-
-.rounds-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 36px;
-}
-
-.rounds-title > p {
-  font-size: 24px;
-  font-weight: 600;
-  color: #f4efe8;
-}
-
-/* ===== 难度 / 星章 / 演出总时长 ===== */
-.round-summary {
-  width: 690px;
-  margin: 32px auto 0;
-  padding: 0;
-}
-
-.summary-info {
-  display: flex;
-  align-items: center;
-  height: 48px;
-}
-
-.summary-diff {
-  font-size: 28px;
-  font-weight: 600;
-  color: #f4efe8;
-}
-
-.summary-heraldry {
-  width: 30px;
-  height: 30px;
-  margin-left: 12px;
-}
-
-.summary-medal {
-  display: flex;
-  align-items: center;
-  height: 44px;
-  margin-left: 12px;
-  padding: 0 16px;
-  border-radius: 60px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.summary-medal > img {
-  width: 28px;
-  height: 28px;
-}
-
-.summary-medal .num {
-  margin-left: 6px;
-  font-family: YS, sans-serif;
-  font-size: 24px;
-  line-height: 42px;
-  color: #ece5d8;
-}
-
-.summary-time {
-  margin-top: 4px;
-  font-size: 24px;
-  line-height: 36px;
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.round-card {
-  position: relative;
-  margin-top: 24px;
-  padding: 32px;
-  box-sizing: border-box;
-  background-color: #ede8e5;
-  background-image: url("./images/detail-round-bg-top.887284e6.png"), url("./images/detail-round-bg-bottom.d8e18c90.png");
-  background-repeat: no-repeat, no-repeat;
-  background-position: left top, left bottom;
-  background-size: 100% auto, 100% auto;
-}
-
-.round-head {
-  display: flex;
-  align-items: center;
-  height: 32px;
-}
-
-.round-medal {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  margin-right: 8px;
-  border-radius: 100%;
-  background: rgba(207, 190, 174, 0.5);
-}
-
-.round-medal > img {
+/* 幕头的敌人图标：官方那里是「敌人详情」按钮（点击开弹窗），
+   静态图直接排图标，尺寸按图标清晰度放大到 24 */
+.role-combat-detail-round-content .round-item > h2 .enemy-icon > img {
   width: 24px;
   height: 24px;
+  margin-left: 4px;
 }
 
-.round-name {
-  font-size: 24px;
-  font-weight: 600;
-  line-height: 32px;
-  color: #6a5443;
-}
-
-.round-enemies {
-  display: flex;
-  align-items: center;
-  margin-left: 10px;
-}
-
-.round-enemies > img {
-  width: 22px;
-  height: 22px;
-  margin-right: 4px;
-  border-radius: 4px;
-}
-
-.round-time {
-  margin-left: auto;
-  font-family: YS, sans-serif;
-  font-size: 20px;
-  color: rgba(106, 84, 67, 0.85);
-}
-
-/* 队伍 */
-.round-team {
-  display: flex;
-  align-items: center;
-  margin-top: 16px;
-}
-
-.role-item {
-  position: relative;
-  width: 128px;
-  height: 160px;
-  box-sizing: border-box;
-  border: 1px solid #ded8d1;
-  border-radius: 8px;
-  overflow: hidden;
-  background-color: #7a5230;
-  background-size: 100% 100%;
-  background-position: center center;
-  background-repeat: no-repeat;
-}
-
-.role-item + .role-item {
-  margin-left: 16px;
-}
-
-/* 稀有度底色：官方 roleStarBg 素材（金/紫渐变 + 暗纹） */
-.role-item.r5 {
-  background-image: url("./images/star-bg-5.png");
-}
-
-.role-item.r4 {
-  background-image: url("./images/star-bg-4.png");
-}
-
-.role-art {
-  height: 126px;
-  overflow: hidden;
-}
-
-.role-face {
-  display: block;
-  width: 100%;
-  height: 126px;
-  object-fit: cover;
-}
-
-.role-elem {
-  position: absolute;
-  left: 8px;
-  top: 8px;
-  width: 26px;
-  height: 26px;
-}
-
-.role-tag {
-  position: absolute;
-  right: -1px;
-  top: -1px;
-  height: 24px;
-  padding: 0 5px;
-  border-radius: 4px;
-  font-family: YS, "PingFang SC", sans-serif;
-  font-size: 16px;
-  line-height: 22px;
-  color: #fff;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
-}
-
-.role-tag.trial {
-  border: 1px solid #dd6971;
-  background: #e57882;
-}
-
-.role-tag.support {
-  border: 1px solid #3a75ad;
-  background: #4f8cc9;
-}
-
-.role-lv {
-  height: 30px;
-  font-family: YS, "PingFang SC", sans-serif;
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 30px;
-  text-align: center;
-  color: #3b4252;
-  background: #ece5d8;
-  border-radius: 0 0 8px 8px;
-}
-
-/* 辉彩祝福 */
-.round-detail-title {
-  margin-top: 24px;
-  font-size: 24px;
-  font-weight: 600;
-  line-height: 36px;
-  color: #6a5443;
-}
-
-.round-buff {
-  margin-top: 8px;
-}
-
-.buff-head {
-  display: flex;
-  align-items: center;
-  height: 56px;
-  padding: 0 16px;
-  background: #e6dac5;
-  border: 1px solid #d8cfc1;
-}
-
-.buff-name {
-  font-size: 24px;
-  font-weight: 500;
-  color: #6a5443;
-}
-
-/* 祝福等级 + 各祝福：图标在上、等级药丸在下，条目间用细竖线分隔（同官方） */
-.buff-list {
-  display: flex;
-  align-items: center;
-  padding: 16px 0;
-  background: #f2f2f2 url("./images/buff-bottom-bg.70b09d7a.png") no-repeat right 8px bottom 6px;
-}
-
-.buff-item {
-  position: relative;
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  min-height: 84px;
-}
-
-.buff-item + .buff-item::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 10px;
-  width: 1px;
-  height: 52px;
-  background: rgba(0, 0, 0, 0.06);
-}
-
-.buff-crown {
-  width: 31px;
-  height: 32px;
-  object-fit: contain;
-}
-
-/* Lv.0 的祝福在官方是禁用态（整项半透明） */
-.buff-item.is-zero {
-  opacity: 0.45;
-}
-
-.buff-icon {
-  display: block;
-  width: 52px;
-  height: 52px;
-  background-position: center center;
-  background-size: contain;
-  background-repeat: no-repeat;
-}
-
-.buff-lv {
-  margin-top: 6px;
-  min-width: 52px;
-  height: 26px;
-  padding: 0 8px;
-  box-sizing: border-box;
-  border-radius: 13px;
-  background: #e8dfd0;
-  font-family: YS, sans-serif;
-  font-size: 18px;
-  line-height: 26px;
-  text-align: center;
-  color: #6a5443;
-}
-
-/* 神秘收获：与辉彩祝福同款「标题条 + 浅色框」 */
-.round-choices {
-  margin-top: 16px;
-}
-
-.choices-title {
-  height: 56px;
-  padding: 0 16px;
-  border: 1px solid #d8cfc1;
-  background: #e6dac5;
-  font-size: 24px;
-  font-weight: 500;
-  line-height: 56px;
-  color: #6a5443;
-}
-
-.choices-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  padding: 16px;
-  background: #f2f2f2;
-}
-
-/* 神秘收获的卡面是「未获得」态，官方同样压暗 */
-.choice-icon {
-  width: 52px;
-  height: 52px;
-  border: 1px solid #fff;
-  border-radius: 100%;
-  background-color: rgba(0, 0, 0, 0.64);
-  background-position: center center;
-  background-size: 38px 38px;
-  background-repeat: no-repeat;
-  filter: grayscale(1) brightness(0.72);
-  opacity: 0.6;
-}
-
-/* ===== 提示（灰底框、靠左、多行） ===== */
+/* ===== 提示 / 版权（自有） ===== */
 .notice {
   margin: 32px 30px 0;
   padding: 12px 16px;
@@ -659,11 +115,10 @@ body {
   margin-top: 4px;
 }
 
-/* ===== 版权行（与深渊一致） ===== */
 .copyright {
   margin: 10px 0 0;
   padding: 0 0 24px;
-  font-family: YS, "PingFang SC", sans-serif;
+  font-family: HYWenHei, ysfont, "PingFang SC", sans-serif;
   font-size: 16px;
   line-height: 22px;
   text-align: center;
@@ -672,7 +127,7 @@ body {
 }
 
 .copyright .version {
-  font-family: YS, "PingFang SC", sans-serif;
+  font-family: HYWenHei, ysfont, "PingFang SC", sans-serif;
   font-size: 16px;
   color: #d3bc8e;
 }

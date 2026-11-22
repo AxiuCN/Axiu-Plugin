@@ -45,7 +45,15 @@ const extraClasses = flags
   .map((s) => s.trim())
   .filter(Boolean)
 
-const CSS_FILES = ['bundle_a7c0689cb60e71d3c2f7.css', '0_6c6a62822ba5bd531e27.css']
+// 主样式先扫（保持既有产物顺序稳定），再补各路由的独立 CSS chunk
+// （剧诗的样式全在分块 CSS 里：40_<hash>.css，主文件里一条都没有）
+const BASE_CSS_FILES = ['bundle_a7c0689cb60e71d3c2f7.css', '0_6c6a62822ba5bd531e27.css']
+const CSS_FILES = [
+  ...BASE_CSS_FILES,
+  ...fs.readdirSync(h5Dir)
+    .filter((f) => f.endsWith('.css') && !BASE_CSS_FILES.includes(f))
+    .sort()
+]
 const BASE_CLASSES = [
   'gt-avatar', 'gt-avatar--size-xs', 'gt-avatar--size-s', 'gt-avatar-img',
   'gt-avatar-star-bg', 'gt-avatar-left', 'gt-avatar-left-block',

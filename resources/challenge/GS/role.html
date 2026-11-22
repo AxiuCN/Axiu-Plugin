@@ -1,13 +1,14 @@
 {{extend defaultLayout}}
 
 {{block 'css'}}
+<link rel="stylesheet" type="text/css" href="{{_res_path}}/challenge/GS/role-official.css"/>
 <link rel="stylesheet" type="text/css" href="{{_res_path}}/challenge/GS/role.css"/>
 {{/block}}
 
 {{block 'main'}}
-<div class="role">
+<div class="role-combat-page" data-v-9fd04200>
 
-  <!-- ===== 页头 ===== -->
+  <!-- ===== 页头（自有） ===== -->
   <header class="page-head">
     <div class="head-left">
       <div class="page-title">幻想真境剧诗·演出回顾</div>
@@ -24,188 +25,224 @@
   </header>
   <div class="head-divider"></div>
 
-  <!-- ===== 演出回顾 ===== -->
-  <section class="review-card">
-    <h2 class="review-title">演出回顾</h2>
-    <div class="review-row">
-      <p class="review-label">最佳记录</p>
-      <div class="review-value">
-        <span>第</span><span class="num">{{role.best.round || '-'}}</span><span>幕</span>
-        {{if role.difficultyId === 5 && role.best.tarot}}
-        <span class="best-tarot">圣牌<span class="num">{{role.best.tarot}}</span></span>
+  <!-- ===== 演出回顾（官方 detail-top-panel，通栏浅色面板） ===== -->
+  <div class="role-combat-detail-top-panel" data-v-78e349d3>
+    <h2 data-v-78e349d3>演出回顾</h2>
+    <div class="data-items" data-v-78e349d3>
+      <div class="data-item" data-v-78e349d3>
+        <p data-v-78e349d3>最佳记录</p>
+        <div class="best-record tw-flex-items-center" data-v-78e349d3>
+          <p class="no-space tw-flex-items-center" data-v-78e349d3>
+            <span data-v-78e349d3>第</span>
+            <span class="tw-font-genshinfont" data-v-78e349d3>{{role.best.round || '-'}}</span>
+            <span data-v-78e349d3>幕</span>
+          </p>
+          {{if role.difficultyId === 5}}
+          <p class="no-space tw-ml-1 tw-flex-items-center" data-v-78e349d3>
+            <span data-v-78e349d3>圣牌</span>
+            <span class="tw-font-genshinfont" data-v-78e349d3>{{role.best.tarot || 0}}</span>
+          </p>
+          {{/if}}
+        </div>
+      </div>
+      <i data-v-78e349d3></i>
+
+      <div class="data-item" data-v-78e349d3>
+        {{if role.difficultyId === 5}}
+        <p data-v-78e349d3>已完成{{role.difficulty}} <span data-v-78e349d3>{{role.best.total || 0}}</span> 场挑战</p>
+        {{else}}
+        <p data-v-78e349d3>已抵达{{role.difficulty}}第 <span data-v-78e349d3>{{role.best.round || '-'}}</span> 幕</p>
+        {{/if}}
+        <p data-v-78e349d3><img src="{{_res_path}}challenge/GS/images/heraldry-icon-{{role.heraldry || 0}}.png" alt="" data-v-78e349d3></p>
+      </div>
+      <i data-v-78e349d3></i>
+
+      <div class="data-item" data-v-78e349d3>
+        <p data-v-78e349d3>明星挑战星章</p>
+        {{if role.medals && role.medals.length}}
+        <div class="medal-rounds" data-v-78e349d3>
+          {{each role.medals on idx}}
+          <img src="{{_res_path}}challenge/GS/images/{{on ? 'active-medal-icon.adecbf75.png' : 'default-medal-icon.2694044b.png'}}" alt="" data-v-78e349d3>
+          {{if role.difficultyId === 5 && idx === 9}}
+          <div class="tw-relative tw-top-[1px] tw-mx-0.5 tw-h-3 tw-w-[1px] tw-bg-gt-g-grey-black-6" data-v-78e349d3></div>
+          {{/if}}
+          {{/each}}
+        </div>
+        {{else}}
+        <p data-v-78e349d3><span data-v-78e349d3>0</span></p>
         {{/if}}
       </div>
-    </div>
-    <i class="review-divider"></i>
-    <div class="best-sub-row">
-      <span class="best-sub">已完成{{role.difficulty}} <span class="num">{{role.best.total || 0}}</span> 场挑战</span>
-      <img class="heraldry" src="{{_res_path}}challenge/GS/images/heraldry-{{role.heraldry || 0}}.png">
-    </div>
-    <i class="review-divider"></i>
+      <i data-v-78e349d3></i>
 
-    <div class="review-row">
-      <p class="review-label">明星挑战星章</p>
-      {{if role.medals && role.medals.length}}
-      <div class="medal-rounds">
-        {{each role.medals on}}
-        <img class="medal" src="{{_res_path}}challenge/GS/images/{{on ? 'medal-on' : 'medal-off'}}.png">
-        {{/each}}
-        {{if role.tarotMedals && role.tarotMedals.length}}
-        <span class="medal-gap"></span>
-        {{each role.tarotMedals on}}
-        <img class="medal" src="{{_res_path}}challenge/GS/images/{{on ? 'medal-on' : 'medal-off'}}.png">
-        {{/each}}
-        {{/if}}
+      <div class="data-item" data-v-78e349d3>
+        <p data-v-78e349d3>消耗「幻剧之花」</p>
+        <p data-v-78e349d3>
+          <img src="{{_res_path}}challenge/GS/images/flower-icon.9d7ec9af.png" alt="" data-v-78e349d3>
+          <span data-v-78e349d3>{{role.stat.coin || 0}}</span>
+        </p>
       </div>
-      {{else}}
-      <div class="review-value"><span class="num">0</span></div>
-      {{/if}}
-    </div>
-    <i class="review-divider"></i>
+      <i data-v-78e349d3></i>
 
-    <div class="review-row">
-      <p class="review-label">消耗「幻剧之花」</p>
-      <div class="review-value">
-        <img class="flower" src="{{_res_path}}challenge/GS/images/flower-icon.png">
-        <span class="num">{{role.stat.coin || 0}}</span>
+      <div class="data-item" data-v-78e349d3>
+        <p data-v-78e349d3>触发场外观众声援</p>
+        <p data-v-78e349d3><span data-v-78e349d3>{{role.stat.bonus || 0}}</span>次</p>
+      </div>
+      <i data-v-78e349d3></i>
+
+      <div class="data-item" data-v-78e349d3>
+        <p data-v-78e349d3>助演角色支援其他玩家</p>
+        <p data-v-78e349d3><span data-v-78e349d3>{{role.stat.rent || 0}}</span>次</p>
       </div>
     </div>
-    <i class="review-divider"></i>
-
-    <div class="review-row">
-      <p class="review-label">触发场外观众声援</p>
-      <div class="review-value"><span class="num">{{role.stat.bonus || 0}}</span><span class="unit">次</span></div>
-    </div>
-    <i class="review-divider"></i>
-
-    <div class="review-row">
-      <p class="review-label">助演角色支援其他玩家</p>
-      <div class="review-value"><span class="num">{{role.stat.rent || 0}}</span><span class="unit">次</span></div>
-    </div>
-  </section>
-
-  <!-- ===== 难度 / 星章 / 演出总用时 ===== -->
-  {{if role.difficulty || role.medalStat || role.totalUseTime}}
-  <div class="round-summary">
-    <div class="summary-info">
-      {{if role.difficulty}}<span class="summary-diff">{{role.difficulty}}</span>{{/if}}
-      <img class="summary-heraldry" src="{{_res_path}}challenge/GS/images/heraldry-{{role.heraldry || 0}}.png">
-      {{if role.medalStat}}
-      <span class="summary-medal">
-        <img src="{{_res_path}}challenge/GS/images/medal-on.png">
-        <span class="num">{{role.medalStat}}</span>
-      </span>
-      {{/if}}
-    </div>
-    {{if role.totalUseTime}}<p class="summary-time">演出总用时：{{role.totalUseTime}}</p>{{/if}}
   </div>
-  {{/if}}
 
-  <!-- ===== 战斗统计 ===== -->
-  {{if (role.fightStats && role.fightStats.length) || (role.fastest && role.fastest.length)}}
-  <section class="stat-card">
-    {{each role.fightStats item}}
-    <div class="stat-item">
-      <span class="stat-avatar"><img src="{{(avatars[item.id]||{}).face || item.icon}}"></span>
-      <span class="stat-title">{{item.title}}：</span>
-      <span class="stat-value">{{item.value}}</span>
-    </div>
-    {{/each}}
-    {{if role.fastest && role.fastest.length}}
-    <div class="stat-item">
-      <span class="stat-title">最快完成演出队伍：</span>
-      <span class="stat-team">
-        {{each role.fastest id}}
-        <span class="stat-avatar stat-team-avatar"><img src="{{(avatars[id]||{}).face}}"></span>
-        {{/each}}
-      </span>
-    </div>
-    {{/if}}
-    {{if role.stat.totalCoin !== undefined && role.stat.totalCoin !== ''}}
-    <div class="stat-item">
-      <img class="stat-front-icon" src="{{_res_path}}challenge/GS/images/flower-icon.png">
-      <span class="stat-title">本次消耗幻剧之花：</span>
-      <span class="stat-value">{{role.stat.totalCoin}}</span>
-    </div>
-    {{/if}}
-  </section>
-  {{/if}}
+  <div class="detail-content" data-v-9fd04200>
 
-  <!-- ===== 演出详情 ===== -->
-  <div class="rounds">
-    <div class="rounds-title">
-      <p>参演名单</p>
-    </div>
-
-    {{each role.rounds round}}
-    <section class="round-card">
-      <h2 class="round-head">
-        <span class="round-medal">
-          <img src="{{_res_path}}challenge/GS/images/{{round.medal ? 'medal-on' : 'medal-off'}}.png">
-        </span>
-        <span class="round-name">{{round.title}}</span>
-        {{if round.enemies && round.enemies.length}}
-        <span class="round-enemies">
-          {{each round.enemies icon}}<img src="{{icon}}">{{/each}}
-        </span>
+    <!-- ===== 难度 / 纹章 / 星章 / 演出总时长（官方 detail-round-title） ===== -->
+    {{if role.difficulty}}
+    <div class="role-combat-detail-round-title" data-v-0acc4f93>
+      <div class="title-info" data-v-0acc4f93>
+        <span data-v-0acc4f93>{{role.difficulty}}</span>
+        <span data-v-0acc4f93><img src="{{_res_path}}challenge/GS/images/heraldry-icon-{{role.heraldry || 0}}.png" alt="" data-v-0acc4f93></span>
+        {{if role.medalStat}}
+        <p data-v-0acc4f93>
+          <img src="{{_res_path}}challenge/GS/images/active-medal-icon.adecbf75.png" alt="" data-v-0acc4f93>
+          <span data-v-0acc4f93>{{role.medalStat}}</span>
+        </p>
         {{/if}}
-        <span class="round-time">{{round.time}}</span>
-      </h2>
-
-      {{if round.team && round.team.length}}
-      <div class="round-team">
-        {{each round.team member}}
-        {{set char = avatars[member.id] || {} }}
-        <div class="role-item r{{char.star || 5}}">
-          <div class="role-art"><img class="role-face" src="{{member.image || char.face}}"></div>
-          {{if char.elemIcon}}
-          <img class="role-elem" src="{{_res_path}}challenge/GS/images/{{char.elemIcon}}">
-          {{/if}}
-          {{if member.tag}}
-          <span class="role-tag {{member.tag === '试用' ? 'trial' : 'support'}}">{{member.tag}}</span>
-          {{/if}}
-          <p class="role-lv">Lv.{{member.level || char.level || '-'}}</p>
-        </div>
-        {{/each}}
       </div>
+      {{if role.totalUseTime}}
+      <p class="total-use-time" data-v-0acc4f93>演出总时长：{{role.totalUseTime}}</p>
       {{/if}}
+    </div>
+    {{/if}}
 
-      {{if round.buffLevel || (round.buffs && round.buffs.length)}}
-      <h3 class="round-detail-title">演出详情</h3>
-      <div class="round-buff">
-        <div class="buff-head">
-          <span class="buff-name">辉彩祝福</span>
-        </div>
-        <div class="buff-list">
-          <div class="buff-item buff-total">
-            <img class="buff-crown" src="{{_res_path}}challenge/GS/images/buff-level-crown.png">
-            <span class="buff-lv">Lv.{{round.buffLevel || 0}}</span>
-          </div>
-          {{each round.buffs buff}}
-          <div class="buff-item{{(buff.level || 0) === 0 ? ' is-zero' : ''}}">
-            <span class="buff-icon" style="background-image:url({{buff.icon}})"></span>
-            <span class="buff-lv">Lv.{{buff.level || 0}}</span>
-          </div>
+    <!-- ===== 战斗统计（官方 battle-stat-panel） ===== -->
+    {{if (role.fightStats && role.fightStats.length) || (role.fastest && role.fastest.length) || role.stat.totalCoin}}
+    <div class="stat-list" data-v-2a52861b>
+      {{each role.fightStats item}}
+      <div class="stat-item" data-v-2a52861b>
+        {{if item.icon}}
+        <div class="stat-avatar-icon" data-v-2a52861b><img src="{{item.icon}}" alt="" data-v-2a52861b></div>
+        {{/if}}
+        <p class="stat-title" data-v-2a52861b>{{item.title}}：</p>
+        <p class="stat-value" data-v-2a52861b>{{item.value}}</p>
+      </div>
+      {{/each}}
+      {{if role.fastest && role.fastest.length}}
+      <div class="stat-item" data-v-2a52861b>
+        <p class="stat-title" data-v-2a52861b>最快完成演出队伍：</p>
+        <div class="stat-avatars" data-v-2a52861b>
+          {{each role.fastest id}}
+          {{set fast = avatars[id] || {} }}
+          <div class="stat-avatar-icon" data-v-2a52861b><img src="{{fast.face}}" alt="" data-v-2a52861b></div>
           {{/each}}
         </div>
       </div>
       {{/if}}
-
-      {{if round.choices && round.choices.length}}
-      <div class="round-choices">
-        <div class="choices-title">神秘收获 * {{round.choices.length}}</div>
-        <div class="choices-list">
-          {{each round.choices card}}
-          <span class="choice-icon" style="background-image:url({{card.icon}})"></span>
-          {{/each}}
-        </div>
+      {{if role.stat.totalCoin}}
+      <div class="stat-item" data-v-2a52861b>
+        <img class="stat-front-icon" src="{{_res_path}}challenge/GS/images/flower-icon.9d7ec9af.png" alt="" data-v-2a52861b>
+        <p class="stat-title" data-v-2a52861b>本次消耗幻剧之花：</p>
+        <p class="stat-value" data-v-2a52861b>{{role.stat.totalCoin}}</p>
       </div>
       {{/if}}
-    </section>
-    {{/each}}
+    </div>
+    {{/if}}
+
+    <!-- ===== 参演名单（官方 detail-round-content） ===== -->
+    {{if role.rounds && role.rounds.length}}
+    <div class="role-combat-detail-round-content" data-v-01e78b74>
+      <div class="rounds-title" data-v-01e78b74><p data-v-01e78b74>参演名单</p></div>
+
+      {{each role.rounds round}}
+      <div class="round-item" data-v-01e78b74>
+        <h2 data-v-01e78b74>
+          <div class="flower-icon" data-v-01e78b74><img src="{{_res_path}}challenge/GS/images/{{round.medal ? 'active-medal-icon.adecbf75.png' : 'default-medal-icon.2694044b.png'}}" alt="" data-v-01e78b74></div>
+          <p data-v-01e78b74>{{if round.isTarot}}<span data-v-01e78b74>圣牌挑战</span> <span data-v-01e78b74>{{round.tarot}}</span>{{else}}第 <span data-v-01e78b74>{{round.roundId}}</span> 幕{{/if}}</p>
+          {{if round.enemies && round.enemies.length}}
+          <div class="enemy-icon" data-v-01e78b74>
+            {{each round.enemies icon}}
+            <img src="{{icon}}" alt="" data-v-01e78b74>
+            {{/each}}
+          </div>
+          {{/if}}
+        </h2>
+        <p class="finish-time" data-v-01e78b74>{{round.time}}</p>
+
+        {{if round.team && round.team.length}}
+        <div class="roles" data-v-01e78b74>
+          {{each round.team m}}
+          {{set char = avatars[m.id] || {} }}
+          <div class="role-item" style="background:url({{_res_path}}challenge/GS/images/{{char.starBg || 'roleStarBg5.1ff411a0.png'}});background-size:100% 100%" data-v-01e78b74>
+            <div class="avatar" style="background-image:url({{m.image || char.face}})" data-v-01e78b74></div>
+            {{if char.elemIcon}}
+            <img class="element" src="{{_res_path}}challenge/GS/images/{{char.elemIcon}}" alt="" data-v-01e78b74>
+            {{/if}}
+            {{if m.tag}}
+            <div class="tag {{m.tag === '试用' ? 'trial-tag' : 'support-tag'}}" data-v-01e78b74>{{m.tag}}</div>
+            {{/if}}
+            <div class="level" data-v-01e78b74>Lv.{{m.level || char.level || '-'}}</div>
+            <img class="fill" src="{{_res_path}}challenge/GS/images/role-item-fill.png" alt="" data-v-01e78b74>
+          </div>
+          {{/each}}
+        </div>
+        {{/if}}
+
+        {{if round.buffLevel || (round.splendourBuffs && round.splendourBuffs.length) || (round.buffs && round.buffs.length) || (round.choices && round.choices.length)}}
+        <h3 data-v-01e78b74><p data-v-01e78b74>演出详情</p></h3>
+
+        {{if round.buffLevel || (round.splendourBuffs && round.splendourBuffs.length)}}
+        <div class="round-buff-item" data-v-01e78b74>
+          <div class="buff-title" data-v-01e78b74><span data-v-01e78b74>辉彩祝福</span></div>
+          <div class="not-expand-buff splendour-buff" data-v-01e78b74>
+            <div class="total-buff-list" data-v-01e78b74>
+              <div data-v-01e78b74>
+                <img src="{{_res_path}}challenge/GS/images/total-level-icon.4737fdd2.png" alt="" data-v-01e78b74>
+                <span data-v-01e78b74>Lv.{{round.buffLevel || 0}}</span>
+              </div>
+              {{each round.splendourBuffs b}}
+              <div{{if (b.level || 0) < 1}} class="disabled"{{/if}} data-v-01e78b74>
+                <i data-v-01e78b74></i>
+                <img src="{{b.icon}}" alt="" data-v-01e78b74>
+                <span data-v-01e78b74>Lv.{{b.level || 0}}</span>
+              </div>
+              {{/each}}
+            </div>
+          </div>
+        </div>
+        {{/if}}
+
+        {{if round.buffs && round.buffs.length}}
+        <div class="round-buff-item" data-v-01e78b74>
+          <div class="buff-title" data-v-01e78b74><span data-v-01e78b74>奇妙助益 * {{round.buffs.length}}</span></div>
+          <div class="not-expand-buff" data-v-01e78b74>
+            {{each round.buffs b}}
+            <div data-v-01e78b74><div class="buff-icon" data-v-01e78b74><img src="{{b.icon}}" alt="" data-v-01e78b74></div></div>
+            {{/each}}
+          </div>
+        </div>
+        {{/if}}
+
+        {{if round.choices && round.choices.length}}
+        <div class="round-buff-item" data-v-01e78b74>
+          <div class="buff-title" data-v-01e78b74><span data-v-01e78b74>神秘收获 * {{round.choices.length}}</span></div>
+          <div class="not-expand-buff" data-v-01e78b74>
+            {{each round.choices b}}
+            <div data-v-01e78b74><div class="buff-icon" data-v-01e78b74><img src="{{b.icon}}" alt="" data-v-01e78b74></div></div>
+            {{/each}}
+          </div>
+        </div>
+        {{/if}}
+        {{/if}}
+      </div>
+      {{/each}}
+    </div>
+    {{/if}}
+
   </div>
 
-  <!-- ===== 提示 ===== -->
+  <!-- ===== 提示（自有） ===== -->
   <div class="notice">
     <p>各关卡按照挑战时间顺序展示</p>
     <p>仅展示已挑战成功的圣牌挑战，未挑战成功的圣牌挑战不会被展示</p>
