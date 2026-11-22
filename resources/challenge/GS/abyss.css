@@ -1,21 +1,21 @@
 /**
- * 深境螺旋战绩 — 版式对齐米游社「深境螺旋战绩」页
+ * 深境螺旋 — 自有外框（页头 / 楼层底图 / 提示 / 版权）
  *
- * 尺寸一律用 px：官方是 750 基准的 vw 流式稿，这里 1vw = 7.5px 直接折算成固定 px。
- * 不能用 vw：框架单页截图取的是 #container 元素，且不会先把视口设成页面宽度，
- * vw 会按浏览器默认视口（约 800）计算，92vw 撑破画布、右侧被裁掉。
+ * 挑战回顾、楼层卡、角色卡一律复用官方版式：
+ * 结构与 class 与官方模板一致，样式来自 abyss-official.css（官方编译 CSS 子集），
+ * 尺寸由 --gpx: 2px 统一放大（750 画布 = 官方 375 设计稿 × 2）。
  *
- * 字体：标题 NZBZ，数字 Number，正文与「上半/下半」YS（= 官方 HYWenHei 同款）。
+ * 本文件只保留官方没有的“我们自己的东西”，不要再往里加卡面样式。
  */
 
 body {
   width: 750px;
   margin: 0;
   transform: none;
+  /* 官方详情页底色：上下两张底图的内缘渐变到的正是这个颜色 */
   background: #080b1f;
 }
 
-/* 页面底色与上下装饰图挂在 container 上（截图对象就是它），版权行因此落在背景内 */
 .container {
   width: 750px;
   padding: 0;
@@ -28,10 +28,11 @@ body {
 
 .abyss {
   width: 100%;
-  font-family: YS, "PingFang SC", sans-serif;
+  /* 字体在 abyss-official.css 注册：HYWenHei / ysfont 均指向原神官方字体合集 */
+  font-family: HYWenHei, ysfont, "PingFang SC", sans-serif;
 }
 
-/* ===== 页头 ===== */
+/* ===== 页头（自有） ===== */
 .page-head {
   display: flex;
   align-items: flex-start;
@@ -39,11 +40,17 @@ body {
   padding: 48px 30px 0;
 }
 
+.head-left {
+  flex: 1;
+  min-width: 0;
+}
+
 .page-title {
   font-family: NZBZ, "印品南征北战NZBZ体", YS, sans-serif;
   font-size: 52px;
   line-height: 60px;
   letter-spacing: 0.5px;
+  white-space: nowrap;
   color: #d3bc8e;
 }
 
@@ -82,438 +89,33 @@ body {
   opacity: 0.85;
 }
 
-/* ===== 挑战回顾 ===== */
-.look-back {
-  position: relative;
-  width: 690px;
-  margin: 32px auto 0;
-  padding: 32px 0;
-  box-sizing: border-box;
-  border-radius: 16px;
-  background-color: #1b1a38;
-  background-image: url("./images/home-bg.9cbae158.png");
-  background-size: 100% auto;
-  background-position: top center;
-  background-repeat: no-repeat;
+/* 页头与挑战回顾之间的呼吸位（官方是 page-header 的 margin-bottom: 48px） */
+.record-container {
+  margin-top: 24px;
 }
 
-/* 描金内框 */
-.look-back::after {
-  content: "";
-  position: absolute;
-  left: 8px;
-  top: 8px;
-  width: calc(100% - 16px);
-  height: calc(100% - 16px);
-  background: url("./images/bg-outline.7f63bc3a.png") no-repeat center center;
-  background-size: 100% 100%;
-  pointer-events: none;
-  z-index: 1;
+/* ===== 楼层底图（官方按 1-8 / 9-11 / 12+ 三套，共三层背景） =====
+   官方三层是：顶部图、纵向填充、底部图；中间那层官方是一张 1035×3 的纯色图，
+   这里用等价的分层纯色渐变替代，图层数量与官方一致，官方规则里的
+   background-size / position 因此可以原样生效。 */
+.abyss .deep-floor-item.bg-1 {
+  background-image: url("./images/detail-floor-bg-8-top.8c04a372.png"), linear-gradient(#101330, #101330), url("./images/detail-floor-bg-8-bottom.e41d3020.png");
 }
 
-.look-back-content {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  width: 630px;
-  margin: 0 auto;
+.abyss .deep-floor-item.bg-2 {
+  background-image: url("./images/detail-floor-bg-9-top.d56e5663.png"), linear-gradient(#1c1b3d, #1c1b3d), url("./images/detail-floor-bg-9-bottom.d5e3fbea.png");
 }
 
-.left-box {
-  width: 272px;
-  flex-shrink: 0;
+.abyss .deep-floor-item.bg-3 {
+  background-image: url("./images/detail-floor-bg-12-top.bde493ac.png"), linear-gradient(#1c1b3d, #1c1b3d), url("./images/detail-floor-bg-9-bottom.d5e3fbea.png");
 }
 
-.info-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 44px;
-  padding: 0 16px;
-  box-sizing: border-box;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(71, 71, 117, 0.5);
+/* 层号数字：官方是继承 html/body 的深色（盾章是浅色底），我们页面继承到的是浅色，这里点明 */
+.abyss .deep-floor-item .floor-index .text {
+  color: #1e1f20;
 }
 
-.info-item + .info-item {
-  margin-top: 8px;
-}
-
-.info-item > p {
-  font-size: 22px;
-  line-height: 22px;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.info-item > span,
-.star-value > span {
-  font-family: YS, sans-serif;
-  font-size: 24px;
-  line-height: 24px;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.star-value {
-  display: flex;
-  align-items: center;
-}
-
-.star-value > img {
-  width: 24px;
-  height: 24px;
-  margin-right: 4px;
-}
-
-/* 出战次数：先标签、后一排头像 */
-.info-item.reveal-item {
-  height: 140px;
-  padding: 12px 16px;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  align-content: flex-start;
-}
-
-.reveal-list {
-  display: flex;
-  width: 100%;
-  margin-top: 12px;
-}
-
-.reveal-role {
-  width: 48px;
-  box-sizing: border-box;
-}
-
-.reveal-role + .reveal-role {
-  margin-left: 16px;
-}
-
-.reveal-role > div {
-  width: 48px;
-  height: 48px;
-  box-sizing: border-box;
-  border: 1px solid #4e6173;
-  border-radius: 100%;
-  overflow: hidden;
-  background-size: cover;
-  background-position: center;
-}
-
-.reveal-count {
-  margin-top: 4px;
-  font-family: YS, sans-serif;
-  font-size: 20px;
-  font-weight: 400;
-  line-height: 24px;
-  text-align: center;
-  color: rgba(255, 255, 255, 0.65);
-}
-
-.right-box {
-  width: 342px;
-  height: 296px;
-  margin: 0 0 0 16px;
-  padding: 16px 16px 16px 8px;
-  box-sizing: border-box;
-  list-style: none;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(71, 71, 117, 0.5);
-}
-
-.right-box > li {
-  display: flex;
-  align-items: center;
-  height: 40px;
-}
-
-.right-box > li + li {
-  margin-top: 16px;
-}
-
-.right-box > li > img {
-  width: 44px;
-  height: 44px;
-  margin-right: 4px;
-  border-radius: 100%;
-  object-fit: cover;
-  transform: translateY(-10px);
-}
-
-.right-box > li > p {
-  font-size: 22px;
-  line-height: 40px;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.right-box > li > span {
-  flex-grow: 1;
-  font-family: YS, sans-serif;
-  font-size: 24px;
-  line-height: 40px;
-  text-align: right;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-/* ===== 楼层卡 ===== */
-.floor-card {
-  position: relative;
-  width: 690px;
-  margin: 40px auto 0;
-  padding: 4px;
-  box-sizing: border-box;
-  border-radius: 14px;
-  background-repeat: no-repeat, no-repeat;
-  background-position: left top, left bottom;
-  background-size: 690px 404px, 690px 404px;
-}
-
-/* 1-8 层 / 9-11 层 / 12 层以上各一套底图与底色 */
-.floor-card.bg-1 {
-  background-color: #101330;
-  background-image: url("./images/detail-floor-bg-8-top.8c04a372.png"), url("./images/detail-floor-bg-8-bottom.e41d3020.png");
-}
-
-.floor-card.bg-2 {
-  background-color: #1c1b3d;
-  background-image: url("./images/detail-floor-bg-9-top.d56e5663.png"), url("./images/detail-floor-bg-9-bottom.d5e3fbea.png");
-}
-
-.floor-card.bg-3 {
-  background-color: #1c1b3d;
-  background-image: url("./images/detail-floor-bg-12-top.bde493ac.png"), url("./images/detail-floor-bg-9-bottom.d5e3fbea.png");
-}
-
-.floor-border {
-  position: absolute;
-  left: 6px;
-  top: 6px;
-  width: calc(100% - 12px);
-  height: calc(100% - 12px);
-  background-image: url("./images/floor-border-top.png"), url("./images/floor-border-mid.png"), url("./images/floor-border-bottom.png");
-  background-repeat: no-repeat, repeat-y, no-repeat;
-  background-size: calc(100% - 12px) auto, 100% calc(100% - 92px), calc(100% - 12px) auto;
-  background-position: center 6px, center 46px, center calc(100% - 6px);
-  pointer-events: none;
-  z-index: 1;
-}
-
-.floor-view {
-  position: relative;
-  z-index: 2;
-}
-
-.floor-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 32px 26px 0;
-}
-
-.floor-head-left {
-  display: flex;
-  align-items: center;
-}
-
-.floor-index {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 72px;
-  height: 72px;
-  background: url("./images/UI_Icon_Tower_Stage@2x.f8255b9e.png") no-repeat;
-  background-size: 100% auto;
-}
-
-.floor-index .text {
-  font-family: YS, sans-serif;
-  font-size: 32px;
-  font-weight: 400;
-  line-height: 72px;
-  color: #3b4354;
-}
-
-.floor-title {
-  margin-left: 8px;
-  font-family: YS, "PingFang SC", sans-serif;
-  font-size: 34px;
-  font-weight: 400;
-  line-height: 34px;
-  color: #fff;
-}
-
-.floor-star {
-  display: flex;
-  align-items: center;
-}
-
-.floor-star > img {
-  width: 48px;
-  height: auto;
-}
-
-.floor-star > .text {
-  padding-left: 8px;
-  font-family: YS, sans-serif;
-  font-size: 32px;
-  line-height: 32px;
-  color: #fff;
-}
-
-/* 楼层头与房间之间的细分隔线（官方是一张带菱形装饰的图片） */
-.floor-divider {
-  position: relative;
-  height: 1px;
-  margin: 16px 26px 0;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0));
-}
-
-.floor-divider::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: -3px;
-  width: 8px;
-  height: 8px;
-  transform: translateX(-50%) rotate(45deg);
-  background: rgba(255, 255, 255, 0.85);
-}
-
-.room-list {
-  padding: 0 26px;
-}
-
-.room {
-  padding: 24px 0 0;
-}
-
-.room + .room {
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.room-head {
-  position: relative;
-  height: 64px;
-  box-sizing: border-box;
-}
-
-.room-head .idx {
-  font-family: YS, "PingFang SC", sans-serif;
-  font-size: 24px;
-  line-height: 32px;
-  color: #d3bc8e;
-}
-
-.room-head .date {
-  margin-top: 4px;
-  font-family: YS, sans-serif;
-  font-size: 20px;
-  line-height: 28px;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.room-star {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  display: flex;
-  gap: 4px;
-  transform: translateY(-50%);
-}
-
-.room-star .star {
-  width: 28px;
-  height: 28px;
-}
-
-.room-star .star-off {
-  opacity: 0.18;
-}
-
-.room-content {
-  margin-top: 8px;
-}
-
-/* 上半 / 下半 */
-.roles {
-  position: relative;
-  display: flex;
-  align-items: center;
-  padding: 12px;
-  box-sizing: border-box;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.03);
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.roles + .roles {
-  margin-top: 16px;
-}
-
-.roles.empty {
-  height: 90px;
-}
-
-.role-item {
-  position: relative;
-  width: 116px;
-  height: 154px;
-  margin-left: 16px;
-  box-sizing: border-box;
-  border-radius: 8px;
-  overflow: hidden;
-  background-color: #7a5230;
-  background-size: 100% 100%;
-  background-position: center center;
-  background-repeat: no-repeat;
-}
-
-.role-item:first-child {
-  margin-left: 0;
-}
-
-.role-art {
-  height: 126px;
-  overflow: hidden;
-}
-
-.role-face {
-  display: block;
-  width: 100%;
-  height: 126px;
-  object-fit: cover;
-}
-
-.role-lv {
-  height: 28px;
-  font-family: YS, sans-serif;
-  font-size: 24px;
-  line-height: 28px;
-  text-align: center;
-  color: #3b4252;
-  background: #e9e5dc;
-}
-
-/* 稀有度底色：官方 roleStarBg 素材（金/紫渐变 + 暗纹） */
-.role-item.r5 {
-  background-image: url("./images/star-bg-5.png");
-}
-
-.role-item.r4 {
-  background-image: url("./images/star-bg-4.png");
-}
-
-.split-text {
-  margin-left: auto;
-  padding-right: 8px;
-  font-family: YS, "PingFang SC", sans-serif;
-  font-size: 28px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.65);
-}
-
-/* 提示：靠左、灰色底框承托，允许未来多行 */
+/* ===== 提示 / 版权（自有） ===== */
 .abyss-notice {
   margin: 32px 30px 0;
   padding: 12px 16px;
@@ -526,11 +128,10 @@ body {
   color: rgba(255, 255, 255, 0.55);
 }
 
-/* 版权行：与提示紧凑衔接，整行同一字体、同一字号 */
 .copyright {
   margin: 10px 0 0;
   padding: 0 0 24px;
-  font-family: YS, "PingFang SC", sans-serif;
+  font-family: HYWenHei, ysfont, "PingFang SC", sans-serif;
   font-size: 16px;
   line-height: 22px;
   text-align: center;
@@ -539,7 +140,7 @@ body {
 }
 
 .copyright .version {
-  font-family: YS, "PingFang SC", sans-serif;
+  font-family: HYWenHei, ysfont, "PingFang SC", sans-serif;
   font-size: 16px;
   color: #d3bc8e;
 }

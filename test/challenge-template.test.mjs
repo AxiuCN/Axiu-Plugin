@@ -177,9 +177,99 @@ check('bosses 为空、best 缺字段时渲染成功', hardEmpty.ok, hardEmpty.e
 const hardNoPlus = renderTpl(hardTpl, mkHardData({}, { plus: [] }))
 check('赋光之人为空时不渲染该区块', hardNoPlus.ok && !hardNoPlus.html.includes('plus-card'), hardNoPlus.error)
 
-/* ==================== 【3】静态约束 ==================== */
+/* ==================== 【3】深渊（GS/abyss.html） ==================== */
 
-console.log('\n【3】静态约束：剧诗敌人图标必须判空后遍历')
+console.log('\n【3】深渊模板：楼层/房间/战斗缺失时不能崩')
+
+/** 造一间（字段与 modules/challenge/gsQuery.js → buildAbyssData 一致） */
+const mkRoom = ({ index = 1, star = 3, battles } = {}) => {
+  const time = '2026.11.17 12:52:49'
+  return {
+    index,
+    star,
+    max_star: 3,
+    starList: [0, 1, 2].map(i => i < star),
+    time,
+    battles: battles ?? [
+      { index: 1, time, avatars: [{ id: 10000052, level: 90, rarity: 5 }] },
+      { index: 2, time, avatars: [{ id: 10000052, level: 90, rarity: 5 }] }
+    ]
+  }
+}
+
+const mkAbyssData = (over = {}, floorOver = {}) => ({
+  uid: '100000001',
+  abyss: {
+    period: '2026.11.16-2026.12.16',
+    total: 37,
+    maxFloor: '12-3',
+    total_star: 36,
+    reveal: [{ id: 10000052, star: 5, value: 7 }],
+    stats: [{ title: '最强一击', id: 10000052, icon: '/meta-gs/x/face.webp', value: 123456 }],
+    floors: [{
+      index: 12,
+      cn: '十二',
+      star: 6,
+      max_star: 9,
+      bgClass: 'bg-3',
+      rooms: [mkRoom()],
+      ...floorOver
+    }],
+    ...over
+  },
+  avatars: { 10000052: { face: '/meta-gs/x/face.webp', level: 90, star: 5, starBg: 'roleStarBg5.1ff411a0.png' } }
+})
+
+const abyssTpl = path.join(resRoot, 'GS', 'abyss.html')
+
+const abyssFull = renderTpl(abyssTpl, mkAbyssData())
+/** 楼层卡根节点渲染后的 class 前缀（模板里是 deep-floor-item floor-item + bgClass） */
+const FLOOR_CLS = 'class="deep-floor-item '
+check('完整数据渲染成功', abyssFull.ok, abyssFull.error)
+check('完整数据里挑战回顾与楼层卡都在',
+  abyssFull.ok && abyssFull.html.includes('look-back--content-info') && abyssFull.html.includes(FLOOR_CLS))
+check('完整数据里渲染角色卡与上半/下半标注',
+  abyssFull.ok && abyssFull.html.includes('class="card"') && abyssFull.html.includes('split-text'))
+check('楼层底图按 bgClass 选择', abyssFull.ok && abyssFull.html.includes('bg-3'))
+
+// 官方 showSplit 口径：只有两场战斗才标注上半/下半
+const abyssSingleBattle = renderTpl(abyssTpl, mkAbyssData({}, { rooms: [mkRoom({ battles: [{ index: 1, time: '-', avatars: [{ id: 10000052, level: 90, rarity: 5 }] }] })] }))
+check('只有一场战斗时渲染成功', abyssSingleBattle.ok, abyssSingleBattle.error)
+check('只有一场战斗时不渲染上/下半标注', abyssSingleBattle.ok && !abyssSingleBattle.html.includes('split-text'))
+
+const abyssNoRooms = renderTpl(abyssTpl, mkAbyssData({}, { rooms: [] }))
+check('房间为空时渲染成功且不渲染房间区', abyssNoRooms.ok && !abyssNoRooms.html.includes('class="room-list"'), abyssNoRooms.error)
+
+const abyssNoFloors = renderTpl(abyssTpl, mkAbyssData({ floors: [] }))
+check('楼层为空时渲染成功且不渲染楼层卡', abyssNoFloors.ok && !abyssNoFloors.html.includes(FLOOR_CLS), abyssNoFloors.error)
+
+const abyssNoReveal = renderTpl(abyssTpl, mkAbyssData({ reveal: [], stats: [] }))
+check('出战次数为空时渲染成功并回落占位',
+  abyssNoReveal.ok && !abyssNoReveal.html.includes('class="reveal-rank-list"') && abyssNoReveal.html.includes('<span data-v-e8bb0a10>-</span>'), abyssNoReveal.error)
+check('统计为空时不渲染统计条目', abyssNoReveal.ok && !abyssNoReveal.html.includes('<li data-v-e8bb0a10>'), abyssNoReveal.error)
+
+const abyssMissingAvatar = renderTpl(abyssTpl, (() => {
+  const d = mkAbyssData()
+  d.avatars = {}
+  return d
+})())
+check('avatars 缺条目时渲染成功（不得裸取 avatars[id].face）', abyssMissingAvatar.ok, abyssMissingAvatar.error)
+
+const abyssNoStarList = renderTpl(abyssTpl, mkAbyssData({}, {
+  rooms: [(() => {
+    const r = mkRoom()
+    delete r.starList
+    return r
+  })()]
+}))
+check('starList 字段缺失时也能渲染', abyssNoStarList.ok, abyssNoStarList.error)
+
+const abyssEmpty = renderTpl(abyssTpl, { uid: '1', abyss: { period: '', floors: [] } })
+check('abyss 只有 period/floors 时渲染成功（stats/reveal 全缺）', abyssEmpty.ok, abyssEmpty.error)
+
+/* ==================== 【4】静态约束 ==================== */
+
+console.log('\n【4】静态约束：剧诗敌人图标必须判空后遍历')
 const roleSrc = fs.readFileSync(roleTpl, 'utf8')
 check('不存在裸取 round.enemies[0] 的写法',
   !/round\.enemies\[0\]/.test(roleSrc) && !/\{\{\s*round\.enemies\.icon/.test(roleSrc))
@@ -194,6 +284,14 @@ check('怪物图与队伍区都判空后才渲染',
   /\{\{\s*if boss\.monster && boss\.monster\.icon\s*\}\}/.test(hardSrc) &&
   /\{\{\s*if boss\.team && boss\.team\.length\s*\}\}/.test(hardSrc))
 check('危战角色卡同样用 avatars[…] || {} 兜底', /\{\{\s*set c = avatars\[m\.id\] \|\| \{\}\s*\}\}/.test(hardSrc))
+
+const abyssSrc = fs.readFileSync(abyssTpl, 'utf8')
+check('深渊房间区与楼层都判空后才渲染',
+  /\{\{\s*if floor\.rooms && floor\.rooms\.length\s*\}\}/.test(abyssSrc) &&
+  /\{\{\s*if abyss\.floors\s*\}\}|\{\{\s*each abyss\.floors/.test(abyssSrc))
+check('深渊角色卡用 avatars[…] || {} 兜底', /\{\{\s*set c = avatars\[a\.id\] \|\| \{\}\s*\}\}/.test(abyssSrc))
+check('深渊上/下半标注按官方口径（两场战斗才出现）',
+  /\{\{\s*if room\.battles\.length === 2\s*\}\}/.test(abyssSrc))
 
 /* 赋光之人的数据口径：官方取当前期条目的 blings[]，不是 avatars[].is_plus
    （曾按 avatars 取，真实数据里没有该字段，导致赋光区块整段不渲染） */

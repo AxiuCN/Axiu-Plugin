@@ -243,26 +243,35 @@ function buildAbyssData (raw, avatars = {}) {
   const floors = [...(raw.floors || [])]
     .sort((a, b) => b.index - a.index)
     .map((floor) => {
+      // 每间保留官方接口的 battles 结构（上半/下半各一场，含角色等级与稀有度）
       const rooms = (floor.levels || []).map((l) => {
-        const battles = l.battles || []
-        const pick = (n) => battles.find(b => b.index === n)?.avatars?.map(a => a.id) || []
+        const battles = (l.battles || []).map((b) => ({
+          index: b.index || 0,
+          time: fmtDatetime(b.timestamp),
+          avatars: (b.avatars || []).map((a) => ({
+            id: a.id,
+            level: a.level || 0,
+            rarity: a.rarity || 5
+          }))
+        }))
         const star = l.star || 0
+        const maxStar = l.max_star || 3
         return {
           index: l.index,
           star,
-          max_star: 3,
+          max_star: maxStar,
           // 三颗星逐个标记亮/暗，模板不做算术
-          starList: [0, 1, 2].map(i => i < star),
-          time: fmtDatetime(battles[0]?.timestamp),
-          up: pick(1),
-          down: pick(2)
+          starList: Array.from({ length: maxStar }, (_, i) => i < star),
+          // 本间时间取第一场战斗（同官方）
+          time: battles[0]?.time || '-',
+          battles
         }
       })
       return {
         index: floor.index,
         cn: FLOOR_CN[floor.index] || String(floor.index),
         star: floor.star || 0,
-        max_star: 9,
+        max_star: floor.max_star || 9,
         // 楼层底图按 1-8 / 9-11 / 12+ 三套（同官方）
         bgClass: floor.index <= 8 ? 'bg-1' : (floor.index <= 11 ? 'bg-2' : 'bg-3'),
         rooms

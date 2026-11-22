@@ -1,12 +1,13 @@
 /**
  * 官方版式规则子集（自动生成，勿手改）
  *
- * 生成：node example/extract-official-css.mjs <h5目录> hard.html hard-official.css
+ * 生成：node example/extract-official-css.mjs <h5目录> hard.html hard-official.css data-v-1335dd8d data-v-205cb0c1
  * 来源：米游社「战绩」H5 编译产物（bundle_a7c0689cb60e71d3c2f7.css / 0_6c6a62822ba5bd531e27.css）
  * 作用域：data-v-1335dd8d, data-v-205cb0c1
  *
  * 尺寸口径：官方 375 设计稿，值写的是 calc(N * var(--gpx))；
  * 画布 750 = 375 × 2，故 --gpx 设为 2px。官方直接写 vw 的地方已换算成 px。
+ * 字体口径：官方写的 PingFang / 微软雅黑一律改写成 HYWenHei / ysfont（同一份官方字体）。
  */
 
 :root {
