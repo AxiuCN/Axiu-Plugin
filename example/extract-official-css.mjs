@@ -89,6 +89,46 @@ const header = `/**
   --gpx: 2px;
 }
 
+/* Tailwind 的 transform / backdrop 工具类依赖这些 CSS 变量的默认值（官方在 preflight 里定义）。
+   缺了它们，tw-scale-* / tw-translate-* / tw-backdrop-* 会算出非法值 → 浏览器回退 none，
+   表现为「缩放没生效、模糊没生效」。 */
+*,
+::before,
+::after {
+  --tw-translate-x: 0;
+  --tw-translate-y: 0;
+  --tw-rotate: 0;
+  --tw-skew-x: 0;
+  --tw-skew-y: 0;
+  --tw-scale-x: 1;
+  --tw-scale-y: 1;
+  --tw-ring-offset-width: 0px;
+  --tw-ring-offset-color: #fff;
+  --tw-ring-color: rgba(59, 130, 246, 0.5);
+  --tw-ring-offset-shadow: 0 0 rgba(0, 0, 0, 0);
+  --tw-ring-shadow: 0 0 rgba(0, 0, 0, 0);
+  --tw-shadow: 0 0 rgba(0, 0, 0, 0);
+  --tw-shadow-colored: 0 0 rgba(0, 0, 0, 0);
+  --tw-blur: ;
+  --tw-brightness: ;
+  --tw-contrast: ;
+  --tw-grayscale: ;
+  --tw-hue-rotate: ;
+  --tw-invert: ;
+  --tw-saturate: ;
+  --tw-sepia: ;
+  --tw-drop-shadow: ;
+  --tw-backdrop-blur: ;
+  --tw-backdrop-brightness: ;
+  --tw-backdrop-contrast: ;
+  --tw-backdrop-grayscale: ;
+  --tw-backdrop-hue-rotate: ;
+  --tw-backdrop-invert: ;
+  --tw-backdrop-opacity: ;
+  --tw-backdrop-saturate: ;
+  --tw-backdrop-sepia: ;
+}
+
 /* 字体：统一使用 resources/common/font/hk4e_zh-cn.ttf
    （原神官方字体合集 HYWenHei-85W，CJK + Latin + 数字全覆盖）。
    官方的排版链是 HYWenHei → ysfont，这里两个名字指向同一份文件，

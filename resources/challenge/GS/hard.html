@@ -130,7 +130,7 @@
       <div class="role-bg" data-v-205cb0c1><div class="role-bg-1" data-v-205cb0c1></div><div class="role-bg-2" data-v-205cb0c1></div></div>
       {{each hard.plus id}}
       {{set p = avatars[id] || {} }}
-      <div class="tw-h-[45px] tw-w-[45px] tw-relative tw-mb-2.5 tw-inline-block tw-mr-2" data-v-205cb0c1>
+      <div class="tw-h-[45px] tw-w-[45px] tw-relative tw-mb-2.5 tw-inline-block {{if ($index + 1) % 6 !== 0}}tw-mr-2{{/if}}" data-v-205cb0c1>
         <div class="gt-avatar gt-avatar--size-s tw-origin-top-left tw-scale-[0.865]" data-v-205cb0c1>
           <div class="gt-avatar-img" data-v-205cb0c1>
             {{if p.starBg}}<div class="gt-avatar-star-bg" data-v-205cb0c1><img src="{{_res_path}}challenge/GS/images/{{p.starBg}}" data-v-205cb0c1></div>{{/if}}
@@ -156,7 +156,7 @@
       <div class="role-bg" data-v-205cb0c1><div class="role-bg-1" data-v-205cb0c1></div><div class="role-bg-2" data-v-205cb0c1></div></div>
       {{each hard.noPlus id}}
       {{set p = avatars[id] || {} }}
-      <div class="tw-h-[45px] tw-w-[45px] tw-relative tw-mb-2.5 tw-inline-block tw-mr-2" data-v-205cb0c1>
+      <div class="tw-h-[45px] tw-w-[45px] tw-relative tw-mb-2.5 tw-inline-block {{if ($index + 1) % 6 !== 0}}tw-mr-2{{/if}}" data-v-205cb0c1>
         <div class="gt-avatar gt-avatar--size-s tw-origin-top-left tw-scale-[0.865]" data-v-205cb0c1>
           <div class="gt-avatar-img" data-v-205cb0c1>
             {{if p.starBg}}<div class="gt-avatar-star-bg" data-v-205cb0c1><img src="{{_res_path}}challenge/GS/images/{{p.starBg}}" data-v-205cb0c1></div>{{/if}}
