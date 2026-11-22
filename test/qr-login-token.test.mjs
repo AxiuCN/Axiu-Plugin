@@ -1,10 +1,10 @@
 /**
- * 扫码登录的 ltoken 取值（model/qrLogin.js，第四轮 #1）
+ * 扫码登录的换票口径（model/qrLogin.js）
  *
- * 覆盖：扫码响应的 `tokens[]` 只有 stoken 时**不得**把 stoken 当 ltoken（旧实现里
- * `pickToken` 的「任意非空 token」兜底会返回 stoken 并短路掉 getLtoken 的正确结果）；
- * stoken 侧仍保留兜底；拿不到 ltoken / ltoken 与 stoken 相同 / 缺 cookie_token 三种
- * 失败都不得产出任何凭据。
+ * 老 getLTokenBySToken / getCookieAccountInfoBySToken 已废弃（-464「请使用最新版本产品/链接」），
+ * 改为 exchange 换票：dst_token_type=2 → ltoken_v2，dst_token_type=4 → cookie_token_v2。
+ *
+ * 覆盖：pickToken 不跨类型兜底；非 v2_ stoken 直接报错；任一票换不到都不得产出凭据。
  */
 import { importMod, installFrameworkStubs, checker } from './_helper.mjs'
 
@@ -21,10 +21,15 @@ const makeQr = (responses = {}) => {
   qr.replies = replies
   return qr
 }
-const confirmed = ({ tokens = [{ name: 'stoken_v2', token: 'S' }], aid = '123456', mid = 'm1' } = {}) => ({
+const confirmed = ({ tokens = [{ name: 'stoken_v2', token: 'v2_S' }], aid = '123456', mid = 'm1' } = {}) => ({
   data: { status: 'Confirmed', stat: 'Confirmed', tokens, user_info: { aid, uid: 'u', account_id: aid, mid } }
 })
-const okApi = { getLtoken: () => ({ data: { ltoken: 'L' } }), bbsGetCookie: () => ({ data: { cookie_token: 'CK' } }) }
+/** exchange 桩：dst=2 给 ltoken，dst=4 给 cookie_token */
+const okExchange = (ltoken = 'L', cookieToken = 'CK') => ({
+  exchange: (params) => (params.dstTokenType === 2
+    ? { data: { token: { token: ltoken } } }
+    : { data: { token: { token: cookieToken } } })
+})
 
 console.log('=== pickToken：strict 不兜底 / stoken 保留兜底 ===')
 {
@@ -36,52 +41,40 @@ console.log('=== pickToken：strict 不兜底 / stoken 保留兜底 ===')
     qr.pickToken([{ name: 'other', token: 'X' }], ['stoken_v2', 'stoken'])?.token === 'X')
 }
 
-console.log('=== _buildLoginResult：ltoken 来源 ===')
+console.log('=== _buildLoginResult：exchange 换票 ===')
 {
-  const qr = makeQr(okApi)
+  const qr = makeQr(okExchange())
   const out = await qr._buildLoginResult(confirmed())
   console.log(`  cookie=${out.cookie}`)
   console.log(`  stoken=${out.stoken}`)
-  check('tokens 只有 stoken 时，ltoken 取自 getLtoken 接口（不是 stoken）',
-    out.ltoken === 'L' && out.cookie.includes('ltoken=L') && !out.cookie.includes('ltoken=S'), JSON.stringify(out))
-  check('返回的 stoken 串里 ltoken 同样是接口值',
-    out.stoken.includes('ltoken=L') && !out.stoken.includes('ltoken=S'), out.stoken)
-
-  const qr2 = makeQr(okApi)
-  const out2 = await qr2._buildLoginResult(confirmed({ tokens: [{ name: 'ltoken', token: 'L-NAME' }, { name: 'stoken', token: 'S' }] }))
-  check('具名 ltoken 优先于接口返回值', out2.ltoken === 'L-NAME', String(out2.ltoken))
-
-  const qr3 = makeQr(okApi)
-  const out3 = await qr3._buildLoginResult(confirmed({ tokens: [{ name: 'ltoken_v2', token: 'L-V2' }, { name: 'stoken', token: 'S' }] }))
-  check('ltoken_v2 也算具名命中', out3.ltoken === 'L-V2', String(out3.ltoken))
+  check('dst=2 换到 ltoken_v2，dst=4 换到 cookie_token_v2',
+    out.ltoken === 'L' && out.cookie.includes('ltoken_v2=L') && out.cookie.includes('cookie_token_v2=CK'),
+    JSON.stringify(out))
+  check('cookie 带兼容旧别名（ltuid/account_id）',
+    out.cookie.includes('ltuid=123456') && out.cookie.includes('account_id=123456'), out.cookie)
+  check('返回的 stoken 串里 ltoken 是换票值',
+    out.stoken.includes('ltoken=L') && out.stoken.includes('stoken=v2_S'), out.stoken)
 }
 
 console.log('=== _buildLoginResult：失败路径不得产出凭据 ===')
 {
-  const qr = makeQr({ getLtoken: () => ({ data: {} }), bbsGetCookie: () => ({ data: { cookie_token: 'CK' } }) })
-  const out = await qr._buildLoginResult(confirmed())
-  check('两处都拿不到 ltoken → 返回错误且无 cookie/stoken',
-    !!out.error && !out.cookie && !out.stoken, JSON.stringify(out))
+  const qr = makeQr(okExchange())
+  const out = await qr._buildLoginResult(confirmed({ tokens: [{ name: 'stoken', token: 'S' }] }))
+  check('非 v2_ stoken → 直接报错且无 cookie/stoken',
+    !!out.error && /不是 v2_ 格式/.test(out.error) && !out.cookie && !out.stoken, JSON.stringify(out))
 
-  // 伪造：具名 ltoken 的值就是 stoken（第 3 层防御）
-  const qr2 = makeQr({ getLtoken: () => ({ data: { ltoken: 'S' } }), bbsGetCookie: () => ({ data: { cookie_token: 'CK' } }) })
-  const out2 = await qr2._buildLoginResult(confirmed({ tokens: [{ name: 'ltoken', token: 'S' }, { name: 'stoken', token: 'S' }] }))
-  check('ltoken 与 stoken 相同 → 判为未取到，错误文案点明',
-    !!out2.error && !out2.cookie && /与 stoken 相同/.test(out2.error), JSON.stringify(out2))
+  const qr2 = makeQr(okExchange('', 'CK'))
+  const out2 = await qr2._buildLoginResult(confirmed())
+  check('换不到 ltoken_v2 → 返回错误且无凭据',
+    !!out2.error && !out2.cookie && !out2.stoken, JSON.stringify(out2))
 
-  // 接口把 stoken 当 ltoken 返回（同一条防御）
-  const qr3 = makeQr({ getLtoken: () => ({ data: { ltoken: 'S' } }), bbsGetCookie: () => ({ data: { cookie_token: 'CK' } }) })
+  const qr3 = makeQr({ exchange: (params) => (params.dstTokenType === 2 ? { data: { token: { token: 'L' } } } : { message: '登录失效' }) })
   const out3 = await qr3._buildLoginResult(confirmed())
-  check('接口返回的 ltoken 等于 stoken → 同样判为未取到',
-    !!out3.error && !out3.cookie && /与 stoken 相同/.test(out3.error), JSON.stringify(out3))
+  check('换不到 cookie_token_v2 → 返回错误并保留 message',
+    !out3.cookie && /登录失效/.test(out3.error || ''), JSON.stringify(out3))
 
-  const qr4 = makeQr({ getLtoken: () => ({ data: { ltoken: 'L' } }), bbsGetCookie: () => ({ message: '登录失效' }) })
-  const out4 = await qr4._buildLoginResult(confirmed())
-  check('缺 cookie_token → 返回错误并保留 ck 的 message',
-    !out4.cookie && /登录失效/.test(out4.error || ''), JSON.stringify(out4))
-
-  const out5 = await makeQr(okApi)._buildLoginResult(confirmed({ tokens: [] }))
-  check('缺 stoken → 返回错误且无凭据', !!out5.error && !out5.cookie, JSON.stringify(out5))
+  const out4 = await makeQr(okExchange())._buildLoginResult(confirmed({ tokens: [] }))
+  check('缺 stoken → 返回错误且无凭据', !!out4.error && !out4.cookie, JSON.stringify(out4))
 }
 
 finish()

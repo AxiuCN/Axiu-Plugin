@@ -134,19 +134,18 @@ export class QrLoginApp extends plugin {
     e.region = getServer(e.uid)
     e.raw_message = loginRes.stoken
 
-    // 调 bbsGetCookie + userGameInfo → seachUid 保存（cookieHeader 对齐 TRSS：query + stoken Cookie 双认证）
-    const stuid = e.sk.get('stuid')
+    // 老 getCookieAccountInfoBySToken 已废弃（-464），改用 exchange 换 cookie_token_v2，
+    // 再交给 seachUid（cookie 已带 ltoken_v2）查角色并保存 stoken
     const stoken = e.sk.get('stoken')
     const mid = e.sk.get('mid')
-    const ckRes = await user.getData('bbsGetCookie',
-      {
-        cookies: `uid=${stuid}&stoken=${stoken}${mid ? '&mid=' + mid : ''}`,
-        cookieHeader: [`stuid=${stuid}`, `stoken=${stoken}`, mid ? `mid=${mid}` : ''].filter(Boolean).join(';') + ';'
-      },
-      false
-    )
-    if (ckRes?.data) {
-      await user.seachUid(ckRes)
+    const ex4 = await user.getData('exchange', { token: stoken, mid, dstTokenType: 4 }, false)
+    const cookieToken = ex4?.data?.token?.token
+    if (cookieToken) {
+      await user.seachUid({ data: { cookie_token: cookieToken } })
+    } else if (!String(stoken || '').startsWith('v2_')) {
+      logger?.warn(`${LOG_PREFIX} 扫码返回的stoken不是v2_格式，无法换票，请重新扫码`)
+    } else {
+      logger?.warn(`${LOG_PREFIX} 扫码换cookie_token_v2失败: retcode=${ex4?.retcode} msg=${ex4?.message}`)
     }
   }
 
@@ -175,33 +174,47 @@ export class QrLoginApp extends plugin {
     e.reply = (msg) => { sendMsg.push(msg) }
 
     for (const item of Object.keys(stoken)) {
-      e.region = getServer(stoken[item].uid)
-      e.uid = stoken[item].uid
+      const st = stoken[item]
+      e.region = getServer(st.uid)
+      e.uid = st.uid
       if (!e?.uid) {
         logger.mark(`${LOG_PREFIX} [刷新ck] qq:${e?.user_id} uid为空，跳过`)
         continue
       }
 
-      let cookies = `uid=${stoken[item].stuid}&stoken=${stoken[item].stoken}`
-      if (stoken[item]?.mid) cookies += `&mid=${stoken[item]?.mid}`
-
-      const cookieHeader = [
-        `stuid=${stoken[item].stuid}`,
-        `stoken=${stoken[item].stoken}`,
-        stoken[item]?.mid ? `mid=${stoken[item]?.mid}` : ''
-      ].filter(Boolean).join(';') + ';'
-
-      const data = { cookies, cookieHeader }
-      if (String(e.uid)[0] * 1 > 5) data.method = 'post'
-
-      const res = await user.getData('bbsGetCookie', data, false)
-      if (!res?.data) {
-        e.reply(`uid:${stoken[item].uid},请求异常：${res?.message || res?.retcode}`)
+      // v1 stoken 换不了 v2 凭证，只能重新扫码
+      if (!String(st?.stoken || '').startsWith('v2_')) {
+        e.reply(`uid:${st.uid},stoken不是v2_格式，无法刷新，请重新扫码登录`)
         continue
       }
 
-      const ck = res.data.cookie_token
-      e.msg = `ltoken=${stoken[item].ltoken};ltuid=${stoken[item].stuid};cookie_token=${ck}; account_id=${stoken[item].stuid};`
+      // 老 getCookieAccountInfoBySToken 已废弃（-464），改走换票接口：
+      // dst_token_type=2 → ltoken_v2；dst_token_type=4 → cookie_token_v2
+      const mid = st.mid || ''
+      const ex2 = await user.getData('exchange', { token: st.stoken, mid, dstTokenType: 2 }, false)
+      const ex4 = await user.getData('exchange', { token: st.stoken, mid, dstTokenType: 4 }, false)
+      const ltoken = ex2?.data?.token?.token
+      const cookieToken = ex4?.data?.token?.token
+      if (!ltoken || !cookieToken) {
+        const fail = !ltoken ? ex2 : ex4
+        e.reply(`uid:${st.uid},请求异常：${fail?.message || fail?.retcode}`)
+        continue
+      }
+
+      // 全 v2 cookie + 兼容旧别名（与扫码登录产出一致）
+      e.msg = [
+        `account_id_v2=${st.stuid}`,
+        mid ? `account_mid_v2=${mid}` : '',
+        `cookie_token_v2=${cookieToken}`,
+        mid ? `ltmid_v2=${mid}` : '',
+        `ltoken_v2=${ltoken}`,
+        `ltuid_v2=${st.stuid}`,
+        `account_id=${st.stuid}`,
+        `ltuid=${st.stuid}`,
+        mid ? `mid=${mid}` : '',
+        `ltoken=${ltoken}`,
+        `cookie_token=${cookieToken}`
+      ].filter(Boolean).join(';') + ';'
 
       if (isGet) {
         sendMsg.push(`uid:${stoken[item].uid}`, e.msg)

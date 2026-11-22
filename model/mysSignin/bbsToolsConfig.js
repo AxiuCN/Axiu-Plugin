@@ -139,6 +139,8 @@ function getSigninConfig () {
     enable: s.enable ?? true,
     manualSignin: s.manualSignin ?? true,
     schedule: s.schedule ?? '0 0 5 * * ? *',
+    // cookie 刷新策略：onDemand=签到失败时才刷新（默认）；scheduled=按 refreshSchedule 定时全量刷新
+    refreshMode: s.refreshMode ?? 'onDemand',
     refreshSchedule: s.refreshSchedule ?? '0 30 4 * * ? *',
     randomDelayMin: s.randomDelayMin ?? 0,
     pythonCommand: s.pythonCommand ?? 'python',

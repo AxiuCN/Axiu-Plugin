@@ -39,7 +39,9 @@ signin:
   manualSignin: ${signin_manualSignin}
   # 签到时间 cron 表达式（Quartz格式），默认每天5:00
   schedule: ${signin_schedule}
-  # 自动刷新 cookie 的 cron 表达式，默认每天4:30
+  # cookie 刷新策略：onDemand=签到失败才刷新（推荐） / scheduled=定时全量刷新
+  refreshMode: ${signin_refreshMode}
+  # 定时全量刷新 cookie 的 cron 表达式（仅 refreshMode=scheduled 生效），默认每天4:30
   refreshSchedule: ${signin_refreshSchedule}
   # 随机延迟上限（分钟），0=不延迟
   randomDelayMin: ${signin_randomDelayMin}

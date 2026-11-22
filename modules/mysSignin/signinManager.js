@@ -49,33 +49,91 @@ async function refreshCookie (userId, st) {
       region: getServer(st.uid)
     })
 
-    let cookies = `uid=${st.stuid}&stoken=${st.stoken}`
-    if (st?.mid) cookies += `&mid=${st.mid}`
+    // v1 stoken 换不了 v2 凭证，直接判定为 stoken 失效（需重新扫码）
+    if (!String(st?.stoken || '').startsWith('v2_')) {
+      logger?.warn(`${SIGNIN_LOG_PREFIX} stoken不是v2_格式，无法换票: uid=${st.uid}`)
+      return { cookie: null, stokenInvalid: true }
+    }
 
-    const res = await qrUser.getData('bbsGetCookie', { cookies }, false)
-    if (!res?.data?.cookie_token) {
+    // 老的 getCookieAccountInfoBySToken 已废弃（-464「请使用最新版本产品/链接」），改走换票接口：
+    // dst_token_type=2 → ltoken_v2；dst_token_type=4 → cookie_token_v2
+    const mid = st.mid || ''
+    const ex2 = await qrUser.getData('exchange', { token: st.stoken, mid, dstTokenType: 2 }, false)
+    const ex4 = await qrUser.getData('exchange', { token: st.stoken, mid, dstTokenType: 4 }, false)
+    const ltoken = ex2?.data?.token?.token
+    const cookieToken = ex4?.data?.token?.token
+
+    if (!ltoken || !cookieToken) {
+      const fail = !ltoken ? ex2 : ex4
       // 仅当消息明确表达"登录凭证失效"才判定 stoken 失效（收窄判定，避免"登录服务繁忙"等临时错误误删）
-      const stokenInvalid = /((登录|login).*(失效|过期|无效|invalid|expired))|((失效|过期|无效|invalid|expired).*(登录|login))|请重新登录/i.test(res?.message || '')
-      if (stokenInvalid) {
-        logger?.warn(
-          `${SIGNIN_LOG_PREFIX} bbsGetCookie stoken失效: uid=${st.uid} ` +
-          `retcode=${res?.retcode} msg=${res?.message}`
-        )
-      } else {
-        logger?.warn(
-          `${SIGNIN_LOG_PREFIX} bbsGetCookie 失败: uid=${st.uid} ` +
-          `retcode=${res?.retcode} msg=${res?.message}`
-        )
-      }
+      const stokenInvalid = /((登录|login).*(失效|过期|无效|invalid|expired))|((失效|过期|无效|invalid|expired).*(登录|login))|请重新登录/i.test(fail?.message || '')
+      logger?.warn(
+        `${SIGNIN_LOG_PREFIX} 换票失败(${!ltoken ? 'ltoken_v2' : 'cookie_token_v2'}): uid=${st.uid} ` +
+        `retcode=${fail?.retcode} msg=${fail?.message}`
+      )
       return { cookie: null, stokenInvalid }
     }
 
-    const ck = res.data.cookie_token
-    const cookie = `ltoken=${st.ltoken};ltuid=${st.stuid};cookie_token=${ck};account_id=${st.stuid};`
+    // 全 v2 cookie + 兼容旧别名（与扫码登录产出的 cookie 一致）
+    const cookie = [
+      `account_id_v2=${st.stuid}`,
+      mid ? `account_mid_v2=${mid}` : '',
+      `cookie_token_v2=${cookieToken}`,
+      mid ? `ltmid_v2=${mid}` : '',
+      `ltoken_v2=${ltoken}`,
+      `ltuid_v2=${st.stuid}`,
+      `account_id=${st.stuid}`,
+      `ltuid=${st.stuid}`,
+      mid ? `mid=${mid}` : '',
+      `ltoken=${ltoken}`,
+      `cookie_token=${cookieToken}`
+    ].filter(Boolean).join(';') + ';'
     return { cookie, stokenInvalid: false }
   } catch (err) {
     logger?.error(`${SIGNIN_LOG_PREFIX} refreshCookie 异常: ${err.message}`)
     return { cookie: null, stokenInvalid: false }
+  }
+}
+
+/**
+ * 判定签到结果是否因「cookie / stoken 过期失效」导致（可刷新配置后重试）
+ *
+ * stoken 失效也纳入刷新：配置里的 stoken 可能只是旧的（例如扫码成功但没重新注册），
+ * 而 stoken 存储里已有扫码新换的 v2 stoken，此时用存储值重写配置即可恢复；
+ * 若存储里的 stoken 同样失效，refreshConfigCookie 会失败、不会重试，结果不变。
+ * @param {{ok?: boolean, message?: string, error?: string}} r 签到结果
+ * @returns {boolean}
+ */
+function isCookieExpiredResult (r) {
+  if (!r || r.ok) return false
+  const text = `${r.message || ''} ${r.error || ''}`
+  return /Cookie\s*已?失效|CookieError|Stoken\s*已?失效|StokenError|(cookie|登录)[\s\S]{0,30}(失效|过期|无效|invalid|expir)/i.test(text)
+}
+
+/**
+ * 用 stoken 刷新单个签到配置文件的 cookie（签到失败按需刷新使用）
+ * @param {string} userId - QQ 号
+ * @param {{n: number, path: string}} cfg - 签到配置
+ * @param {object} stokenData - 该用户的 stoken 数据（uid → 条目）
+ * @returns {Promise<boolean>} 是否刷新成功
+ */
+async function refreshConfigCookie (userId, cfg, stokenData) {
+  try {
+    const cfgData = fs.existsSync(cfg.path)
+      ? YAML.parse(fs.readFileSync(cfg.path, 'utf8'))
+      : null
+    const stuid = cfgData?.account?.stuid ? String(cfgData.account.stuid) : null
+    if (!stuid) return false
+    const st = Object.values(stokenData || {}).find(s => String(s?.stuid) === stuid)
+    if (!st) return false
+    const { cookie } = await refreshCookie(userId, st)
+    if (!cookie) return false
+    refreshUserConfigCookie(cfg.path, st, cookie)
+    logger?.info(`${SIGNIN_LOG_PREFIX} 签到失败后按需刷新cookie成功: QQ=${userId} n=${cfg.n}`)
+    return true
+  } catch (err) {
+    logger?.warn(`${SIGNIN_LOG_PREFIX} 按需刷新cookie异常: QQ=${userId} n=${cfg.n} ${err.message}`)
+    return false
   }
 }
 
@@ -305,6 +363,7 @@ async function signinForUser (userId, isAuto = false) {
   }
 
   const signinCfg = getSigninConfig()
+  const stokenData = await stokenStore.getUserStoken(userId)
   const results = []
 
   for (const cfg of configs) {
@@ -327,6 +386,21 @@ async function signinForUser (userId, isAuto = false) {
 
       // statusCode 3 表示触发过码需要重试
       if (lastResult.statusCode !== 3) break
+    }
+
+    // cookie 过期/失效才刷新：先按现有 cookie 签到，命中失效再刷新并重跑一次
+    if (isCookieExpiredResult(lastResult)) {
+      const refreshed = await refreshConfigCookie(userId, cfg, stokenData)
+      if (refreshed) {
+        logger?.info(`${SIGNIN_LOG_PREFIX} cookie已失效，已刷新并重试签到: QQ=${userId} n=${cfg.n}`)
+        const bridge = new CaptchaBridge()
+        lastResult = await runSingleSignin({
+          configPath: cfg.path,
+          userId,
+          profileN: cfg.n,
+          captchaBridge: bridge
+        })
+      }
     }
 
     results.push({
@@ -680,7 +754,9 @@ async function initEnvironment () {
   // 2. 拉取 MihoyoBBSTools 子模块
   try {
     const submodulePath = 'tool/MihoyoBBSTools'
-    execSync(`git submodule update --init -- ${submodulePath}`, {
+    // --remote：跟到子模块远端 master；不加则只会检出父仓库钉住的旧 commit，
+    // 旧版 MihoyoBBSTools 没有 v2 换票（exchange），会导致 v2 stoken 刷新 cookie 时走废弃接口报「Stoken 已失效」
+    execSync(`git submodule update --remote --init -- ${submodulePath}`, {
       encoding: 'utf8', cwd: pluginRoot, timeout: 60000, windowsHide: true
     })
     parts.push('子模块 MihoyoBBSTools 已就绪')
@@ -781,7 +857,11 @@ function formatUserSigninResult (userId, results) {
 
   for (const r of results) {
     if (r.ok) continue
-    msg += `\n账号${r.n}: ${r.message || '未知错误'}`
+    const text = `${r.message || ''} ${r.error || ''}`
+    const hint = /Stoken\s*已?失效|StokenError/i.test(text)
+      ? '（stoken 不可用，请重新【#扫码登录】后重新【#注册自动签到】）'
+      : ''
+    msg += `\n账号${r.n}: ${r.message || '未知错误'}${hint}`
   }
   return msg
 }

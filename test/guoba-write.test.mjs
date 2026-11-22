@@ -81,8 +81,9 @@ check('裸写以 * 开头的值确实会炸（这条闸不是多余的）', (() 
 
 console.log('\n【2】端到端保存：通配符 cron / 特殊字符 / 多行值')
 let data = panel().getConfigData()
-check('面板读到参考默认值（config.yaml 还没生成）', data['api.type'] === 0 && data['signin.schedule'] === '0 0 5 * * ? *')
+check('面板读到参考默认值（config.yaml 还没生成）', data['api.type'] === 0 && data['signin.schedule'] === '0 0 5 * * ? *' && data['signin.refreshMode'] === 'onDemand')
 data['signin.schedule'] = '*/30 * * * * ?'
+data['signin.refreshMode'] = 'scheduled'
 data['signin.refreshSchedule'] = '0 30 4 * * ? *'
 data['api.query'] = 'itemid=34&referer=https://webstatic.mihoyo.com/#tab'
 data['api.key'] = 'appkey=abc: def'
@@ -92,6 +93,7 @@ let res = await save(data)
 check('保存成功', res.status === 'ok', res.msg)
 check('文件能被解析回来', (() => { try { readCfg(); return true } catch { return false } })())
 check('通配符 cron 原样落盘', readCfg().signin?.schedule === '*/30 * * * * ?')
+check('刷新策略原样落盘', readCfg().signin?.refreshMode === 'scheduled')
 check('含 # 与 : 的值原样落盘', readCfg().api?.query === 'itemid=34&referer=https://webstatic.mihoyo.com/#tab' && readCfg().api?.key === 'appkey=abc: def')
 check('带换行的值解析回来仍是两行', readCfg().api?.resquery === 'action=1\nline2')
 check('插件侧读到的是新值', getPluginConfig().signin.schedule === '*/30 * * * * ?')
