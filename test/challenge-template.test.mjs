@@ -150,9 +150,11 @@ const mkHardData = (bossOver = {}, hardOver = {}) => ({
 const hardFull = renderTpl(hardTpl, mkHardData())
 check('完整数据渲染成功', hardFull.ok, hardFull.error)
 // 用统计格标题判定：模板里有同名 HTML 注释，注释会保留在输出里，不能当依据
-const hasCell = (r, title) => r.ok && r.html.includes(`stat-label">${title}`)
+// 统计格：官方结构里标签是 <span class="tw-font-semibold">最强一击</span>
+const hasCell = (r, title) => r.ok && r.html.includes(`>${title}</span>`)
 check('完整数据里两个统计格都在', hasCell(hardFull, '最强一击') && hasCell(hardFull, '最高总伤害'))
-check('完整数据里渲染出队伍与赋光之人', hardFull.ok && hardFull.html.includes('boss-team') && hardFull.html.includes('赋光之人'))
+check('完整数据里渲染出队伍与赋光之人',
+  hardFull.ok && hardFull.html.includes('avatar-item') && hardFull.html.includes('plus-role-title'))
 
 const hardNoBest = renderTpl(hardTpl, mkHardData({ topHit: null, topTotal: null }))
 check('最强一击/最高总伤害都为空时渲染成功', hardNoBest.ok, hardNoBest.error)
@@ -167,7 +169,7 @@ const hardNoMonster = renderTpl(hardTpl, mkHardData({ monster: { icon: '', level
 check('怪物图标为空时渲染成功且不渲染怪物图', hardNoMonster.ok && !hardNoMonster.html.includes('monster-img'), hardNoMonster.error)
 
 const hardNoTeam = renderTpl(hardTpl, mkHardData({ team: [] }))
-check('队伍为空时渲染成功且不渲染队伍区', hardNoTeam.ok && !hardNoTeam.html.includes('boss-team'), hardNoTeam.error)
+check('队伍为空时渲染成功且不渲染角色卡', hardNoTeam.ok && !hardNoTeam.html.includes('avatar-item'), hardNoTeam.error)
 
 const hardEmpty = renderTpl(hardTpl, { uid: '1', hard: { period: '', modeLabel: '', bosses: [] } })
 check('bosses 为空、best 缺字段时渲染成功', hardEmpty.ok, hardEmpty.error)

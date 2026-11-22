@@ -136,7 +136,13 @@ const ELEM_ICON = {
  * @returns {object} { [id]: { id, name, abbr, face, gacha, star, elem, level, cons } }
  */
 function buildAvatarsMap (ids, infoMap = {}) {
-  const ret = {}
+  // 官方稀有度底图（gt-avatar 的 star-bg）：4★ / 5★
+const STAR_BG = {
+  4: 'roleStarBg4.7a6c5841.png',
+  5: 'roleStarBg5.1ff411a0.png'
+}
+
+const ret = {}
   if (!ids || !ids.length) return ret
   const seen = new Set()
   for (const id of ids) {
@@ -161,6 +167,7 @@ function buildAvatarsMap (ids, infoMap = {}) {
         face: faceUrl,
         gacha: gachaUrl || faceUrl,
         star: char.star || 4,
+        starBg: STAR_BG[char.star || 4] || STAR_BG[4],
         elem: char.elem || 'anemo',
         elemIcon: ELEM_ICON[char.elem] || '',
         level: info.level || 0,
@@ -427,8 +434,18 @@ function buildHardData (raw, mode) {
   const second = best.second || 0
   // 难度徽章：6 档 180 秒内用 vi_plus，其余按档位取
   let medal = ''
-  if (difficulty === 6) medal = second > 0 && second <= 180 ? 'hard-medal-6-plus.png' : 'hard-medal-6.png'
-  else if (difficulty >= 1 && difficulty <= 5) medal = `hard-medal-${difficulty}.png`
+  // 官方勋章：difficulty → medal_i..vi，六档 180 秒内用 vi_plus
+  const MEDAL_FILE = {
+    1: 'medal_i.af3dcf06.png',
+    2: 'medal_ii.9b87164a.png',
+    3: 'medal_iii.733d64af.png',
+    4: 'medal_iv.3b112633.png',
+    5: 'medal_v.0cd07c5d.png',
+    6: 'medal_vi.cba7750d.png',
+    '6_1': 'medal_vi_plus.2f4f73d2.png'
+  }
+  if (difficulty === 6) medal = second > 0 && second <= 180 ? MEDAL_FILE['6_1'] : MEDAL_FILE[6]
+  else if (difficulty >= 1 && difficulty <= 5) medal = MEDAL_FILE[difficulty]
 
   // 赋光之人：官方取自当前期条目的 blings[]（is_plus=true 的为赋光）
   const plus = (raw.blings || [])
