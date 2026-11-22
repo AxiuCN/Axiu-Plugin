@@ -467,9 +467,6 @@ body {
   width: 100%;
   height: 126px;
   object-fit: cover;
-  /* 本地只有方形头像，放大裁切以贴近官方角色卡取景 */
-  transform: scale(1.15);
-  transform-origin: center top;
 }
 
 .role-elem {
