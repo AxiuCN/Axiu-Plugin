@@ -36,7 +36,8 @@ pnpm install --filter=Axiu-Plugin
 通过米游社扫码绑定 stoken，支持刷新 cookie。移植自 xiaoyao-cvs-plugin。
 
 - `#扫码登录` — 生成 QR 码，米游社扫码后自动绑定 stoken 并查找游戏角色，同时自动绑定 CK 到 cookie 池（无需手动 `#刷新ck`）
-- `#刷新ck` — 遍历已绑定的 stoken，刷新 cookie_token 并绑定到 cookie 系统
+- `#刷新ck` — 遍历已绑定的 stoken，用米游社换票接口换取新的 `ltoken_v2` / `cookie_token_v2` 并绑定到 cookie 系统
+- 换 ck 走换票接口（官方老接口已废弃）：只有 `v2_` 开头的 stoken 能换，老格式会提示重新 `#扫码登录`
 - 可在锅巴后台开关
 
 ### 米游社签到
@@ -69,17 +70,18 @@ pnpm install --filter=Axiu-Plugin
 | `#删除stoken` | 删除当前账号的全部 stoken 条目（需重新 `#扫码登录`） |
 | `#签到名单列表` | 列出所有已注册签到用户（仅 master） |
 
-- 每天 4:30 全体刷新 cookie，5:00 自动签到（cron 均可配），完成后向 master 和配置群聊发送汇总
+- 每天 5:00 自动签到（cron 可配），完成后向 master 和配置群聊发送汇总
+- cookie 刷新默认「按需」：签到报 cookie/stoken 失效时才换票刷新并重跑一次。需要每天定时全量刷新时把 `signin.refreshMode` 设为 `scheduled`（此时 4:30 的 `refreshSchedule` 才生效）
 - 签到详细日志写入 `log/signin-{date}.log`，保留 7 天自动清理
 - 支持一个 QQ 绑定多个米游社账号（`{qq}_1.yaml`、`{qq}_2.yaml` …），同一 stuid 自动去重
 - 注册为增量语义：重复注册时已有账号原地更新 cookie，新增账号才新建配置；stoken 中已删除的账号对应配置自动清理
 - 社区签到触发验证码时自动过码（最多重试 3 次，复用现有过码平台）
-- stoken 失效自动清理：`#注册自动签到` 时 stoken 失效 → 自动删除该 stoken 条目并提示重新扫码；`#刷新自动签到` / 每日定时刷新时失效 → 自动删除对应签到配置 `{qq}_n.yaml`，避免自动签到持续失败空转（仅登录类错误触发，临时网络错误不误删）
+- stoken 失效自动清理：`#注册自动签到` 时 stoken 失效 → 自动删除该 stoken 条目并提示重新扫码；`#刷新自动签到` / 定时全量刷新时失效 → 自动删除对应签到配置 `{qq}_n.yaml`，避免自动签到持续失败空转（仅登录类错误触发，临时网络错误不误删）
 - 个人签到配置存储在 `tool/MihoyoBBSTools/MihoyoBBSTools/config/{qq}_n.yaml`
 - 可在锅巴后台配置签到时间、游戏开关、BBS 任务开关、报告群聊等
 
 **手动配置**：
-- 签到主配置（schedule、refreshSchedule、pythonCommand、reportGroups 等）：`config/config.yaml` → `signin:` 段
+- 签到主配置（schedule、refreshMode、refreshSchedule、pythonCommand、reportGroups 等）：`config/config.yaml` → `signin:` 段
 - 签到模板（游戏、BBS 任务开关）：`config/MihoyoBBSTools_config.yaml`
 
 ### 米游社验证码过码

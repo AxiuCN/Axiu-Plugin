@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.6.1
+
+- 扫码登录、`#刷新ck`、签到刷新改用米游社换票接口（`POST /account/ma-cn-session/app/exchange`）：官方的 `getLTokenBySToken` / `getCookieAccountInfoBySToken` 已废弃（返回 `-464「请使用最新版本产品/链接」`），现在用 v2 stoken 换 `ltoken_v2` + `cookie_token_v2`，cookie 保留 `ltuid` / `account_id` 等旧别名。非 `v2_` 开头的老 stoken 换不了票，会提示重新 `#扫码登录`。
+- 签到 cookie 默认改为**按需刷新**：签到命中 cookie/stoken 失效时才换票刷新并重跑一次；`signin.refreshMode = scheduled` 才按 `refreshSchedule` 定时全量刷新。**老配置没有这个键，升级后按 `onDemand` 读——4:30 的定时刷新默认不再执行**，需要保留请显式改成 `scheduled`。
+- 签到失败文案在 stoken 失效时补上「重新扫码 + 重新注册」的行动提示。
+- 子模块 MihoyoBBSTools 指针更新到 `c767381`（Python 侧支持 v2 换票）；初始化只检出本仓库钉住的 commit，`#初始化签到环境` 不再 `--remote` 跟随上游 master。
+- `package.json` 补上此前未声明的依赖（`lodash` / `md5` / `node-fetch` / `yaml`），并去掉未使用的 `qrcode`。
+
 ## 2.6.0
 
 - 原神终局三页（深境螺旋 / 幻想真境剧诗 / 幽境危战）出图改用米游社官方版式：结构与 class 直接取官方模板、样式改由官方编译 CSS 的子集（`*-official.css`）生成，修正了此前的角色卡比例、星级图标、房间底纹、挑战回顾面板等偏差。
