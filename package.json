@@ -1,6 +1,6 @@
 {
   "name": "Axiu-Plugin",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "description": "阿修的TRSS崽附属插件",
   "author": "阿修Axiu",
   "type": "module",
@@ -15,7 +15,6 @@
     "lodash": "^4.18.1",
     "md5": "^2.3.0",
     "node-fetch": "^3.3.2",
-    "qrcode": "^1.5.4",
     "yaml": "^2.9.1"
   }
 }
