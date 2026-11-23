@@ -11,6 +11,7 @@
 import GenshinMysApi from '../../../genshin/model/mys/mysApi.js'
 import GsChallengeRank from '../../model/gsChallengeRank.js'
 import { render } from '../../components/render.js'
+import { memberName } from '../../components/memberName.js'
 import { LOG_PREFIX } from '../../components/constants.js'
 import { getPluginConfig } from '../../components/config.js'
 import MiaoCharacter from '../../../miao-plugin/models/Character.js'
@@ -486,8 +487,11 @@ function buildHardData (raw, mode) {
       else noPlusIds.push(a.avatar_id)
     }
   }
-  const plus = [...new Set(plusIds)]
-  const noPlus = [...new Set(noPlusIds)]
+  // 赋光之人只属于单人模式：多人模式（含「多人没有成绩、只有单人 blings」的情况）
+  // 一律不渲染，否则会把单人数据串到多人图里
+  const plusVisible = mdKey === 'single'
+  const plus = plusVisible ? [...new Set(plusIds)] : []
+  const noPlus = plusVisible ? [...new Set(noPlusIds)] : []
 
   return {
     uid: '',
@@ -624,7 +628,7 @@ export async function gsSpiralAbyssQuery (e) {
 
     // 数据变换 + 渲染
     const { abyss } = buildAbyssData(rawData, avatars)
-    const nickname = e.sender?.card || e.sender?.nickname || ''
+    const nickname = await memberName(e, e.at)
     const img = await render('challenge/GS', 'abyss', { uid: auth.uid, nickname, abyss, avatars })
     if (img) await e.reply(img)
   } catch (err) {
@@ -695,7 +699,7 @@ export async function gsRoleCombatQuery (e) {
     const avatars = buildAvatarsMap([...avatarIds], charLevels)
 
     // 数据变换 + 渲染
-    const nickname = e.sender?.card || e.sender?.nickname || ''
+    const nickname = await memberName(e, e.at)
     const img = await render('challenge/GS', 'role', { ...buildRoleData(rawData), uid: auth.uid, nickname, avatars })
     if (img) await e.reply(img)
   } catch (err) {
@@ -798,7 +802,7 @@ export async function gsHardChallengeQuery (e) {
     const avatars = buildAvatarsMap([...avatarIds], charLevels)
 
     // 数据变换 + 渲染
-    const nickname = e.sender?.card || e.sender?.nickname || ''
+    const nickname = await memberName(e, e.at)
     const img = await render('challenge/GS', 'hard', { ...buildHardData(rawData, mode), uid: auth.uid, nickname, avatars })
     if (img) await e.reply(img)
   } catch (err) {

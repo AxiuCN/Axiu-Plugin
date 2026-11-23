@@ -7,6 +7,7 @@
 import GsChallengeRank from '../../model/gsChallengeRank.js'
 import { getPluginConfig } from '../../components/config.js'
 import { render } from '../../components/render.js'
+import { memberNick } from '../../components/memberName.js'
 
 /** 幻想真境剧诗模式名称 */
 export const MODE_NAMES = { 1: '轻简', 2: '普通', 3: '困难', 4: '卓越', 5: '月谕' }
@@ -160,8 +161,7 @@ export async function handleGsRank (e) {
     if (member) {
       try {
         item.qqFace = await member.getAvatarUrl?.().catch(() => null) || `https://q.qlogo.cn/g?b=qq&nk=${item.qq}&s=100`
-        const info = await member.getInfo?.().catch(() => null)
-        item.nickname = info?.card || info?.nickname || ''
+        item.nickname = await memberNick(member)
       } catch { item.qqFace = `https://q.qlogo.cn/g?b=qq&nk=${item.qq}&s=100` }
     }
   }))
@@ -171,8 +171,7 @@ export async function handleGsRank (e) {
     if (member) {
       try {
         selfRank.qqFace = await member.getAvatarUrl?.().catch(() => null) || `https://q.qlogo.cn/g?b=qq&nk=${selfRank.qq}&s=100`
-        const info = await member.getInfo?.().catch(() => null)
-        selfRank.nickname = info?.card || info?.nickname || ''
+        selfRank.nickname = await memberNick(member)
       } catch { selfRank.qqFace = `https://q.qlogo.cn/g?b=qq&nk=${selfRank.qq}&s=100` }
     }
   }

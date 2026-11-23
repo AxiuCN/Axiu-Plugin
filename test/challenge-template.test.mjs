@@ -143,6 +143,16 @@ check('奇妙助益有数据时渲染该区块', withBuffCards.ok && withBuffCar
 const noFight = renderTpl(roleTpl, mkRoleData([mkRound()]))
 check('战斗统计照常渲染', noFight.ok && noFight.html.includes('最高伤害输出'))
 
+// 官方战斗统计的左侧头像是接口的 avatar_icon；数据层只给 id 时必须回落 avatars 映射，
+// 否则三项统计会渲染出没有头像的「空壳」（实际踩过）
+const statNoIcon = renderTpl(roleTpl, (() => {
+  const d = mkRoleData([mkRound()])
+  d.role.fightStats = [{ title: '最高伤害输出', id: 10000052, value: 123456 }]
+  return d
+})())
+check('战斗统计缺 icon 时头像回落 avatars[…]',
+  statNoIcon.ok && statNoIcon.html.includes('class="stat-avatar-icon"') && statNoIcon.html.includes('/meta-gs/x/face.webp'), statNoIcon.error)
+
 /* ==================== 【2】危战（GS/hard.html） ==================== */
 
 console.log('\n【2】危战模板：最强一击 / 最高总伤害 / 怪物信息缺失时不能崩')
@@ -338,5 +348,10 @@ check('赋光头像收集覆盖全部 blings',
   /if \(b\?\.avatar_id\) avatarIds\.add\(b\.avatar_id\)/.test(querySrc))
 check('模板渲染 is_plus 与其余两段赋光',
   /hard\.plus && hard\.plus\.length/.test(hardSrc) && /hard\.noPlus && hard\.noPlus\.length/.test(hardSrc))
+// 赋光是单人模式的概念：多人模式（含「多人没成绩、只有单人 blings」）不能再串出来
+check('赋光只在单人模式下渲染',
+  /const plusVisible = mdKey === 'single'/.test(querySrc) &&
+  /const plus = plusVisible \?/.test(querySrc) &&
+  /const noPlus = plusVisible \?/.test(querySrc))
 
 finish()

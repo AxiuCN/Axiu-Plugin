@@ -121,9 +121,10 @@
     {{if (role.fightStats && role.fightStats.length) || (role.fastest && role.fastest.length) || role.stat.totalCoin}}
     <div class="stat-list" data-v-2a52861b>
       {{each role.fightStats item}}
+      {{set st = avatars[item.id] || {} }}
       <div class="stat-item" data-v-2a52861b>
-        {{if item.icon}}
-        <div class="stat-avatar-icon" data-v-2a52861b><img src="{{item.icon}}" alt="" data-v-2a52861b></div>
+        {{if st.face || item.icon}}
+        <div class="stat-avatar-icon" data-v-2a52861b><img src="{{st.face || item.icon}}" alt="" data-v-2a52861b></div>
         {{/if}}
         <p class="stat-title" data-v-2a52861b>{{item.title}}：</p>
         <p class="stat-value" data-v-2a52861b>{{item.value}}</p>
