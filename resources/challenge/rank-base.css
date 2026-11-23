@@ -1,0 +1,301 @@
+/**
+ * 终局排行榜 —— 公共排版（原神 / 星铁共用）
+ *
+ * 背景与配色由各玩法自己的 rank.css 提供（取自对应终局页的页面底图），
+ * 这里只负责：画布宽度、标题区、玻璃行、名次/头像/数值的排版。
+ *
+ * 画布 750：与终局查询图同宽，页面底图 1125×582 正好 1.5 倍铺满。
+ * 颜色走 CSS 变量，便于按玩法（深渊深蓝 / 剧诗暖棕 / 危战紫灰 / 星铁）微调行的底色。
+ */
+
+/* common.css 给 body 套了 scale(1.4) 的老缩放，这里必须关掉，否则 750 会被放大成 1050 */
+body {
+  width: 750px;
+  margin: 0;
+  transform: none;
+}
+
+.container {
+  /* 行底色/描边：默认“白玻璃”，各玩法可覆盖 */
+  --row-bg: rgba(255, 255, 255, 0.06);
+  --row-border: rgba(255, 255, 255, 0.10);
+  --row-me-bg: rgba(255, 215, 120, 0.14);
+  --row-me-border: rgba(255, 215, 120, 0.30);
+  --text-main: rgba(255, 255, 255, 0.92);
+  --text-sub: rgba(255, 255, 255, 0.55);
+  --text-mute: rgba(255, 255, 255, 0.40);
+  --accent: #f5d492;
+
+  position: relative;
+  width: 750px;
+  padding: 44px 30px 30px;
+  box-sizing: border-box;
+  overflow: hidden;
+  color: var(--text-main);
+  font-family: HYWenHei, ysfont, 'YS', 'Number', sans-serif;
+  background-repeat: no-repeat;
+  background-position: left top, left bottom;
+  background-size: 100% auto, 100% auto;
+}
+
+.container * {
+  box-sizing: border-box;
+}
+
+/* ===== 标题区 ===== */
+.rank-head {
+  margin: 0;
+  text-align: center;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  line-height: 44px;
+  color: #d3bc8e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 官方菱形分隔线（share-divider）：标题下一道，与终局查询图同款 */
+.rank-head::after {
+  content: "";
+  display: block;
+  width: 100%;
+  max-width: 520px;
+  height: 12px;
+  margin: 12px auto 0;
+  background: url("./common/challenge-divider.png") no-repeat center center;
+  background-size: 100% 100%;
+  opacity: 0.7;
+}
+
+.rank-name {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 22px;
+  line-height: 30px;
+  color: var(--text-main);
+}
+
+.rank-subhead {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 15px;
+  line-height: 22px;
+  color: var(--text-sub);
+}
+
+.rank-info {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text-mute);
+}
+
+.rank-info .sep {
+  margin: 0 10px;
+  opacity: 0.5;
+}
+
+/* ===== 排行列表 ===== */
+.rank-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 20px;
+}
+
+.rank-item {
+  display: flex;
+  align-items: center;
+  min-height: 64px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: var(--row-bg);
+  border: 1px solid var(--row-border);
+}
+
+/* 前三名：只做很淡的底色 + 描边，颜色重点交给名次数字与头像环 */
+.tier-1 {
+  background: linear-gradient(90deg, rgba(255, 215, 120, 0.16), var(--row-bg) 60%);
+  border-color: rgba(255, 215, 120, 0.34);
+}
+
+.tier-2 {
+  background: linear-gradient(90deg, rgba(210, 220, 235, 0.13), var(--row-bg) 60%);
+  border-color: rgba(210, 220, 235, 0.28);
+}
+
+.tier-3 {
+  background: linear-gradient(90deg, rgba(220, 150, 95, 0.13), var(--row-bg) 60%);
+  border-color: rgba(220, 150, 95, 0.28);
+}
+
+/* ===== 名次 ===== */
+.rank-no {
+  width: 40px;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-sub);
+}
+
+.no-1 {
+  font-size: 26px;
+  color: #ffd780;
+}
+
+.no-2 {
+  font-size: 24px;
+  color: #dfe4ec;
+}
+
+.no-3 {
+  font-size: 24px;
+  color: #eba26a;
+}
+
+/* ===== 头像 ===== */
+.rank-face {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  margin: 0 14px 0 6px;
+}
+
+.face-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+}
+
+.tier-1 .face-img { border-color: rgba(255, 215, 120, 0.6); }
+.tier-2 .face-img { border-color: rgba(210, 220, 235, 0.5); }
+.tier-3 .face-img { border-color: rgba(220, 150, 95, 0.5); }
+
+.face-no {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 18px;
+  color: var(--text-mute);
+}
+
+/* ===== 用户信息 ===== */
+.rank-user {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-name {
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 500;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-uid {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-mute);
+}
+
+/* ===== 多列数值 ===== */
+.rank-vals {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.rv-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 48px;
+}
+
+.rv-val {
+  font-size: 19px;
+  line-height: 24px;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.rv-lbl {
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--text-mute);
+  white-space: nowrap;
+}
+
+.rv-img {
+  display: block;
+  width: 40px;
+  height: 40px;
+}
+
+.tier-1 .rv-val { color: #ffd780; }
+.tier-2 .rv-val { color: #dfe4ec; }
+.tier-3 .rv-val { color: #eba26a; }
+
+/* ===== 我的排名 ===== */
+.rank-me {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: var(--row-me-bg);
+  border: 1px solid var(--row-me-border);
+}
+
+.me-face {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.me-face .face-img { border-color: rgba(255, 215, 120, 0.45); }
+
+.me-label {
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
+.me-rank {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffd780;
+}
+
+.me-uid {
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
+.me-vals {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.me-vals .rv-col { min-width: 44px; }
+.me-vals .rv-val { font-size: 18px; }
+.me-vals .rv-lbl { font-size: 10px; }

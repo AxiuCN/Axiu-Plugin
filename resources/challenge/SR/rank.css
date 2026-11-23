@@ -1,214 +1,39 @@
+/**
+ * 星铁终局排行榜 —— 背景取自各玩法自己的终局页（与查询图同一套底图）
+ *
+ * 末日幻影 → bg_3（查询图用 index_boss.css）
+ * 虚构叙事 → bg_2（查询图用 index_story.css）
+ * 忘却之庭 → bg_1（查询图用 index.css）
+ * 异相仲裁 → block_bg（查询图用 index_peak.css）
+ *
+ * 底图是 690×1600 的竖版，这里按 100% 宽贴顶铺，页面底色取图底部的颜色接住余下区域。
+ * bodyClass 由 modules/challenge/srRank.js 按 challengeType 传入。
+ */
+
 .container {
-  padding: 30px 30px 20px 30px;
-  width: 800px;
-  overflow: hidden;
-  background: url('./images/bg_2.8d088acd.png') center / cover no-repeat;
-}
-
-.elem-bg.container {
-  background: url('./images/bg_2.8d088acd.png') center / cover no-repeat;
-  color: #f0eaca;
   font-family: 'SR', 'YS', 'Number', sans-serif;
-  box-sizing: border-box;
+  background-position: center top;
+  background-size: 100% auto;
 }
 
-.container * { box-sizing: border-box; }
-
-/* ===== 标题 ===== */
-.rank-head {
-  text-align: center;
-  font-size: 28px;
-  font-weight: bold;
-  color: #ffd780;
-  text-shadow: 0 0 10px rgba(255,215,128,0.5);
-  margin-bottom: 4px;
+body.rank-bg-boss .container {
+  background-color: #2b3544;
+  background-image: url("./images/bg_3.f75b3067.png");
 }
 
-.rank-name {
-  text-align: center;
-  font-size: 22px;
-  color: rgba(240,234,202,0.85);
-  margin-bottom: 2px;
+body.rank-bg-story .container {
+  background-color: #2a3544;
+  background-image: url("./images/bg_2.8d088acd.png");
 }
 
-.rank-subhead {
-  text-align: center;
-  font-size: 14px;
-  color: rgba(240,234,202,0.5);
-  margin-bottom: 12px;
+body.rank-bg-forgotten .container {
+  background-color: #2b3544;
+  background-image: url("./images/bg_1.bc4384de.png");
 }
 
-/* ===== 统计 ===== */
-.rank-info {
-  text-align: center;
-  font-size: 13px;
-  color: rgba(240,234,202,0.5);
-  margin-bottom: 14px;
+/* 仲裁是 690×640 的短图，按 cover 铺满 */
+body.rank-bg-peak .container {
+  background-color: #251d43;
+  background-image: url("./images/block_bg.b669cdc3.png");
+  background-size: cover;
 }
-
-.rank-info .sep {
-  margin: 0 10px;
-  color: rgba(240,234,202,0.2);
-}
-
-/* ===== 排行列表 ===== */
-.rank-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.rank-item {
-  display: flex;
-  align-items: center;
-  padding: 8px 14px;
-  border-radius: 8px;
-  background: rgba(0,0,0,0.2);
-}
-
-.tier-1 {
-  background: linear-gradient(135deg, rgba(255,215,0,0.12), rgba(255,215,0,0.04));
-  border: 1px solid rgba(255,215,0,0.25);
-}
-
-.tier-2 {
-  background: linear-gradient(135deg, rgba(192,192,192,0.10), rgba(192,192,192,0.03));
-  border: 1px solid rgba(192,192,192,0.20);
-}
-
-.tier-3 {
-  background: linear-gradient(135deg, rgba(205,127,50,0.10), rgba(205,127,50,0.03));
-  border: 1px solid rgba(205,127,50,0.20);
-}
-
-/* ===== 排名数字 ===== */
-.rank-no {
-  width: 36px;
-  text-align: center;
-  font-size: 18px;
-  font-weight: 800;
-  font-family: 'Number', monospace;
-  flex-shrink: 0;
-  color: rgba(240,234,202,0.55);
-}
-
-.no-1 { color: #ffd780; font-size: 22px; text-shadow: 0 0 8px rgba(255,215,128,0.5); }
-.no-2 { color: #c0c0c0; font-size: 20px; text-shadow: 0 0 6px rgba(192,192,192,0.3); }
-.no-3 { color: #cd7f32; font-size: 20px; text-shadow: 0 0 6px rgba(205,127,50,0.3); }
-
-/* ===== 头像 ===== */
-.rank-face {
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-  margin: 0 12px;
-}
-
-.face-img {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid rgba(240,234,202,0.25);
-}
-
-.tier-1 .face-img { border-color: rgba(255,215,0,0.5); }
-.tier-2 .face-img { border-color: rgba(192,192,192,0.4); }
-.tier-3 .face-img { border-color: rgba(205,127,50,0.4); }
-
-.face-no {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: rgba(240,234,202,0.08);
-  border: 2px solid rgba(240,234,202,0.18);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  color: rgba(240,234,202,0.3);
-}
-
-/* ===== 用户信息 ===== */
-.rank-user {
-  flex: 1;
-  min-width: 0;
-}
-
-.user-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: #f0eaca;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.user-uid {
-  font-size: 12px;
-  color: rgba(240,234,202,0.45);
-  font-family: 'Number', monospace;
-}
-
-/* ===== 多列数值 ===== */
-.rank-vals {
-  display: flex;
-  gap: 14px;
-  flex-shrink: 0;
-}
-
-.rv-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 36px;
-}
-
-.rv-val {
-  font-size: 16px;
-  font-weight: 800;
-  font-family: 'SR', 'Number', monospace;
-  color: #ffd780;
-  line-height: 1.2;
-}
-
-.rv-lbl {
-  font-size: 10px;
-  color: rgba(240,234,202,0.4);
-  line-height: 1;
-}
-
-.tier-1 .rv-val { color: #ffd700; }
-.tier-2 .rv-val { color: #d0d0d0; }
-.tier-3 .rv-val { color: #e09145; }
-
-/* ===== 我的排名 ===== */
-.rank-me {
-  margin-top: 18px;
-  padding: 10px 18px;
-  background: rgba(255,215,128,0.10);
-  border: 1px solid rgba(255,215,128,0.25);
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.me-face {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-}
-
-.me-face .face-img { border-color: rgba(255,215,128,0.4); }
-.me-face .face-no { border-color: rgba(255,215,128,0.25); }
-
-.me-label { font-size: 12px; color: rgba(240,234,202,0.5); }
-.me-rank { font-size: 20px; font-weight: 800; color: #ffd780; font-family: 'Number', monospace; }
-.me-uid { font-size: 13px; color: rgba(240,234,202,0.5); font-family: 'Number', monospace; }
-.me-vals {
-  margin-left: auto;
-}
-.me-vals .rv-col { min-width: 32px; }
-.me-vals .rv-val { font-size: 15px; }
-.me-vals .rv-lbl { font-size: 9px; }

@@ -7,6 +7,9 @@ import { getPluginConfig } from '../../components/config.js'
 import { render } from '../../components/render.js'
 import { fillRankIdentity } from '../../components/memberName.js'
 
+/** 排行榜底图：按玩法取对应终局页的底图（见 resources/challenge/SR/rank.css） */
+export const SR_RANK_BG = { 0: 'boss', 1: 'story', 2: 'forgotten', 3: 'peak' }
+
 /** 关键词 → challengeType */
 function resolveSrAlias (text) {
   if (/末日/.test(text)) return 0
@@ -114,7 +117,9 @@ export async function handleSrRank (ctx, e) {
 
   const renderData = {
     title: `${typeName}·${dimLabel}排行`,
-    challengeType, dimension, dimLabel, list, selfRank, totalCount,
+    challengeType, dimension, dimLabel,
+    bodyClass: `rank-bg-${SR_RANK_BG[challengeType] || 'forgotten'}`,
+    list, selfRank, totalCount,
     groupId: e.group_id, topN,
     beginTime: seasonMeta?.beginTime || '',
     endTime: seasonMeta?.endTime || '',

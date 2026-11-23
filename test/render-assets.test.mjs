@@ -118,4 +118,32 @@ for (const file of htmlFiles) {
 check('扫描覆盖到模板里的静态图片引用', srcCount >= 10, `${srcCount} 处`)
 check('模板里的静态图片都存在（写错只会静默空图）', badSrcs.length === 0, badSrcs.slice(0, 8).join(' | '))
 
+/* ==================== 【6】排行榜底图与玩法的对应关系 ==================== */
+
+// 排行底图按玩法换（深渊/剧诗/危战、末日/虚构/忘却/仲裁），
+// 两边各自在 JS 里维护「type → 底图类名」的映射，CSS 里给同名规则配底图。
+// 任一侧漏了就会退回纯色底（不报错、只是难看），所以这里静态对齐一下。
+console.log('\n【6】排行榜：每个玩法都要有对应的底图规则和模板样式引用')
+const readRes = (rel) => fs.readFileSync(path.join(resRoot, rel), 'utf8')
+const bgMapOf = (file) => {
+  const src = readRes(path.join('..', 'modules', 'challenge', file))
+  const m = /_RANK_BG\s*=\s*\{([^}]+)\}/.exec(src)
+  return m ? [...m[1].matchAll(/'([a-z]+)'/g)].map(x => x[1]) : []
+}
+const gsBg = [...new Set(bgMapOf('gsRank.js'))]
+const srBg = [...new Set(bgMapOf('srRank.js'))]
+const gsCss = readRes('challenge/GS/rank.css')
+const srCss = readRes('challenge/SR/rank.css')
+check('原神排行映射覆盖 3 套玩法底图', ['abyss', 'role', 'hard'].every(n => gsBg.includes(n)), gsBg.join(','))
+check('星铁排行映射覆盖 4 套玩法底图', ['boss', 'story', 'forgotten', 'peak'].every(n => srBg.includes(n)), srBg.join(','))
+const missGs = gsBg.filter(n => !new RegExp(`body\\.rank-bg-${n}\\s+\\.container`).test(gsCss))
+const missSr = srBg.filter(n => !new RegExp(`body\\.rank-bg-${n}\\s+\\.container`).test(srCss))
+check('原神侧每个底图类名都有对应的 CSS 规则', missGs.length === 0, missGs.join(','))
+check('星铁侧每个底图类名都有对应的 CSS 规则', missSr.length === 0, missSr.join(','))
+for (const [label, rel, scene] of [['原神', 'challenge/GS/rank.html', 'challenge/GS/rank.css'], ['星铁', 'challenge/SR/rank.html', 'challenge/SR/rank.css']]) {
+  const html = readRes(rel)
+  check(`${label}排行模板先引公共样式、再引本玩法样式`,
+    html.indexOf('challenge/rank-base.css') > 0 && html.indexOf(scene) > html.indexOf('challenge/rank-base.css'))
+}
+
 finish()

@@ -15,6 +15,9 @@ export const MODE_NAMES = { 1: '轻简', 2: '普通', 3: '困难', 4: '卓越', 
 /** 幽境危战难度名称 */
 export const DIFF_NAMES = { 1: '普通', 2: '进阶', 3: '困难', 4: '险恶', 5: '无畏', 6: '绝境' }
 
+/** 排行榜底图：按玩法取对应终局页的页面底图（见 resources/challenge/GS/rank.css） */
+export const GS_RANK_BG = { 0: 'abyss', 1: 'role', 2: 'hard', 3: 'hard' }
+
 /** 幽境危战徽章名称 */
 export const BADGE_NAMES = { 1: '普通', 2: '进阶', 3: '困难', 4: '险恶', 5: '无畏', 6: '绝境', 7: '虹彩' }
 
@@ -162,6 +165,7 @@ export async function handleGsRank (e) {
     title: `${typeName}·${dimLabel}排行`,
     challengeType,
     dimension,
+    bodyClass: `rank-bg-${GS_RANK_BG[challengeType] || 'abyss'}`,
     list,
     selfRank,
     totalCount,
