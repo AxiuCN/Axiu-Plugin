@@ -16,7 +16,7 @@
 import { checker, importMod } from './_helper.mjs'
 
 const { check, finish } = checker()
-const { memberInfo, memberNick, memberName } = await importMod('components/memberName.js')
+const { memberInfo, memberNick, memberName, fillRankIdentity } = await importMod('components/memberName.js')
 
 /** OneBot v11 形状：缓存字段 + getInfo() */
 const mkOneBotMember = ({ card = '', nickname = '', info = null, throws = false } = {}) => ({
@@ -89,20 +89,82 @@ check('没传 qq → 取发送者名片', await memberName(mkEvent(), undefined)
 check('被 @ 的人不在群里 → 空串（不退化成发送者名字）', await memberName(mkEvent(), 20002) === '')
 check('私聊（无 group）且 @ 人 → 空串', await memberName({ user_id: 10001, sender: { card: 'S' } }, 20002) === '')
 
-/* ==================== 【5】静态约束 ==================== */
+/* ==================== 【5】排行行：头像 + 群昵称 ==================== */
 
-console.log('\n【5】静态约束：挑战图与排行都用 memberInfo / memberName')
+console.log('\n【5】fillRankIdentity：整群成员一次拉齐，缺的人才单拉')
+const mkRankEvent = ({ map, members = {} } = {}) => ({
+  group_id: 10001,
+  group: {
+    getMemberMap: async () => new Map(Object.entries(map || {}).map(([k, v]) => [Number(k), v])),
+    pickMember (qq) {
+      const hit = members[Number(qq)]
+      if (!hit) throw new Error('no such member')
+      return hit
+    }
+  }
+})
+{
+  const rows = [{ qq: 20002 }, { qq: 30003 }]
+  await fillRankIdentity(mkRankEvent({
+    map: { 20002: { card: '缓存名片', nickname: '缓存昵称' }, 30003: { card: '', nickname: '缓存昵称2' } }
+  }), rows)
+  check('整群缓存命中时用缓存的 card/nickname',
+    rows[0].nickname === '缓存名片' && rows[1].nickname === '缓存昵称2', JSON.stringify(rows.map(r => r.nickname)))
+  check('头像取不到时回落 qlogo', rows[0].qqFace === 'https://q.qlogo.cn/g?b=qq&nk=20002&s=100', rows[0].qqFace)
+}
+{
+  // 缓存里没有 → 单拉这个人（OneBot: getInfo）
+  let called = 0
+  const rows = [{ qq: 40004 }]
+  await fillRankIdentity(mkRankEvent({
+    map: {},
+    members: { 40004: { card: '', nickname: '', getInfo: async () => { called++; return { card: '单拉名片' } } } }
+  }), rows)
+  check('缓存缺人时才单拉一次 getInfo', rows[0].nickname === '单拉名片' && called === 1, `${rows[0].nickname}/${called}`)
+}
+{
+  // 头像：字符串 / Promise 两种返回都要接住
+  const rows = [{ qq: 50005 }, { qq: 60006 }]
+  await fillRankIdentity(mkRankEvent({
+    map: {},
+    members: {
+      50005: { card: 'A', getAvatarUrl: () => 'https://a/1.png' },
+      60006: { card: 'B', getAvatarUrl: async () => 'https://a/2.png' }
+    }
+  }), rows)
+  check('getAvatarUrl 返回字符串时直接采用（不能当 Promise 调 .catch）', rows[0].qqFace === 'https://a/1.png', rows[0].qqFace)
+  check('getAvatarUrl 返回 Promise 时 await 结果', rows[1].qqFace === 'https://a/2.png', rows[1].qqFace)
+}
+{
+  const rows = [{ qq: 70007 }]
+  await fillRankIdentity(mkRankEvent({
+    map: {},
+    members: { 70007: { card: '', getAvatarUrl: () => { throw new Error('boom') } } }
+  }), rows)
+  check('getAvatarUrl 抛错时回落 qlogo 且昵称仍能补上（修复前昵称赋值被整段跳过）',
+    rows[0].qqFace === 'https://q.qlogo.cn/g?b=qq&nk=70007&s=100' && rows[0].nickname === '', JSON.stringify(rows[0]))
+}
+{
+  await fillRankIdentity(mkRankEvent(), [])
+  check('空列表不抛错', true)
+}
+
+/* ==================== 【6】静态约束 ==================== */
+
+console.log('\n【6】静态约束：挑战图与两套排行都用 memberInfo / fillRankIdentity')
 const { readFileSync } = await import('node:fs')
 const { mod } = await import('./_helper.mjs')
 const gsQuery = readFileSync(mod('modules/challenge/gsQuery.js'), 'utf8')
 const gsRank = readFileSync(mod('modules/challenge/gsRank.js'), 'utf8')
+const srRank = readFileSync(mod('modules/challenge/srRank.js'), 'utf8')
 /** 静态检查要看代码而不是注释（注释里会引用旧写法做反例） */
 const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')
 check('gsQuery 三处昵称都按 e.at 取', (gsQuery.match(/const nickname = await memberName\(e, e\.at\)/g) || []).length === 3)
-check('gsRank 用 memberInfo 取昵称且不再出现 member.getInfo 直连',
-  !/member\.getInfo/.test(stripComments(gsRank)) && (gsRank.match(/memberInfo\(member\)/g) || []).length >= 1)
-// OneBot 的 getAvatarUrl() 返回字符串，写成「对返回值直接 .catch」会抛 TypeError 并跳过昵称赋值
-check('排行头像不直接把 getAvatarUrl() 当 Promise 用',
-  !/getAvatarUrl\?\.\(\)\.catch/.test(stripComments(gsRank)))
+check('原神排行用 fillRankIdentity', /fillRankIdentity\(e, \[\.\.\.list, selfRank\]\)/.test(stripComments(gsRank)))
+check('星铁排行用 fillRankIdentity', /fillRankIdentity\(e, \[\.\.\.list, selfRank\]\)/.test(stripComments(srRank)))
+check('两套排行都不再把 getAvatarUrl() 当 Promise 用（OneBot 返回字符串）',
+  !/getAvatarUrl\?\.\(\)\.catch/.test(stripComments(gsRank)) && !/getAvatarUrl\?\.\(\)\.catch/.test(stripComments(srRank)))
+check('两套排行都不再直接 member.getInfo 取昵称',
+  !/member\.getInfo/.test(stripComments(gsRank)) && !/member\.getInfo/.test(stripComments(srRank)))
 
 finish()

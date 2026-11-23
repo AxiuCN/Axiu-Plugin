@@ -5,6 +5,7 @@
 import SrChallengeRank from '../../model/srChallengeRank.js'
 import { getPluginConfig } from '../../components/config.js'
 import { render } from '../../components/render.js'
+import { fillRankIdentity } from '../../components/memberName.js'
 
 /** 关键词 → challengeType */
 function resolveSrAlias (text) {
@@ -103,32 +104,8 @@ export async function handleSrRank (ctx, e) {
     : null
   const totalCount = await SrChallengeRank.getRankCount(e.group_id, challengeType, dimension, scheduleId)
 
-  const pickMember = (qq) => {
-    if (!qq) return null
-    try { return e.group.pickMember(qq) } catch { return null }
-  }
-
-  await Promise.all(list.map(async (item) => {
-    const member = pickMember(item.qq)
-    if (member) {
-      try {
-        item.qqFace = await member.getAvatarUrl?.().catch(() => null) || `https://q.qlogo.cn/g?b=qq&nk=${item.qq}&s=100`
-        const info = await member.getInfo?.().catch(() => null)
-        item.nickname = info?.card || info?.nickname || ''
-      } catch { item.qqFace = `https://q.qlogo.cn/g?b=qq&nk=${item.qq}&s=100` }
-    }
-  }))
-
-  if (selfRank) {
-    const member = pickMember(selfRank.qq)
-    if (member) {
-      try {
-        selfRank.qqFace = await member.getAvatarUrl?.().catch(() => null) || `https://q.qlogo.cn/g?b=qq&nk=${selfRank.qq}&s=100`
-        const info = await member.getInfo?.().catch(() => null)
-        selfRank.nickname = info?.card || info?.nickname || ''
-      } catch { selfRank.qqFace = `https://q.qlogo.cn/g?b=qq&nk=${selfRank.qq}&s=100` }
-    }
-  }
+  // QQ 头像与群昵称（整群成员一次拉齐，见 components/memberName.js）
+  await fillRankIdentity(e, [...list, selfRank])
 
   for (const item of list) { item.cols = buildSrCols(item.extra, challengeType) }
   if (selfRank) { selfRank.cols = buildSrCols(selfRank.extra, challengeType) }

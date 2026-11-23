@@ -7,7 +7,7 @@
 import GsChallengeRank from '../../model/gsChallengeRank.js'
 import { getPluginConfig } from '../../components/config.js'
 import { render } from '../../components/render.js'
-import { memberInfo } from '../../components/memberName.js'
+import { fillRankIdentity } from '../../components/memberName.js'
 
 /** 幻想真境剧诗模式名称 */
 export const MODE_NAMES = { 1: '轻简', 2: '普通', 3: '困难', 4: '卓越', 5: '月谕' }
@@ -150,48 +150,8 @@ export async function handleGsRank (e) {
     : null
   const totalCount = await GsChallengeRank.getRankCount(e.group_id, challengeType, dimension, scheduleId)
 
-  // QQ 身份信息
-  // 整群成员一次拉齐：getMemberMap() 只打一次 get_group_member_list，
-  // 逐人 getInfo() 在 top20 时会打 20 次接口
-  let memberMap = null
-  try {
-    memberMap = await e.group?.getMemberMap?.()
-  } catch {
-    memberMap = null
-  }
-  const pickCached = (qq) => memberMap?.get(Number(qq)) || memberMap?.get(String(qq)) || null
-  const pickMember = (qq) => {
-    if (!qq) return null
-    try { return e.group.pickMember(qq) } catch { return null }
-  }
-  /**
-   * 头像地址：OneBot 适配器的 getAvatarUrl() 直接返回**字符串**（不是 Promise），
-   * 以前写成 `await member.getAvatarUrl?.().catch(...)` 会抛 TypeError，
-   * 外层 catch 兜住头像的同时把后面的昵称赋值整段跳过（昵称因此一直为空）
-   */
-  const avatarOf = async (member, qq) => {
-    let url = null
-    try {
-      url = member?.getAvatarUrl?.()
-    } catch { /* 取头像失败走 qlogo */ }
-    if (url && typeof url.then === 'function') url = await url.catch(() => null)
-    return url || `https://q.qlogo.cn/g?b=qq&nk=${qq}&s=100`
-  }
-  /** 昵称：先看整群缓存，缓存里没有才单独拉这个人 */
-  const nickOf = async (qq, member) => {
-    const cached = pickCached(qq)
-    if (cached?.card || cached?.nickname) return cached.card || cached.nickname
-    const info = member ? await memberInfo(member) : null
-    return info?.card || info?.nickname || ''
-  }
-  const fillIdentity = async (row) => {
-    const member = pickMember(row.qq)
-    row.qqFace = await avatarOf(member, row.qq)
-    row.nickname = await nickOf(row.qq, member)
-  }
-
-  await Promise.all(list.map(fillIdentity))
-  if (selfRank) await fillIdentity(selfRank)
+  // QQ 头像与群昵称（整群成员一次拉齐，见 components/memberName.js）
+  await fillRankIdentity(e, [...list, selfRank])
 
   for (const item of list) { item.cols = buildGsCols(item.extra, challengeType) }
   if (selfRank) { selfRank.cols = buildGsCols(selfRank.extra, challengeType) }
