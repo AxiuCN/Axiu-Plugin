@@ -754,9 +754,9 @@ async function initEnvironment () {
   // 2. 拉取 MihoyoBBSTools 子模块
   try {
     const submodulePath = 'tool/MihoyoBBSTools'
-    // --remote：跟到子模块远端 master；不加则只会检出父仓库钉住的旧 commit，
-    // 旧版 MihoyoBBSTools 没有 v2 换票（exchange），会导致 v2 stoken 刷新 cookie 时走废弃接口报「Stoken 已失效」
-    execSync(`git submodule update --remote --init -- ${submodulePath}`, {
+    // 只检出父仓库钉住的 commit，不跟上游 master：指针由本仓库维护，
+    // 同一版本拿到的 Python 侧代码因此固定，上游 master 变动不会改变已发布版本的行为
+    execSync(`git submodule update --init -- ${submodulePath}`, {
       encoding: 'utf8', cwd: pluginRoot, timeout: 60000, windowsHide: true
     })
     parts.push('子模块 MihoyoBBSTools 已就绪')
