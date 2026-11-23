@@ -50,6 +50,9 @@
   <section class="boss tw-relative tw-mb-4 tw-p-4 tw-pb-[14px] tw-text-gt-l-text-white-2" data-v-1335dd8d>
     <div class="card-bg" data-v-1335dd8d><div class="card-bg-1" data-v-1335dd8d></div><div class="card-bg-2" data-v-1335dd8d></div></div>
 
+    <!-- tw-z-3 是官方标记里的「空类」：官方编译 CSS 已被 Tailwind purge（三份官方 CSS 都只有 .tw-z-10），
+         保留只为与官方标记逐字一致。实测给它补 z-index:3 出图逐字节相同（装饰底图透明），
+         别当成「抽取漏了规则」去修 -->
     <div class="tw-z-3 tw-relative" data-v-1335dd8d>
       <p class="tw-text-[14px] tw-font-semibold tw-leading-[18px] tw-relative tw-z-10" data-v-1335dd8d>{{boss.name}}</p>
 
