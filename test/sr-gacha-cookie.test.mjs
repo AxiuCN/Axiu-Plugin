@@ -210,10 +210,11 @@ const rawGetData = QrUser.prototype.getData
 let stokenEntries = {}
 let credentialRequests = []
 stokenStore.getUserStoken = async () => stokenEntries
+/** 换票桩：dst=2 给 ltoken、dst=4 给 cookie_token（老的 bbsGetCookie 已废弃，不该再被调用） */
 QrUser.prototype.getData = async function (type, data) {
-  credentialRequests.push({ type, cookies: data.cookies })
-  const params = new URLSearchParams(data.cookies)
-  return { data: { cookie_token: `SYNTHETIC_TOKEN_${params.get('uid')}` } }
+  credentialRequests.push({ type, dstTokenType: data.dstTokenType, mid: data.mid })
+  if (type !== 'exchange') return { data: {} }
+  return { data: { token: { token: `SYNTHETIC_${data.dstTokenType}_${data.mid}` } } }
 }
 
 /** 目标 UID 200000002 属 ltuid 20002，该账号有有效 CK */
@@ -237,24 +238,26 @@ const runStoken = async (stokens, user = targetUser) => {
 
 // 5.1 别的账号的 stoken 不能顶替目标账号的 CK
 {
-  const wrong = { '100000001': { uid: '100000001', stuid: '20001', stoken: 'WRONG_ACC', ltoken: 'L1' } }
+  const wrong = { '100000001': { uid: '100000001', stuid: '20001', stoken: 'v2_WRONG', ltoken: 'L1', mid: 'm20001' } }
   const { calls, credentialRequests: reqs } = await runStoken(wrong)
   check('已有目标 CK 时不被别的账号 stoken 顶替', calls[0]?.cookie?.includes('ltuid=20002;') === true, String(calls[0]?.cookie))
-  check('别的账号 stoken 不会被拿去交换凭据（修复前会交换 1 次）', reqs.length === 0, JSON.stringify(reqs))
+  check('别的账号 stoken 不会被拿去换票（修复前会换 1 次）', reqs.length === 0, JSON.stringify(reqs))
   check('下游 uid 仍是目标 UID', calls[0]?.uid === '200000002', String(calls[0]?.uid))
 }
 
 // 5.2 同一米游社账号（ltuid 相同）的跨游戏 stoken 仍可用
 {
-  const sameAcc = { '100000001': { uid: '100000001', stuid: '20002', stoken: 'SAME_ACC', ltoken: 'L2' } }
+  const sameAcc = { '100000001': { uid: '100000001', stuid: '20002', stoken: 'v2_SAME', ltoken: 'L2', mid: 'm20002' } }
   const { calls, credentialRequests: reqs } = await runStoken(sameAcc)
   check('同账号跨游戏 stoken 继续可用', calls[0]?.cookie?.includes('ltuid=20002;') === true, String(calls[0]?.cookie))
-  check('同账号 stoken 只交换一次', reqs.length === 1, JSON.stringify(reqs))
+  check('同账号 stoken 换票两次（ltoken_v2 + cookie_token_v2）', reqs.length === 2, JSON.stringify(reqs))
+  check('换票带 dst=2 / dst=4 与 mid', reqs.map(r => r.dstTokenType).sort().join(',') === '2,4' && reqs.every(r => r.mid === 'm20002'), JSON.stringify(reqs))
+  check('不再调用已废弃的 bbsGetCookie', reqs.every(r => r.type === 'exchange'), JSON.stringify(reqs.map(r => r.type)))
 }
 
 // 5.3 只有别的账号 stoken、且没有目标 CK → 拒绝
 {
-  const wrong = { '100000001': { uid: '100000001', stuid: '20001', stoken: 'WRONG_ACC', ltoken: 'L1' } }
+  const wrong = { '100000001': { uid: '100000001', stuid: '20001', stoken: 'v2_WRONG', ltoken: 'L1', mid: 'm20001' } }
   const noCkUser = mkUser({ sr: '200000002', srCk: '', uids: { 'sr:200000002': { ltuid: '20002' } } })
   noCkUser.mysUsers = {}
   const { calls, replies } = await runStoken(wrong, noCkUser)
@@ -265,21 +268,33 @@ const runStoken = async (stokens, user = targetUser) => {
 
 // 5.4 精确目标 UID 的 stoken 正常使用
 {
-  const exact = { '200000002': { uid: '200000002', stuid: '20002', stoken: 'EXACT', ltoken: 'L3' } }
+  const exact = { '200000002': { uid: '200000002', stuid: '20002', stoken: 'v2_EXACT', ltoken: 'L3', mid: 'm20002' } }
   const { calls, credentialRequests: reqs } = await runStoken(exact)
   check('精确目标 UID 的 stoken 直接使用', calls[0]?.cookie?.includes('ltuid=20002;') === true, String(calls[0]?.cookie))
-  check('精确目标 stoken 交换一次', reqs.length === 1, JSON.stringify(reqs))
+  check('精确目标 stoken 换票两次', reqs.length === 2, JSON.stringify(reqs))
 }
 
 // 5.5 无 stoken 的条目不能遮住后面同账号的可用条目
 {
   const shadow = {
     a: { uid: '200000002', stuid: '20002' }, // 命中 uid 但没有 stoken
-    b: { uid: '100000001', stuid: '20002', stoken: 'USABLE', ltoken: 'L4' }
+    b: { uid: '100000001', stuid: '20002', stoken: 'v2_USABLE', ltoken: 'L4', mid: 'm20002' }
   }
   const { calls, credentialRequests: reqs } = await runStoken(shadow)
-  check('无 stoken 的条目被跳过，改用同账号可用条目', reqs.length === 1, JSON.stringify(reqs))
+  check('无 stoken 的条目被跳过，改用同账号可用条目', reqs.length === 2, JSON.stringify(reqs))
   check('使用同账号可用条目后正常进入服务', calls[0]?.cookie?.includes('ltuid=20002;') === true, String(calls[0]?.cookie))
+}
+
+// 5.6 非 v2 / 缺 mid 的条目不做无效换票，退回账号 CK
+{
+  const legacy = {
+    '200000002': { uid: '200000002', stuid: '20002', stoken: 'v1_OLD', ltoken: 'L5', mid: 'm20002' },
+    '100000001': { uid: '100000001', stuid: '20002', stoken: 'v2_NO_MID', ltoken: 'L6' }
+  }
+  const { calls, credentialRequests: reqs } = await runStoken(legacy)
+  check('非 v2 或缺 mid 的条目一次换票都不发', reqs.length === 0, JSON.stringify(reqs))
+  check('退回目标账号已有 CK（不会因此报「未获取到 cookie」）',
+    calls[0]?.cookie?.includes('ltuid=20002;') === true, String(calls[0]?.cookie))
 }
 
 stokenStore.getUserStoken = rawGetUserStoken

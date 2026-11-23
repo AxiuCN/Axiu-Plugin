@@ -12,6 +12,7 @@ import { fetchDeviceFp } from './deviceFp.js'
 import stokenStore from '../stokenStore.js'
 import QrUser from '../qrUser.js'
 import { LOG_PREFIX } from '../../components/constants.js'
+import { buildV2Cookie } from '../../components/mysCookie.js'
 
 /** 每个 ltuid 一个互斥锁，防止星铁侧并发请求重复刷新同一 CK */
 const _srRefreshLocks = new Map()
@@ -414,19 +415,31 @@ export default class MysSrApi extends MysApi {
         uid: found.stoken.uid
       })
 
-      let cookies = `uid=${found.stoken.stuid}&stoken=${found.stoken.stoken}`
-      if (found.stoken?.mid) cookies += `&mid=${found.stoken.mid}`
-
-      const res = await qrUser.getData('bbsGetCookie', { cookies }, false)
-      if (!res?.data?.cookie_token) {
-        logger.warn(`${LOG_PREFIX}[MysSrApi] 刷新失败 ltuid:${found.stoken.stuid}: ${res?.message || res?.retcode}`)
+      // 老的 getCookieAccountInfoBySToken 已废弃（-464「请使用最新版本产品/链接」），改走换票接口：
+      // dst_token_type=2 → ltoken_v2；dst_token_type=4 → cookie_token_v2
+      // 换票必须带 mid，早期条目缺 mid 或非 v2 stoken 时只能让用户重新扫码
+      const mid = found.stoken?.mid || ''
+      if (!String(found.stoken?.stoken || '').startsWith('v2_') || !mid) {
+        logger.warn(`${LOG_PREFIX}[MysSrApi] stoken 不可换票（非 v2 或缺少 mid），请重新扫码 ltuid:${found.stoken.stuid}`)
         return null
       }
 
-      const ck = res.data.cookie_token
-      const fullCookie =
-        `ltoken=${found.stoken.ltoken};ltuid=${found.stoken.stuid};` +
-        `cookie_token=${ck};account_id=${found.stoken.stuid};`
+      const ex2 = await qrUser.getData('exchange', { token: found.stoken.stoken, mid, dstTokenType: 2 }, false)
+      const ex4 = await qrUser.getData('exchange', { token: found.stoken.stoken, mid, dstTokenType: 4 }, false)
+      const ltoken = ex2?.data?.token?.token
+      const cookieToken = ex4?.data?.token?.token
+      if (!ltoken || !cookieToken) {
+        const fail = !ltoken ? ex2 : ex4
+        logger.warn(`${LOG_PREFIX}[MysSrApi] 刷新失败 ltuid:${found.stoken.stuid}: ${fail?.message || fail?.retcode}`)
+        return null
+      }
+
+      const fullCookie = buildV2Cookie({
+        stuid: found.stoken.stuid,
+        mid,
+        ltoken,
+        cookieToken
+      })
 
       // 更新账号级 ck 数据（对齐 genshin ckRefresh：不调用 user.js bing()，刷新不改变 QQ↔账号 归属）
       // 仅让所有引用该账号的查询/用户拿到新 ck，防止刷新把账号挂到与查询无关的用户名下

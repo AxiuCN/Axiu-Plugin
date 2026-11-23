@@ -13,6 +13,7 @@ import stokenStore from '../model/stokenStore.js'
 import { getSrServer } from '../model/mys/passportUtils.js'
 import { StarRailGachaService } from '../model/srGacha.js'
 import { tryAcquireGachaLock, gachaLockRemaining, getUidFromNoteUser } from '../components/gachaUtils.js'
+import { buildV2Cookie } from '../components/mysCookie.js'
 
 export class srGachaLog extends plugin {
   constructor () {
@@ -76,12 +77,16 @@ export class srGachaLog extends plugin {
           s?.stoken && (String(s?.uid) === String(e.uid) || (ltuid && String(s?.stuid) === String(ltuid)))
         ) || null
       }
-      if (entry?.stoken) {
+      // 换票接口（老的 getCookieAccountInfoBySToken 已废弃，会 -464「请使用最新版本产品/链接」）
+      // dst_token_type=2 → ltoken_v2；dst_token_type=4 → cookie_token_v2
+      if (entry?.stoken && String(entry.stoken).startsWith('v2_') && entry.mid) {
         const qrUser = new QrUser({ user_id: e.user_id, uid: e.uid, region: e.region })
-        const cookies = `uid=${entry.stuid}&stoken=${entry.stoken}${entry.mid ? `&mid=${entry.mid}` : ''}`
-        const res = await qrUser.getData('bbsGetCookie', { cookies }, false)
-        if (res?.data?.cookie_token) {
-          cookie = `ltoken=${entry.ltoken};ltuid=${entry.stuid};cookie_token=${res.data.cookie_token};account_id=${entry.stuid};`
+        const ex2 = await qrUser.getData('exchange', { token: entry.stoken, mid: entry.mid, dstTokenType: 2 }, false)
+        const ex4 = await qrUser.getData('exchange', { token: entry.stoken, mid: entry.mid, dstTokenType: 4 }, false)
+        const ltoken = ex2?.data?.token?.token
+        const cookieToken = ex4?.data?.token?.token
+        if (ltoken && cookieToken) {
+          cookie = buildV2Cookie({ stuid: entry.stuid, mid: entry.mid, ltoken, cookieToken })
         }
       }
     } catch {}
