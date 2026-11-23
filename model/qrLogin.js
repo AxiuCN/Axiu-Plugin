@@ -5,6 +5,7 @@
 
 import QrUser from './qrUser.js'
 import { sleepAsync, randomString } from './mys/passportUtils.js'
+import { buildV2Cookie } from '../components/mysCookie.js'
 
 export default class QrLogin {
   constructor (e) {
@@ -140,19 +141,7 @@ export default class QrLogin {
     }
 
     // 全 v2 cookie（与 MiyoQian build_cookie 一致）+ 兼容 Axiu 内部按 ltuid/account_id 解析的旧别名
-    const cookie = [
-      `account_id_v2=${stuid}`,
-      mid ? `account_mid_v2=${mid}` : '',
-      `cookie_token_v2=${cookieToken}`,
-      mid ? `ltmid_v2=${mid}` : '',
-      `ltoken_v2=${ltoken}`,
-      `ltuid_v2=${stuid}`,
-      `account_id=${stuid}`,
-      `ltuid=${stuid}`,
-      mid ? `mid=${mid}` : '',
-      `ltoken=${ltoken}`,
-      `cookie_token=${cookieToken}`
-    ].filter(Boolean).join(';') + ';'
+    const cookie = buildV2Cookie({ stuid, mid, ltoken, cookieToken })
 
     return {
       ltoken,

@@ -17,7 +17,16 @@ const LIFECYCLE_ID = randomUUID()
 /** 扫码建码/轮询用的 x4 盐（DS v2），与登录侧一致 */
 const QR_SALT_X4 = 'xV8v4Qu54lUKrEYFZkJhB8cuOh9Asafs'
 
-/** 把 stoken 查询串规范化为 uid/stoken/mid（getLtoken / bbsGetCookie 通用）
+/** 米游社 App 身份与各链版本号 —— 跟官方版本时只改这里（2026-11-22 实测可用）
+ *  qrcode：扫码建码/轮询；stokenCookie：取 ltoken / 换 ck；exchange：换票
+ */
+const MYSS_APP_ID = 'bll8iq97cem8'
+const QR_APP_VERSION = '2.90.1'
+const STOKEN_APP_VERSION = '2.104.0'
+const EXCHANGE_APP_VERSION = '2.106.2'
+const EXCHANGE_PASSPORT_VERSION = '2.44.0'
+
+/** 把 stoken 查询串规范化为 uid/stoken/mid（getLtoken 用）
  *  `;` → `&`，并把缺失的 uid 用 stuid 补齐（新版 xiaoyao 的 normalizeSTokenQuery）
  */
 function normalizeSTokenQuery (cookies = '') {
@@ -191,12 +200,6 @@ export default class PassportApi {
       },
 
       // === BBS / Auth ===
-      bbsGetCookie: {
-        // 参考新版 xiaoyao：passport host + stokenCookie 专属头（Hyperion UA），Cookie 由 query 自动构造
-        url: `${mys.pass_api}/account/auth/api/getCookieAccountInfoBySToken`,
-        query: `${data.cookies}`,
-        types: 'stokenCookie'
-      },
       bbsStoken: {
         url: `${this.apiMap.apiWeb}/auth/api/getMultiTokenByLoginTicket`,
         query: `login_ticket=${data.loginTicket}&token_types=3&uid=${data.loginUid}`,
@@ -223,14 +226,12 @@ export default class PassportApi {
 
     if (!urlMap[type]) return false
 
-    let { url, query = '', body = '', types = '', sign = '', cookie = '' } = urlMap[type]
+    let { url, query = '', body = '', types = '', sign = '' } = urlMap[type]
 
     if (query) url += `?${query}`
     if (body) body = JSON.stringify(body)
 
     const headers = this.getHeaders(types, sign, body, query)
-    // 端点显式指定 stoken Cookie 头时覆盖默认（bbsGetCookie：stoken 走 query + Cookie 双认证）
-    if (cookie) headers.Cookie = cookie
     // 扫码接口：把本次扫码的 device 写进请求头，保证 建码/轮询 使用同一个 x-rpc-device_id
     if (types === 'qrcode' && data.device) headers['x-rpc-device_id'] = data.device
     return { url, headers, body }
@@ -299,7 +300,7 @@ export default class PassportApi {
       case 'pass':
         header = {
           'x-rpc-device_id': DEVICE_ID,
-          'x-rpc-app_id': 'bll8iq97cem8',
+          'x-rpc-app_id': MYSS_APP_ID,
           'x-rpc-device_name': DEVICE_NAME,
           'x-rpc-device_fp': '38d7ee0e96649',
           'x-rpc-device_model': utils.randomString(16),
@@ -324,16 +325,16 @@ export default class PassportApi {
         // 用其它 app_id 建码时，换票虽然能成功，但会话不属于米游社 App，
         // 社区签到等 App 侧接口会判 -100 登录失效（实测）
         header = {
-          'User-Agent': 'Mozilla/5.0 miHoYoBBS/2.90.1 Capture/2.2.0',
+          'User-Agent': `Mozilla/5.0 miHoYoBBS/${QR_APP_VERSION} Capture/2.2.0`,
           Accept: '*/*',
           'Accept-Language': 'zh-cn',
           'Content-Type': 'application/json; charset=UTF-8',
           DS: this.getDs2('', body, QR_SALT_X4),
-          'x-rpc-app_id': 'bll8iq97cem8',
+          'x-rpc-app_id': MYSS_APP_ID,
           'x-rpc-client_type': '3',
-          'x-rpc-app_version': '2.90.1',
-          'x-rpc-sdk_version': '2.90.1',
-          'x-rpc-account_version': '2.90.1',
+          'x-rpc-app_version': QR_APP_VERSION,
+          'x-rpc-sdk_version': QR_APP_VERSION,
+          'x-rpc-account_version': QR_APP_VERSION,
           'x-rpc-game_biz': 'bbs_cn',
           'x-rpc-device_id': DEVICE_ID
         }
@@ -357,8 +358,8 @@ export default class PassportApi {
           Accept: 'application/json',
           'Content-Type': 'application/json',
           'User-Agent': 'Hyperion/550 CFNetwork/3860.500.112 Darwin/25.4.0',
-          'x-rpc-app_version': '2.104.0',
-          'x-rpc-app_id': 'bll8iq97cem8',
+          'x-rpc-app_version': STOKEN_APP_VERSION,
+          'x-rpc-app_id': MYSS_APP_ID,
           'x-rpc-aigis': '',
           'x-rpc-game_biz': 'bbs_cn',
           'x-rpc-sys_version': '12',
@@ -409,16 +410,16 @@ export default class PassportApi {
         header = {
           'content-type': 'application/json',
           DS: this.getDs2('', body, mys.passSalt),
-          'User-Agent': 'Mozilla/5.0 (Linux; Android 12; Unspecified Device) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/103.0.5060.129 Mobile Safari/537.36 miHoYoBBS/2.106.2',
-          'x-rpc-app_version': '2.106.2',
+          'User-Agent': `Mozilla/5.0 (Linux; Android 12; Unspecified Device) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/103.0.5060.129 Mobile Safari/537.36 miHoYoBBS/${EXCHANGE_APP_VERSION}`,
+          'x-rpc-app_version': EXCHANGE_APP_VERSION,
           'x-rpc-client_type': '2',
-          'x-rpc-app_id': 'bll8iq97cem8',
+          'x-rpc-app_id': MYSS_APP_ID,
           'x-rpc-device_id': DEVICE_ID,
           'x-rpc-device_name': 'Mihoyo Capture',
           'x-rpc-device_model': 'Mi 14',
           'x-rpc-game_biz': 'bbs_cn',
-          'x-rpc-sdk_version': '2.44.0',
-          'x-rpc-account_version': '2.44.0',
+          'x-rpc-sdk_version': EXCHANGE_PASSPORT_VERSION,
+          'x-rpc-account_version': EXCHANGE_PASSPORT_VERSION,
           'x-rpc-lifecycle_id': LIFECYCLE_ID
         }
         break

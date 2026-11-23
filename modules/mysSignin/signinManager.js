@@ -10,6 +10,7 @@ import { execSync } from 'node:child_process'
 import YAML from 'yaml'
 import stokenStore from '../../model/stokenStore.js'
 import QrUser from '../../model/qrUser.js'
+import { buildV2Cookie } from '../../components/mysCookie.js'
 import { getServer } from '../../model/mys/passportUtils.js'
 import {
   listUserConfigs,
@@ -57,7 +58,12 @@ async function refreshCookie (userId, st) {
 
     // 老的 getCookieAccountInfoBySToken 已废弃（-464「请使用最新版本产品/链接」），改走换票接口：
     // dst_token_type=2 → ltoken_v2；dst_token_type=4 → cookie_token_v2
+    // 换票必须带 mid，早期条目缺 mid 时按 stoken 失效处理（只能重新扫码）
     const mid = st.mid || ''
+    if (!mid) {
+      logger?.warn(`${SIGNIN_LOG_PREFIX} stoken缺少mid，无法换票，请重新扫码: uid=${st.uid}`)
+      return { cookie: null, stokenInvalid: true }
+    }
     const ex2 = await qrUser.getData('exchange', { token: st.stoken, mid, dstTokenType: 2 }, false)
     const ex4 = await qrUser.getData('exchange', { token: st.stoken, mid, dstTokenType: 4 }, false)
     const ltoken = ex2?.data?.token?.token
@@ -75,19 +81,12 @@ async function refreshCookie (userId, st) {
     }
 
     // 全 v2 cookie + 兼容旧别名（与扫码登录产出的 cookie 一致）
-    const cookie = [
-      `account_id_v2=${st.stuid}`,
-      mid ? `account_mid_v2=${mid}` : '',
-      `cookie_token_v2=${cookieToken}`,
-      mid ? `ltmid_v2=${mid}` : '',
-      `ltoken_v2=${ltoken}`,
-      `ltuid_v2=${st.stuid}`,
-      `account_id=${st.stuid}`,
-      `ltuid=${st.stuid}`,
-      mid ? `mid=${mid}` : '',
-      `ltoken=${ltoken}`,
-      `cookie_token=${cookieToken}`
-    ].filter(Boolean).join(';') + ';'
+    const cookie = buildV2Cookie({
+      stuid: st.stuid,
+      mid,
+      ltoken,
+      cookieToken
+    })
     return { cookie, stokenInvalid: false }
   } catch (err) {
     logger?.error(`${SIGNIN_LOG_PREFIX} refreshCookie 异常: ${err.message}`)
@@ -858,8 +857,8 @@ function formatUserSigninResult (userId, results) {
   for (const r of results) {
     if (r.ok) continue
     const text = `${r.message || ''} ${r.error || ''}`
-    const hint = /Stoken\s*已?失效|StokenError/i.test(text)
-      ? '（stoken 不可用，请重新【#扫码登录】后重新【#注册自动签到】）'
+    const hint = /Stoken\s*已?失效|StokenError|cookie require mid/i.test(text)
+      ? '（stoken 不可用或缺少 mid，请重新【#扫码登录】后重新【#注册自动签到】）'
       : ''
     msg += `\n账号${r.n}: ${r.message || '未知错误'}${hint}`
   }

@@ -10,6 +10,7 @@ import stokenStore from '../model/stokenStore.js'
 import { getServer } from '../model/mys/passportUtils.js'
 import { render } from '../components/render.js'
 import { getPluginConfig } from '../components/config.js'
+import { buildV2Cookie } from '../components/mysCookie.js'
 import { LOG_PREFIX } from '../components/constants.js'
 
 export class QrLoginApp extends plugin {
@@ -190,7 +191,12 @@ export class QrLoginApp extends plugin {
 
       // 老 getCookieAccountInfoBySToken 已废弃（-464），改走换票接口：
       // dst_token_type=2 → ltoken_v2；dst_token_type=4 → cookie_token_v2
+      // 换票必须带 mid，早期条目缺 mid 时只能重新扫码
       const mid = st.mid || ''
+      if (!mid) {
+        e.reply(`uid:${st.uid},stoken缺少mid，无法刷新，请重新扫码登录`)
+        continue
+      }
       const ex2 = await user.getData('exchange', { token: st.stoken, mid, dstTokenType: 2 }, false)
       const ex4 = await user.getData('exchange', { token: st.stoken, mid, dstTokenType: 4 }, false)
       const ltoken = ex2?.data?.token?.token
@@ -202,19 +208,7 @@ export class QrLoginApp extends plugin {
       }
 
       // 全 v2 cookie + 兼容旧别名（与扫码登录产出一致）
-      e.msg = [
-        `account_id_v2=${st.stuid}`,
-        mid ? `account_mid_v2=${mid}` : '',
-        `cookie_token_v2=${cookieToken}`,
-        mid ? `ltmid_v2=${mid}` : '',
-        `ltoken_v2=${ltoken}`,
-        `ltuid_v2=${st.stuid}`,
-        `account_id=${st.stuid}`,
-        `ltuid=${st.stuid}`,
-        mid ? `mid=${mid}` : '',
-        `ltoken=${ltoken}`,
-        `cookie_token=${cookieToken}`
-      ].filter(Boolean).join(';') + ';'
+      e.msg = buildV2Cookie({ stuid: st.stuid, mid, ltoken, cookieToken })
 
       if (isGet) {
         sendMsg.push(`uid:${stoken[item].uid}`, e.msg)

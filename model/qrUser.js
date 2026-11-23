@@ -9,6 +9,7 @@ import lodash from 'lodash'
 import PassportApi from './mys/passportApi.js'
 import * as utils from './mys/passportUtils.js'
 import gsCfg from './stokenStore.js'
+import { buildV2Cookie } from '../components/mysCookie.js'
 
 const plugin = 'Axiu-Plugin'
 const stokenPath = `./plugins/${plugin}/data/stoken/`
@@ -169,25 +170,19 @@ export default class QrUser {
         const mid = this.e.sk.get('mid') || ''
         ltoken = this.e.sk.get('ltoken') || ''
         if (this.e.sk.get('stoken')?.includes('v2_')) {
-          // 扫码结果已直接带 ltoken_v2，不再调用已废弃的 getLTokenBySToken
+          // ltoken 优先取扫码换票时写进 stoken 串的值；早期条目没有时才回退 getLTokenBySToken
+          // （该接口官方已废弃，可能返回空）
           if (!ltoken) {
             const res = await this.getData('getLtoken', { cookies: this.e.raw_message }, false)
-            ltoken = res?.data?.ltoken
+            ltoken = res?.data?.ltoken || ''
           }
           // 全 v2 cookie（cookie_token 由 exchange 换得）+ 兼容旧别名
-          this.e.cookie = [
-            `account_id_v2=${stuid}`,
-            mid ? `account_mid_v2=${mid}` : '',
-            `cookie_token_v2=${data.data.cookie_token}`,
-            mid ? `ltmid_v2=${mid}` : '',
-            `ltoken_v2=${ltoken}`,
-            `ltuid_v2=${stuid}`,
-            `account_id=${stuid}`,
-            `ltuid=${stuid}`,
-            mid ? `mid=${mid}` : '',
-            `ltoken=${ltoken}`,
-            `cookie_token=${data.data.cookie_token}`
-          ].filter(Boolean).join(';') + ';'
+          this.e.cookie = buildV2Cookie({
+            stuid,
+            mid,
+            ltoken,
+            cookieToken: data.data.cookie_token
+          })
         } else {
           v2Sk = await this.getData('getByStokenV2', { headers: { Cookie: this.e.raw_message } }, false)
           this.e.cookie =
@@ -328,19 +323,12 @@ export default class QrUser {
     }
 
     // 全 v2 cookie + 兼容 Axiu 内部按 ltuid/account_id 解析的旧别名（与 qrLogin._buildLoginResult 一致）
-    const fullCookie = [
-      `account_id_v2=${accountStoken.stuid}`,
-      mid ? `account_mid_v2=${mid}` : '',
-      `cookie_token_v2=${cookieToken}`,
-      mid ? `ltmid_v2=${mid}` : '',
-      `ltoken_v2=${ltoken}`,
-      `ltuid_v2=${accountStoken.stuid}`,
-      `account_id=${accountStoken.stuid}`,
-      `ltuid=${accountStoken.stuid}`,
-      mid ? `mid=${mid}` : '',
-      `ltoken=${ltoken}`,
-      `cookie_token=${cookieToken}`
-    ].filter(Boolean).join(';') + ';'
+    const fullCookie = buildV2Cookie({
+      stuid: accountStoken.stuid,
+      mid,
+      ltoken,
+      cookieToken
+    })
 
     return {
       cookie: fullCookie,
