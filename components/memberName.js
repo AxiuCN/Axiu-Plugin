@@ -1,42 +1,48 @@
 /**
- * 群成员昵称取值
+ * 群成员资料 / 昵称取值
  *
- * 挑战图右上角、群排行每行展示的都是「数据所属的那个人」：
- * 发 `@某人 #危战` 时查的是被 @ 的人的 UID，昵称也必须取那个人的，
- * 不能取发命令的人。
+ * 适配器差异（这里踩过两次，写清楚免得再犯）：
+ * - **OneBot v11（本项目在用）**：`group.pickMember(qq)` 返回的是「框架群成员缓存里的字段 + `getInfo()` 方法」
+ *   的普通对象——缓存命中时直接有 `card` / `nickname`，没命中就要 `await getInfo()`（一次
+ *   `get_group_member_info`）。**没有 `info`，也没有 `renew`**。
+ * - **icqq**：`Member` 上有 `info` 取值器与 `renew()`，但缓存未命中时 `info` 返回 `undefined`
+ *   （取值器只会在后台顺手 renew）。
  *
- * 注意：icqq 的 `Member` **没有** `getInfo()`，昵称只能走 `card` 取值器
- * （群名片，缺省群昵称）；缓存里没有资料时用 `renew()` 拉一次。
- * 早期写成 `member.getInfo?.()` 拿到的一直是 undefined，
- * 群排行昵称因此从未生效过。
+ * 两条形状都兜住，换协议端不会静默失效。
  */
 
 /**
- * 取群成员资料对象（缓存优先；缓存里没有名字时 renew 一次）
- *
- * icqq 的 `info` 取值器在缓存未命中时只会顺手在后台 renew，**仍然返回 undefined**，
- * 所以「读 info 拿到空 → 再 renew」这条顺序是必须的。
- * @param {object} member - `group.pickMember(qq)` 的返回值
- * @returns {Promise<{card?: string, nickname?: string, [k: string]: any}|null>}
+ * 取群成员资料对象
+ * @param {object} member - `group.pickMember(qq)` 的返回值（可为空）
+ * @returns {Promise<object|null>} 至少能读到 `card` / `nickname` 的对象
  */
 export async function memberInfo (member) {
   if (!member) return null
-  const cached = member.info || null
-  if (cached?.card || cached?.nickname) return cached
-  const quick = member.card // 取值器就是 info.card || info.nickname
-  if (quick) return { ...(cached || {}), card: quick }
+
+  // 1) 缓存命中：OneBot 会把群成员缓存（bot.gml）里的字段摊在 pickMember 的返回对象上
+  if (member.card || member.nickname) return member
+
+  // 2) OneBot：拉一次成员资料
   try {
-    return (await member.renew?.()) || cached
+    const info = await member.getInfo?.()
+    if (info) return info
   } catch {
-    // 成员已退群 / 拉取失败
-    return cached
+    // 成员已退群 / 接口失败：继续往下兜
+  }
+
+  // 3) icqq：info 取值器为空时 renew 一次
+  if (member.info) return member.info
+  try {
+    return (await member.renew?.()) || null
+  } catch {
+    return null
   }
 }
 
 /**
- * 从一个已取到的群成员对象上取昵称（群名片 → 群昵称）
+ * 取群成员昵称（群名片 → 群昵称）
  * @param {object} member - `group.pickMember(qq)` 的返回值
- * @returns {Promise<string>}
+ * @returns {Promise<string>} 取不到时返回空串
  */
 export async function memberNick (member) {
   const info = await memberInfo(member)

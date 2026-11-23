@@ -24,10 +24,12 @@ installFrameworkStubs()
 const { ProxySpeak } = await importMod('apps/proxySpeak.js')
 const { check, finish } = checker()
 
-/** 造一个 icqq 风格的最小 member（`info` 可为 undefined，模拟缓存未命中） */
-const mkMember = ({ info, renew, card } = {}) => ({
+/** 造最小 member：既支持 OneBot 形状（getInfo），也支持 icqq 形状（info / renew） */
+const mkMember = ({ info, renew, card, nickname, getInfo } = {}) => ({
   get card () { return card },
+  nickname,
   info,
+  getInfo: getInfo ?? (async () => null),
   renew: renew ?? (async () => info)
 })
 
@@ -123,6 +125,14 @@ console.log('\n【3】sender 昵称：优先群名片，取不到才回落 QQ �
   const sender = await new ProxySpeak()._buildSender(20002, mkMember({}))
   check('完全取不到昵称时才回落 QQ 号', sender.card === '20002' && sender.nickname === '20002', JSON.stringify(sender))
   check('user_id 始终是目标 QQ', sender.user_id === 20002)
+}
+{
+  // OneBot v11：pickMember 缓存未命中时没有 card/nickname，必须靠 getInfo()
+  const sender = await new ProxySpeak()._buildSender(20002, mkMember({
+    getInfo: async () => ({ user_id: 20002, card: '拉取名片', nickname: '拉取昵称' })
+  }))
+  check('OneBot 形状：缓存为空时用 getInfo() 拿到名片（修复前显示 QQ 号）',
+    sender.card === '拉取名片' && sender.nickname === '拉取昵称', JSON.stringify(sender))
 }
 {
   const sender = await new ProxySpeak()._buildSender(20002, null)

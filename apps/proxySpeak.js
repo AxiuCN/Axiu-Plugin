@@ -84,23 +84,27 @@ export class ProxySpeak extends plugin {
   /**
    * 构造目标用户的 sender 对象
    *
-   * `member.info` 在群成员缓存未命中时是 **undefined**（icqq 的取值器只会顺手在后台
-   * renew，仍然返回旧的 `_info`），直接兜成 `String(targetUin)` 会让下游看到一个
-   * 「昵称 = QQ 号」的发送者——代发言的牌面就变成了纯数字。
-   * 这里用 memberNick 取群名片 / 群昵称，实在取不到才回落 QQ 号。
+   * `pickMember(qq)` 在缓存未命中时**没有** `card` / `nickname`（OneBot 适配器不会顺手拉取），
+   * 旧实现 `member?.info ?? { card: String(targetUin) }` 于是把牌面变成纯 QQ 号。
+   * 这里用 memberInfo（缓存 → `getInfo()` → icqq 的 info/renew）取资料，
+   * 群名片优先、群昵称其次，两者都拿不到才回落 QQ 号。
    * @param {number|string} targetUin 目标 QQ
    * @param {object|null} member 目标群成员（可空）
    */
   async _buildSender (targetUin, member) {
-    const info = await memberInfo(member)
+    const info = (await memberInfo(member)) || {}
     const fallback = String(targetUin)
-    return {
-      ...(info || {}),
+    const sender = {
       user_id: targetUin,
       // 群名片优先，其次群昵称；都拿不到才用 QQ 号兜底（至少不会是 undefined）
-      card: info?.card || info?.nickname || fallback,
-      nickname: info?.nickname || info?.card || fallback
+      card: info.card || info.nickname || fallback,
+      nickname: info.nickname || info.card || fallback
     }
+    // 下游（genshin 建档等）可能读这些字段，有就带上，不把成员对象上的方法整个摊进来
+    for (const key of ['role', 'title', 'avatar', 'level']) {
+      if (info[key] !== undefined) sender[key] = info[key]
+    }
+    return sender
   }
 
   /**
