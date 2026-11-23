@@ -48,7 +48,7 @@ node test/srGacha-merge.test.mjs  # 单跑（任意 cwd 均可）
 | `member-name.test.mjs` | 群成员昵称（`components/memberName.js`）：`card` 命中不发请求、为空时 `renew()` 拿资料、`renew` 抛错按无昵称、无 `getInfo` 的对象也能取到（旧写法永远为空的回归锚）、`@` 别人取被 @ 的人、被 @ 者不在群里返回空串而不退化成发送者、私聊无 group 返回空串；静态约束挑战图三处昵称都按 `e.at` 取、排行不再出现 `member.getInfo` |
 | `sr-gacha-cookie.test.mjs` | 星铁抽卡取凭据口径（`model/qrUser.js` + `apps/srGachaLog.js`）：`getCookie` 默认原神 / `'sr'` 取星铁且不覆盖调用方目标 uid、星铁无 CK 或 UID 时不借用原神 CK 与原神注册 UID、`getCookieForUid` 按目标 UID 的 ltuid 取同账号 CK（查不到返回 null）；入口级拒绝与放行、显式目标 UID 的 CK 与 region、目标未绑定则拒绝；stoken 分支只接受目标 UID 或同 ltuid 条目（别的账号 stoken 不被交换、无 stoken 条目不遮挡同账号可用条目、同账号跨游戏 stoken 可用）、命令正则允许末尾附带 9~10 位 UID | 无（内存替身，无真实 stoken 目录） |
 | `gs-gacha-merge-order.test.mjs` | 原神抽卡合并 `mergeJson` 排序（从源码 VM 提取函数执行）：19 位相邻 ID 新记录在前（含 `Number` 精度相等的前提断言）、远端覆盖本地与去重、不同长度数值降序、空输入；静态约束不得再用 `Number(...)` 相减、必须是 `localeCompare` + `numeric` | 无 |
-| `proxy-speak-identity.test.mjs` | 代发言注入事件（`_buildProxyEvent`）：清掉 `originalUserId` / `mainUserId`、目标身份与既有字段清理不回退、原事件不被改坏、源码静态约束 | 无 |
+| `proxy-speak-identity.test.mjs` | 代发言注入事件（`_buildProxyEvent`）：清掉 `originalUserId` / `mainUserId`、目标身份与既有字段清理不回退、原事件不被改坏、源码静态约束 | 无；sender 昵称优先群名片、群成员缓存未命中时走 renew、两者都没有才回落 QQ 号 |
 
 套件均为数据无关：不依赖真实账号、真实 Redis 与网络，也不触发 `#扫码登录` / 真实 Python 签到链路（`signin-runner-marks` 只在子进程里跑假 module-dir）。
 

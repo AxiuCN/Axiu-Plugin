@@ -1,6 +1,7 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import loader from '../../../lib/plugins/loader.js'
 import { getPluginConfig } from '../components/config.js'
+import { memberInfo } from '../components/memberName.js'
 
 export class ProxySpeak extends plugin {
   constructor() {
@@ -51,12 +52,13 @@ export class ProxySpeak extends plugin {
     }
 
     // 2. 获取目标用户的群成员信息
-    const member = e.group.pickMember(targetUin)
-    const sender = member?.info ?? {
-      card: String(targetUin),
-      nickname: String(targetUin),
-      user_id: targetUin
+    let member = null
+    try {
+      member = e.group.pickMember(targetUin)
+    } catch {
+      member = null
     }
+    const sender = await this._buildSender(targetUin, member)
 
     // 3. 构造注入事件（抽成方法便于回归：身份字段清理是易错点）
     const fakeEvent = this._buildProxyEvent(e, { targetUin, speechContent, member, sender })
@@ -77,6 +79,28 @@ export class ProxySpeak extends plugin {
     }
 
     return true
+  }
+
+  /**
+   * 构造目标用户的 sender 对象
+   *
+   * `member.info` 在群成员缓存未命中时是 **undefined**（icqq 的取值器只会顺手在后台
+   * renew，仍然返回旧的 `_info`），直接兜成 `String(targetUin)` 会让下游看到一个
+   * 「昵称 = QQ 号」的发送者——代发言的牌面就变成了纯数字。
+   * 这里用 memberNick 取群名片 / 群昵称，实在取不到才回落 QQ 号。
+   * @param {number|string} targetUin 目标 QQ
+   * @param {object|null} member 目标群成员（可空）
+   */
+  async _buildSender (targetUin, member) {
+    const info = await memberInfo(member)
+    const fallback = String(targetUin)
+    return {
+      ...(info || {}),
+      user_id: targetUin,
+      // 群名片优先，其次群昵称；都拿不到才用 QQ 号兜底（至少不会是 undefined）
+      card: info?.card || info?.nickname || fallback,
+      nickname: info?.nickname || info?.card || fallback
+    }
   }
 
   /**

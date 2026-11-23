@@ -12,21 +12,34 @@
  */
 
 /**
+ * 取群成员资料对象（缓存优先；缓存里没有名字时 renew 一次）
+ *
+ * icqq 的 `info` 取值器在缓存未命中时只会顺手在后台 renew，**仍然返回 undefined**，
+ * 所以「读 info 拿到空 → 再 renew」这条顺序是必须的。
+ * @param {object} member - `group.pickMember(qq)` 的返回值
+ * @returns {Promise<{card?: string, nickname?: string, [k: string]: any}|null>}
+ */
+export async function memberInfo (member) {
+  if (!member) return null
+  const cached = member.info || null
+  if (cached?.card || cached?.nickname) return cached
+  const quick = member.card // 取值器就是 info.card || info.nickname
+  if (quick) return { ...(cached || {}), card: quick }
+  try {
+    return (await member.renew?.()) || cached
+  } catch {
+    // 成员已退群 / 拉取失败
+    return cached
+  }
+}
+
+/**
  * 从一个已取到的群成员对象上取昵称（群名片 → 群昵称）
  * @param {object} member - `group.pickMember(qq)` 的返回值
  * @returns {Promise<string>}
  */
 export async function memberNick (member) {
-  if (!member) return ''
-  // card 取值器内部就是 info.card || info.nickname，命中缓存时不会发起请求
-  const cached = member.card
-  if (cached) return cached
-  let info = null
-  try {
-    info = await member.renew?.()
-  } catch {
-    // 成员已退群 / 拉取失败：按无昵称处理
-  }
+  const info = await memberInfo(member)
   return info?.card || info?.nickname || ''
 }
 
