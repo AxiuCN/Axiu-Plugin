@@ -11,7 +11,7 @@
  */
 
 .container {
-  font-family: 'SR', 'YS', 'Number', sans-serif;
+  font-family: Number, YS, sans-serif;
   background-position: center top;
   background-size: 100% auto;
 }

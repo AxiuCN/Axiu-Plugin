@@ -10,25 +10,25 @@
 }
 @font-face {
   font-family: "Number";
-  src: url("../common/font/tttgbnumber.ttf");
+  src: url("../common/font/tttgbnumber.woff") format("woff");
   font-weight: normal;
   font-style: normal;
 }
 @font-face {
   font-family: "NZBZ";
-  src: url("../common/font/NZBZ.ttf");
+  src: url("../common/font/NZBZ.woff") format("woff");
   font-weight: normal;
   font-style: normal;
 }
 @font-face {
   font-family: "YS";
-  src: url("../common/font/HYWH-65W.woff") format("woff"), url("../common/font/HYWH-65W.ttf") format("truetype");
+  src: url("../common/font/HYWH-65W.woff") format("woff");
   font-weight: normal;
   font-style: normal;
 }
 @font-face {
   font-family: "YS2";
-  src: url("../common/font/HYWH-65W.ttf");
+  src: url("../common/font/HYWH-65W.woff") format("woff");
   font-weight: normal;
   font-style: normal;
 }
@@ -41,7 +41,7 @@
 body {
   font-size: 18px;
   color: #1e1f20;
-  font-family: Number, YS2, PingFangSC-Medium, PingFang SC, sans-serif;
+  font-family: Number, YS, PingFang SC, sans-serif;
   transform: scale(1.4);
   transform-origin: 0 0;
   width: 600px;

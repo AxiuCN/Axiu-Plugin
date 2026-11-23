@@ -104,10 +104,10 @@ const cssEscape = (token) => token.replace(/[[\]()%,#./:!]/g, (ch) => '\\' + ch)
 
 const patterns = [...classes].map((t) => new RegExp('\\.' + cssEscape(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\w-])'))
 
-/** 1vw = 3.75 CSS px = 7.5px（750 画布）；字体统一到原神官方字体 */
-const unifyFont = (body) => body.replace(/font-family:([^;}]+)/g, (_, v) => (
-  /HYWenHei|ysfont/.test(v) ? `font-family:${v}` : 'font-family:HYWenHei, ysfont, sans-serif'
-))
+/** 1vw = 3.75 CSS px = 7.5px（750 画布）
+ *  字体：官方写的 PingFang / 微软雅黑 / HYWenHei 一律改写成 Number + YS 一条链——
+ *  数字落到 tttgbnumber（游戏数字体），中文落到 HYWH-65W，浏览器逐字回落即可 */
+const unifyFont = (body) => body.replace(/font-family:([^;}]+)/g, () => 'font-family:Number, YS, sans-serif')
 const fixBody = (body) => unifyFont(body).replace(/(-?[\d.]+)vw/g, (_, n) => `${Math.round(parseFloat(n) * 7.5 * 100) / 100}px`)
 
 const collected = []
@@ -142,7 +142,7 @@ const header = `/**
  *
  * 尺寸口径：官方 375 设计稿，值写的是 calc(N * var(--gpx))；
  * 画布 750 = 375 × 2，故 --gpx 设为 2px。官方直接写 vw 的地方已换算成 px。
- * 字体口径：官方写的 PingFang / 微软雅黑一律改写成 HYWenHei / ysfont（同一份官方字体）。
+ * 字体口径：官方写的 PingFang / 微软雅黑 / HYWenHei 一律改写成 Number + YS（数字 tttgbnumber、中文 HYWH-65W）。
  */
 
 :root {
@@ -189,23 +189,6 @@ const header = `/**
   --tw-backdrop-sepia: ;
 }
 
-/* 字体：统一使用 resources/common/font/hk4e_zh-cn.ttf
-   （原神官方字体合集 HYWenHei-85W，CJK + Latin + 数字全覆盖）。
-   官方的排版链是 HYWenHei → ysfont，这里两个名字指向同一份文件，
-   于是不论规则写哪个名字，出来的都是同一个官方字形。 */
-@font-face {
-  font-family: "HYWenHei";
-  src: url("../../common/font/hk4e_zh-cn.ttf") format("truetype");
-  font-weight: normal;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: "ysfont";
-  src: url("../../common/font/hk4e_zh-cn.ttf") format("truetype");
-  font-weight: normal;
-  font-style: normal;
-}
 `
 
 fs.writeFileSync(outPath, header + collected.join('\n') + '\n', 'utf8')

@@ -32,7 +32,7 @@ body {
   box-sizing: border-box;
   overflow: hidden;
   color: var(--text-main);
-  font-family: HYWenHei, ysfont, 'YS', 'Number', sans-serif;
+  font-family: Number, YS, sans-serif;
   background-repeat: no-repeat;
   background-position: left top, left bottom;
   background-size: 100% auto, 100% auto;
@@ -46,6 +46,7 @@ body {
 .rank-head {
   margin: 0;
   text-align: center;
+  font-family: NZBZ, YS, sans-serif;
   font-size: 30px;
   font-weight: 500;
   letter-spacing: 1px;

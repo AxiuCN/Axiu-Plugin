@@ -7,7 +7,7 @@
  *
  * 尺寸口径：官方 375 设计稿，值写的是 calc(N * var(--gpx))；
  * 画布 750 = 375 × 2，故 --gpx 设为 2px。官方直接写 vw 的地方已换算成 px。
- * 字体口径：官方写的 PingFang / 微软雅黑一律改写成 HYWenHei / ysfont（同一份官方字体）。
+ * 字体口径：官方写的 PingFang / 微软雅黑 / HYWenHei 一律改写成 Number + YS（数字 tttgbnumber、中文 HYWH-65W）。
  */
 
 :root {
@@ -54,23 +54,6 @@
   --tw-backdrop-sepia: ;
 }
 
-/* 字体：统一使用 resources/common/font/hk4e_zh-cn.ttf
-   （原神官方字体合集 HYWenHei-85W，CJK + Latin + 数字全覆盖）。
-   官方的排版链是 HYWenHei → ysfont，这里两个名字指向同一份文件，
-   于是不论规则写哪个名字，出来的都是同一个官方字形。 */
-@font-face {
-  font-family: "HYWenHei";
-  src: url("../../common/font/hk4e_zh-cn.ttf") format("truetype");
-  font-weight: normal;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: "ysfont";
-  src: url("../../common/font/hk4e_zh-cn.ttf") format("truetype");
-  font-weight: normal;
-  font-style: normal;
-}
 .tw-relative{position:relative}
 .tw-top-\[1px\]{top:1px}
 .tw-mx-0\.5{margin-left:calc(2 * var(--gpx));margin-right:calc(2 * var(--gpx))}
@@ -78,20 +61,20 @@
 .tw-h-3{height:calc(12 * var(--gpx))}
 .tw-w-\[1px\]{width:1px}
 .tw-bg-gt-g-grey-black-6{background-color:rgba(0, 0, 0, 0.08)}
-.tw-font-genshinfont{font-family:HYWenHei, ysfont}
+.tw-font-genshinfont{font-family:Number, YS, sans-serif}
 .tw-flex-items-center{display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center}
 .role-combat-detail-top-panel[data-v-78e349d3]{width:750px;background:url(images/top-panel-bg.8a9cb222.png) no-repeat left bottom;background-size:100% 100%;margin-top:32px;-webkit-box-sizing:border-box;box-sizing:border-box;padding:44px 62px 70px;min-height:506px}
-.role-combat-detail-top-panel>h2[data-v-78e349d3]{color:#d3bc8e;font-family:HYWenHei, ysfont, sans-serif;font-size:28px;font-style:normal;font-weight:500;line-height:36px;height:36px;text-align:center}
+.role-combat-detail-top-panel>h2[data-v-78e349d3]{color:#d3bc8e;font-family:Number, YS, sans-serif;font-size:28px;font-style:normal;font-weight:500;line-height:36px;height:36px;text-align:center}
 .role-combat-detail-top-panel .data-items[data-v-78e349d3]{width:578px;margin:40px auto 0}
 .role-combat-detail-top-panel .data-items .data-item[data-v-78e349d3]{min-height:32px;display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-pack:justify;-ms-flex-pack:justify;justify-content:space-between;-webkit-box-align:center;-ms-flex-align:center;align-items:center}
 .role-combat-detail-top-panel .data-items .data-item .medal-rounds[data-v-78e349d3]{border-radius:24px;background:rgba(207,190,174,.5);padding:8px 8px;display:-webkit-box;display:-ms-flexbox;display:flex;-ms-flex-wrap:wrap;flex-wrap:wrap}
 .role-combat-detail-top-panel .data-items .data-item .medal-rounds>img[data-v-78e349d3]{display:block;width:28px;height:28px;margin:0 1px}
-.role-combat-detail-top-panel .data-items .data-item>p[data-v-78e349d3]{-ms-flex-negative:0;flex-shrink:0;text-overflow:ellipsis;color:#6a5443;font-family:HYWenHei, ysfont, sans-serif;font-size:24px;font-style:normal;font-weight:500;line-height:32px;height:32px}
+.role-combat-detail-top-panel .data-items .data-item>p[data-v-78e349d3]{-ms-flex-negative:0;flex-shrink:0;text-overflow:ellipsis;color:#6a5443;font-family:Number, YS, sans-serif;font-size:24px;font-style:normal;font-weight:500;line-height:32px;height:32px}
 .role-combat-detail-top-panel .data-items .data-item>p[data-v-78e349d3]:nth-child(1){margin-right:24px}
-.role-combat-detail-top-panel .data-items .data-item>p span[data-v-78e349d3]{font-family:HYWenHei;font-weight:400}
+.role-combat-detail-top-panel .data-items .data-item>p span[data-v-78e349d3]{font-family:Number, YS, sans-serif;font-weight:400}
 .role-combat-detail-top-panel .data-items .data-item>p img[data-v-78e349d3]{width:28px;height:28px;vertical-align:bottom}
 .role-combat-detail-top-panel .data-items .data-item>p img+span[data-v-78e349d3]{margin-left:4px}
-.role-combat-detail-top-panel .data-items .data-item>.best-record[data-v-78e349d3]{-ms-flex-negative:0;flex-shrink:0;text-overflow:ellipsis;color:#6a5443;font-family:HYWenHei, ysfont, sans-serif;font-size:24px;font-style:normal;font-weight:500;line-height:32px;height:32px}
+.role-combat-detail-top-panel .data-items .data-item>.best-record[data-v-78e349d3]{-ms-flex-negative:0;flex-shrink:0;text-overflow:ellipsis;color:#6a5443;font-family:Number, YS, sans-serif;font-size:24px;font-style:normal;font-weight:500;line-height:32px;height:32px}
 .role-combat-detail-top-panel .data-items .data-item>.best-record>.no-space[data-v-78e349d3]{font-size:0px}
 .role-combat-detail-top-panel .data-items .data-item>.best-record>.no-space span[data-v-78e349d3]{font-size:24px}
 .role-combat-detail-top-panel .data-items .data-item>.best-record[data-v-78e349d3]:nth-child(1){margin-right:24px}
@@ -105,7 +88,7 @@
 .role-combat-detail-round-title .title-info>span:nth-child(2)>img[data-v-0acc4f93]{display:block;width:28px;height:28px}
 .role-combat-detail-round-title .title-info>p[data-v-0acc4f93]:nth-child(3){margin-left:8px;height:44px;border-radius:40px;border:.5px solid rgba(255, 255, 255, 0.35);border:.5px solid var(--Light-Text-White_5, rgba(255, 255, 255, 0.35));background:rgba(255, 255, 255, 0.04);background:var(--General-Grey-White_7, rgba(255, 255, 255, 0.04));-webkit-box-sizing:border-box;box-sizing:border-box;padding:0 16px;display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center}
 .role-combat-detail-round-title .title-info>p:nth-child(3)>img[data-v-0acc4f93]{display:block;width:28px;height:28px}
-.role-combat-detail-round-title .title-info>p:nth-child(3)>span[data-v-0acc4f93]{display:block;height:44px;margin-left:6px;color:#ece5d8;text-align:right;font-family:HYWenHei;font-size:24px;font-style:normal;font-weight:400;line-height:44px}
+.role-combat-detail-round-title .title-info>p:nth-child(3)>span[data-v-0acc4f93]{display:block;height:44px;margin-left:6px;color:#ece5d8;text-align:right;font-family:Number, YS, sans-serif;font-size:24px;font-style:normal;font-weight:400;line-height:44px}
 .role-combat-detail-round-title .total-use-time[data-v-0acc4f93]{height:36px;margin-top:8px;color:rgba(255,255,255,.65);font-size:24px;font-style:normal;font-weight:400;line-height:36px;text-align:left}
 .stat-list[data-v-2a52861b]{background:url(images/battle-stat-panel-bg.a37fdc99.png) no-repeat center center;background-size:100% 100%;padding:32px;width:690px;margin:24px auto;-webkit-box-sizing:border-box;box-sizing:border-box}
 .stat-list .stat-item[data-v-2a52861b]{padding:16px 0;display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center}
@@ -115,7 +98,7 @@
 .stat-list .stat-item .stat-front-icon[data-v-2a52861b]{-ms-flex-negative:0;flex-shrink:0;display:block;width:40px;height:40px}
 .stat-list .stat-item .stat-title[data-v-2a52861b]{-webkit-box-flex:1;-ms-flex-positive:1;flex-grow:1;margin:0 16px;color:#ece5d8;font-size:24px;font-style:normal;font-weight:500;line-height:32px}
 .stat-list .stat-item .stat-title[data-v-2a52861b]:first-child{margin-left:0}
-.stat-list .stat-item .stat-value[data-v-2a52861b]{-ms-flex-negative:0;flex-shrink:0;color:#d3bc8e;font-family:HYWenHei;font-size:24px;font-style:normal;font-weight:400;line-height:28px}
+.stat-list .stat-item .stat-value[data-v-2a52861b]{-ms-flex-negative:0;flex-shrink:0;color:#d3bc8e;font-family:Number, YS, sans-serif;font-size:24px;font-style:normal;font-weight:400;line-height:28px}
 .stat-list .stat-item .stat-avatars[data-v-2a52861b]{-ms-flex-negative:0;flex-shrink:0;display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center}
 .stat-list .stat-item .stat-avatars .stat-avatar-icon[data-v-2a52861b]:not(:first-child){margin-left:8px}
 .role-combat-detail-round-content[data-v-01e78b74]{width:690px;padding:32px;-webkit-box-sizing:border-box;box-sizing:border-box;margin:0 auto;border:.5px solid rgba(255,255,255,.13);background:#211d1f url(images/detail-rounds-bg.df44819e.png) no-repeat left top;background-size:100% auto}
@@ -126,8 +109,8 @@
 .role-combat-detail-round-content .round-item>h2[data-v-01e78b74]{display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center;height:32px}
 .role-combat-detail-round-content .round-item>h2 .flower-icon[data-v-01e78b74]{display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-pack:center;-ms-flex-pack:center;justify-content:center;-webkit-box-align:center;-ms-flex-align:center;align-items:center;width:32px;height:32px;margin-right:8px;background:rgba(207,190,174,.5);border-radius:100%}
 .role-combat-detail-round-content .round-item>h2 .flower-icon>img[data-v-01e78b74]{display:block;width:24px;height:24px}
-.role-combat-detail-round-content .round-item>h2>p[data-v-01e78b74]:nth-child(2){color:#6a5443;font-family:HYWenHei, ysfont, sans-serif;font-size:24px;font-style:normal;font-weight:600;line-height:32px;height:32px}
-.role-combat-detail-round-content .round-item>h2>p:nth-child(2)>span[data-v-01e78b74]{font-weight:400;font-family:HYWenHei}
+.role-combat-detail-round-content .round-item>h2>p[data-v-01e78b74]:nth-child(2){color:#6a5443;font-family:Number, YS, sans-serif;font-size:24px;font-style:normal;font-weight:600;line-height:32px;height:32px}
+.role-combat-detail-round-content .round-item>h2>p:nth-child(2)>span[data-v-01e78b74]{font-weight:400;font-family:Number, YS, sans-serif}
 .role-combat-detail-round-content .round-item>h2 .enemy-icon[data-v-01e78b74]{display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center;margin-left:8px;height:28px}
 .role-combat-detail-round-content .round-item>h2 .enemy-icon>p[data-v-01e78b74]{color:#b28659;font-size:20px;font-style:normal;font-weight:600;line-height:28px;height:28px}
 .role-combat-detail-round-content .round-item>h2 .enemy-icon>img[data-v-01e78b74]{display:block;width:20px;height:20px}
@@ -139,16 +122,16 @@
 .role-combat-detail-round-content .round-item>h3>p[data-v-01e78b74]:nth-child(2){display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center}
 .role-combat-detail-round-content .round-item>h3>p:nth-child(2)>span[data-v-01e78b74]{display:block;height:36px;color:#b28659;font-size:20px;font-style:normal;font-weight:600;line-height:36px}
 .role-combat-detail-round-content .round-item>h3>p:nth-child(2)>img[data-v-01e78b74]{display:block;width:24px;height:24px;margin-left:4px}
-.role-combat-detail-round-content .round-item .finish-time[data-v-01e78b74]{margin-top:4px;color:#6a5443;height:28px;font-family:HYWenHei, ysfont, sans-serif;font-size:20px;font-style:normal;font-weight:400;line-height:28px}
+.role-combat-detail-round-content .round-item .finish-time[data-v-01e78b74]{margin-top:4px;color:#6a5443;height:28px;font-family:Number, YS, sans-serif;font-size:20px;font-style:normal;font-weight:400;line-height:28px}
 .role-combat-detail-round-content .round-item .roles[data-v-01e78b74]{display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-pack:start;-ms-flex-pack:start;justify-content:flex-start;-webkit-box-align:center;-ms-flex-align:center;align-items:center;height:160px;width:566px;margin-top:16px}
 .role-combat-detail-round-content .round-item .role-item[data-v-01e78b74]{cursor:pointer;width:128px;height:160px;position:relative;-webkit-box-sizing:border-box;box-sizing:border-box;border-radius:8px;border:1px solid #ded8d1}
 .role-combat-detail-round-content .round-item .role-item .element[data-v-01e78b74]{position:absolute;width:26px;height:26px;left:8px;top:8px;z-index:10}
-.role-combat-detail-round-content .round-item .role-item .tag[data-v-01e78b74]{position:absolute;height:24px;padding:0 4px;line-height:22px;border-radius:4px;z-index:10;right:-4px;top:-4px;color:#fff;text-align:center;text-shadow:0px 1px 8px rgba(0,0,0,.25);font-family:HYWenHei;font-size:16px;font-style:normal;font-weight:400}
+.role-combat-detail-round-content .round-item .role-item .tag[data-v-01e78b74]{position:absolute;height:24px;padding:0 4px;line-height:22px;border-radius:4px;z-index:10;right:-4px;top:-4px;color:#fff;text-align:center;text-shadow:0px 1px 8px rgba(0,0,0,.25);font-family:Number, YS, sans-serif;font-size:16px;font-style:normal;font-weight:400}
 .role-combat-detail-round-content .round-item .role-item .tag.trial-tag[data-v-01e78b74]{border:1px solid #dd6971;background:#e57882}
 .role-combat-detail-round-content .round-item .role-item .tag.support-tag[data-v-01e78b74]{border:1px solid #3a75ad;background:#4f8cc9}
 .role-combat-detail-round-content .round-item .role-item+.role-item[data-v-01e78b74]{margin-left:16px}
 .role-combat-detail-round-content .round-item .role-item .avatar[data-v-01e78b74]{-webkit-transition:all .2s;transition:all .2s;width:124px;height:126px;background-position:center top;background-size:100% 100%}
-.role-combat-detail-round-content .round-item .role-item .level[data-v-01e78b74]{height:30px;color:#3b4252;text-align:center;text-overflow:ellipsis;font-family:HYWenHei, ysfont, sans-serif;font-size:20px;font-style:normal;font-weight:600;line-height:30px;background:#ece5d8;border-radius:0 0 8px 8px}
+.role-combat-detail-round-content .round-item .role-item .level[data-v-01e78b74]{height:30px;color:#3b4252;text-align:center;text-overflow:ellipsis;font-family:Number, YS, sans-serif;font-size:20px;font-style:normal;font-weight:600;line-height:30px;background:#ece5d8;border-radius:0 0 8px 8px}
 .role-combat-detail-round-content .round-item .role-item .fill[data-v-01e78b74]{width:24px;height:24px;position:absolute;z-index:9;bottom:29px;right:0}
 .role-combat-detail-round-content .round-item .round-buff-item[data-v-01e78b74]{margin-top:16px}
 .role-combat-detail-round-content .round-item .round-buff-item .buff-title[data-v-01e78b74]{-webkit-box-sizing:border-box;box-sizing:border-box;height:56px;background:#e6dac5;color:#6a5443;font-size:24px;font-style:normal;font-weight:500;line-height:56px;padding-left:16px;border:1px solid #d8cfc1;position:relative}
@@ -163,12 +146,12 @@
 .role-combat-detail-round-content .round-item .round-buff-item .not-expand-buff.splendour-buff .total-buff-list>div.disabled>img[data-v-01e78b74],.role-combat-detail-round-content .round-item .round-buff-item .not-expand-buff.splendour-buff .total-buff-list>div.disabled>span[data-v-01e78b74]{opacity:.5}
 .role-combat-detail-round-content .round-item .round-buff-item .not-expand-buff.splendour-buff .total-buff-list>div>i[data-v-01e78b74]{position:absolute;width:1px;height:48px;left:-0.5px;top:14px;background:rgba(0,0,0,.04);z-index:1}
 .role-combat-detail-round-content .round-item .round-buff-item .not-expand-buff.splendour-buff .total-buff-list>div>img[data-v-01e78b74]{display:block;width:40px;height:40px;margin:0 auto}
-.role-combat-detail-round-content .round-item .round-buff-item .not-expand-buff.splendour-buff .total-buff-list>div>span[data-v-01e78b74]{margin:4px auto 0;display:block;width:80px;height:32px;text-align:center;line-height:32px;border-radius:20px;background:rgba(230,223,210,.6);color:#685139;font-family:HYWenHei;font-size:20px;font-style:normal;font-weight:400}
+.role-combat-detail-round-content .round-item .round-buff-item .not-expand-buff.splendour-buff .total-buff-list>div>span[data-v-01e78b74]{margin:4px auto 0;display:block;width:80px;height:32px;text-align:center;line-height:32px;border-radius:20px;background:rgba(230,223,210,.6);color:#685139;font-family:Number, YS, sans-serif;font-size:20px;font-style:normal;font-weight:400}
 .role-combat-detail-round-content .round-item .round-buff-item .not-expand-buff>div[data-v-01e78b74]{-ms-flex-negative:0;flex-shrink:0;width:56px;height:56px;position:relative}
 .role-combat-detail-round-content .round-item .round-buff-item .not-expand-buff>div[data-v-01e78b74]:not(:nth-child(8n)){margin-right:11px}
 .role-combat-detail-round-content .round-item .round-buff-item .not-expand-buff>div[data-v-01e78b74]:nth-child(n+9){margin-top:8px}
 .role-combat-detail-round-content .round-item .round-buff-item .not-expand-buff>div>.buff-icon[data-v-01e78b74]{-ms-flex-negative:0;flex-shrink:0;display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-pack:center;-ms-flex-pack:center;justify-content:center;-webkit-box-align:center;-ms-flex-align:center;align-items:center;width:56px;height:56px;border:1px solid #fff;-webkit-box-sizing:border-box;box-sizing:border-box;border-radius:100%;background:rgba(0,0,0,.64)}
 .role-combat-detail-round-content .round-item .round-buff-item .not-expand-buff>div>.buff-icon>img[data-v-01e78b74]{display:block;width:40px;height:40px}
-.role-combat-detail-round-content .round-item .round-buff-item .not-expand-buff>div>span[data-v-01e78b74]{position:absolute;display:block;width:56px;height:24px;border-radius:4px;border:1px solid #c3aa80;background:#d3bc8e;-webkit-box-sizing:border-box;box-sizing:border-box;line-height:22px;color:rgba(0,0,0,.9);text-align:center;font-family:HYWenHei;font-size:16px;font-style:normal;font-weight:400;z-index:1;bottom:-4px;left:0}
+.role-combat-detail-round-content .round-item .round-buff-item .not-expand-buff>div>span[data-v-01e78b74]{position:absolute;display:block;width:56px;height:24px;border-radius:4px;border:1px solid #c3aa80;background:#d3bc8e;-webkit-box-sizing:border-box;box-sizing:border-box;line-height:22px;color:rgba(0,0,0,.9);text-align:center;font-family:Number, YS, sans-serif;font-size:16px;font-style:normal;font-weight:400;z-index:1;bottom:-4px;left:0}
 .role-combat-page[data-v-9fd04200]{background:#151214 url(images/page-bg-top.5615069e.png) no-repeat left top;background-size:750px auto;position:relative}
 .role-combat-page .detail-content[data-v-9fd04200]{width:690px;margin:48px auto}

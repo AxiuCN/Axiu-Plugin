@@ -37,7 +37,7 @@ body {
 .role-combat-page {
   width: 100%;
   /* 字体在 role-official.css 注册：HYWenHei / ysfont 均指向原神官方字体合集 */
-  font-family: HYWenHei, ysfont, "PingFang SC", sans-serif;
+  font-family: Number, YS, sans-serif;
 }
 
 /* ===== 页头（自有） ===== */
@@ -136,7 +136,7 @@ body {
 .copyright {
   margin: 10px 0 0;
   padding: 0 0 24px;
-  font-family: HYWenHei, ysfont, "PingFang SC", sans-serif;
+  font-family: Number, YS, sans-serif;
   font-size: 16px;
   line-height: 22px;
   text-align: center;
@@ -145,7 +145,7 @@ body {
 }
 
 .copyright .version {
-  font-family: HYWenHei, ysfont, "PingFang SC", sans-serif;
+  font-family: Number, YS, sans-serif;
   font-size: 16px;
   color: #d3bc8e;
 }
