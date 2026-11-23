@@ -46,6 +46,7 @@ Axiu-Plugin — 阿修自用 Yunzai-Bot v3 插件，ESM（`"type": "module"`）�
 | 星铁终局挑战、原神终局挑战与两套排行榜 | [`docs/模块-挑战与排行.md`](docs/模块-挑战与排行.md) |
 | 圣遗物/遗器总榜、排行榜定时刷新（miao 群排行摊平） | [`docs/模块-圣遗物总榜.md`](docs/模块-圣遗物总榜.md) |
 | 入群审核、代发言、插件帮助 | [`docs/模块-审核与杂项.md`](docs/模块-审核与杂项.md) |
+| 回归套件的运行、前置与编写规范 | [`docs/测试.md`](docs/测试.md) |
 | 待办与审核跟踪（第四轮 12 项、修复分批、未定口径） | [`docs/待办-审核跟踪.md`](docs/待办-审核跟踪.md) |
 | 部署环境、盘符映射、本机工作区（**不入库**） | `docs/private/`（新克隆上不存在） |
 
@@ -59,11 +60,10 @@ Axiu-Plugin — 阿修自用 Yunzai-Bot v3 插件，ESM（`"type": "module"`）�
 6. **文档入库范围** — `AGENTS.md` 与 `docs/`（除 `docs/private/`）**入库**，与代码一同评审提交；`docs/private/` 放部署环境与本机路径，**不入库**，因此入库文档只写占位（`<bot根>` / `<插件根>` / 假群号），且**不得依赖**它（新克隆上没有）；`CLAUDE.md` / `.claude/` / `.dsh/` 仍忽略
 7. **model 层源自 loveMys-plugin** — 模型文件从 loveMys-plugin 复制而来，gsCfg.js 路径已调整为 Axiu-Plugin
 8. **渲染缓存标识逐次唯一** — `components/render.js` 未显式传 `saveId` 时生成 `randomUUID()`，并在截图后删除生成的临时 HTML；**禁止**给 `saveId` 传固定值（宿主先同步写 HTML 再 `page.goto` 读取，固定标识会让并发渲染串图，扫码登录场景会造成账号错绑）
-9. **回归套件** — 改到数据口径或共享链路时，同步补/更新 `test/` 下对应套件（`pnpm test`），见「## 测试」
-10. **配置写入** — 值经 `yamlValue()` 序列化、写盘前 `validateRendered()` 逐键验证、`writeConfigAtomic()` 原子替换；表单没提交的键沿用文件当前值；读不出来时允许保存救回但回执必须点明（见下面「配置写入口径」）
-11. **子代理须先批准** — 派发子代理（`subagent` / `workflow`）**必须先取得维护者明确同意**；未经同意一律自己做。维护者已多次要求克制使用（2026-10-05）
-12. **文档必须同步** — 功能 / 命令 / 配置变更时**必须同批更新文档**：`docs/` 对应模块文档、`README.md`（面向使用者）、本文件（快速参考 + 测试表）、`test/README.md`（套件表）、文档站 `guide/yunzai/plugins/Axiu-Plugin.md`。**文档落后于代码视为未交付**（2026-10-05 起）
-
+9. **回归套件** — 改到数据口径或共享链路时，同步补/更新 `test/` 下对应套件（`pnpm test`），见「## 测试」。
+10. **配置写入** — 值经 `yamlValue()` 序列化、写盘前 `validateRendered()` 逐键验证、`writeConfigAtomic()` 原子替换；表单没提交的键沿用文件当前值；读不出来时允许保存救回但回执必须点明（见下面「配置写入口径」）。
+11. **子代理须先批准** — 派发子代理（`subagent` / `workflow`）**必须先取得维护者明确同意**；未经同意一律自己做。维护者已多次要求克制使用（2026-10-05）。
+12. **文档必须同步** — 功能 / 命令 / 配置变更时**必须同批更新文档**：`docs/` 对应模块文档、`README.md`（面向使用者）、本文件（快速参考）、`test/README.md`（套件表）、文档站 `guide/yunzai/plugins/Axiu-Plugin.md`。**文档落后于代码视为未交付**（2026-10-05 起）。
 
 ## 配置写入口径（改锅巴写入路径前先读）
 
@@ -74,33 +74,20 @@ Axiu-Plugin — 阿修自用 Yunzai-Bot v3 插件，ESM（`"type": "module"`）�
 5. **文件本来就读不出来时允许救回**：面板照常返回参考默认值，保存后按参考默认值重写其余键，回执**必须点明**「其余键已按参考默认值重写」。错误文案只留「哪份文件 + 解析器原因的第一行」，**不带出错行原文**（那行常常是 `api.key`，等于把口令打进日志或弹窗）。**不新增面板横幅字段**（2026-10-05 决定）：只在 `logger.error` 与保存回执里提示。
 6. **回归套件重定向**：`AXIU_CONFIG_DIR` 指向临时目录时配置读写都落在那里（`resolveConfigPath()` / `resolveGroupConfigPath()` 解析），生产不设这个变量。`test/guoba-write.test.mjs` 走的就是这条路，不碰仓库的 `config/`。
 
-
 ## 测试
 
 回归套件在 `test/`（**入仓库**）：`pnpm test`（= `node test/run.mjs`，任意 cwd 可跑，缺前置打印「跳过」并 exit 0）。
 
-| 套件 | 覆盖 |
-|------|------|
-| `test/srGacha-merge.test.mjs` | 星铁抽卡合并窗口：首次出五星的扣减、十连同秒尾段、远端更旧五星的重叠窗口、重复同步幂等、文件新旧方向、UTC+8 占位时间、同秒同名五星按条数去重（不整类压掉）、新五星按时间归并（不整段前置，数组保持时间单调） |
-| `test/signin-refresh-report.test.mjs` | 批量刷新 Cookie 的汇总口径与报告：部分成功用户的失败明细不被丢弃、三档统计、`ok:false` 且无失败明细也算失败（第四轮 #6）、边界 |
-| `test/rank-order.test.mjs` | 终局挑战排行（原神 + 星铁）：名次键编码与各级不越级（含星铁虚构「分数借位」回归）、并列密集名次（1,1,2）与首查只破并列、首查缺失排末尾、首查冻结、名次键只升不降、展示字段取最后一次、重排幂等、定向重置与上报交错不覆盖其他玩法明细、重置与上报共用重置锁的终态一致性与串行化时序、重排（`rebuildAll`）也在重置锁内（上报未写完前重排不完成）、排行榜总开关关闭时不上报 |
-| `test/signin-runner-marks.test.mjs` | 签到 runner 的失败判定：429/脚本失败/云游戏 -100（国服与国际服两套文案）判失败、正常成功与「已签到过」不误报、status_code 非 0；套件禁用 Python 字节码写入，避免覆写同长 main.py 时复用过期 .pyc |
-| `test/sr-device-timeout.test.mjs` | 星铁设备指纹/设备注册请求**都带可取消信号**（缺信号的桩会把用例挂住）、指纹缓存命中时请求数减少、**响应体阶段失败也走兜底指纹**；按 signal 判定，**不等**真实 10 秒超时 |
-| `test/device-fp-ltuid.test.mjs` | 通用过码设备指纹：缓存键取 cookie 里的 ltuid（不再落到 `undefined` 键）、`getFp` 网络失败与响应体失败都返回 `{deviceFp:null}` 而不抛穿、三处辅助请求都带超时信号 |
-| `test/guoba-write.test.mjs` | 锅巴配置读写：危险值（以 `*` 开头 cron / `#` / `:` / 引号 / 换行）序列化与回读、写前验证拦坏值、表单没提交的键不丢值、群规则映射与数组双形态往返、非法输入被拒且文件零改动、坏配置救回且文案不泄露口令、临时文件不留残渣（配置目录经 `AXIU_CONFIG_DIR` 重定向到 `test/.test-tmp/`） |
-| `test/qr-login-token.test.mjs` | 扫码登录 ltoken 取值：`pickToken` strict 不跨类型兜底（stoken 侧兜底保留）、tokens 只有 stoken 时 ltoken 必须取自 `getLtoken` 接口、具名优先、ltoken 等于 stoken 判为未取到、缺 ltoken / 缺 cookie_token 都不产出凭据 |
-| `test/copyright-line.test.mjs` | 版权行：框架名按 bot 根包名判定（TRSS-Yunzai / Yunzai-Bot）且与根包一致、插件版本取插件包、出图版带 `<span class="version">`、聊天版无 HTML 标签、名称与版本号不粘连、版本缺失时不拼版本 |
-| `test/artis-rank.test.mjs` | 圣遗物/遗器总榜与排行定时刷新：排行键解析（原神 8 位 / 星铁 4 位、uid-info 与 cfg 键不算排行键）、汇总口径（分数降序、取前 N 且每键只取前 N、同角色多 uid、同 uid 多角色、全局跨群、`dmg` 不混入）、按 miao 卡片口径组装行（角色名 / 元素 class / 天赋格 / 评分徽章 / 武器与套装 / 伤害）与取不到面板的行跳过、uid→qq 与行首 QQ 头像（照 miao 只取群成员头像，取不到不填）、群开关关闭时只提示不出图、miao 缺失降级、有数据的群集合只含 mark 键出现的群、命令正则（`*遗器总榜` 归一后命中）、天赋底框元素归一（原神 `anemo` 等键 / 星铁 `fire` 等键 / 中文别名都命中，`虚数`→`geo`，认不出→`no-elem` 禁用底框）与行级 `.char-talent.elem-*` 规则压过页面级元素、伤害怪物等级口径（`RANK_ENEMY_LV`：原神 110 / 星铁 80，对齐 miao 上游 PR；`calcDmg` 不得写死等级）、自建模板/样式的硬约束（`.item-icon` 基础规则必须在 `.char-icon` 之前、行首头像 50px 圆形、qqFace 优先、页面底色指向 miao 的默认元素底 hydro/sr 且所引底图文件存在）、未启用时定时任务零 Redis 访问、`rankRefresh.*` 三层配置与面板保存往返（配置目录经 `AXIU_CONFIG_DIR` 重定向） |
-| `test/forward-msg.test.mjs` | 长消息转发（`components/forward.js`）：群聊走 `e.group.makeForwardMsg`、私聊走 `e.friend.makeForwardMsg`、两者都没有时回落 `Bot.makeForwardMsg`、三者都不可用或转发抛错时回落纯文本并留 `logger.error`、节点昵称（缺省 `Yunzai-Bot` / 可显式指定）与消息内容原样；以及静态约束——插件源码不得再出现框架并不存在的 `runtime.makeForwardMsg`（注释除外），`#签到名单列表` 必须走 `replyForward` |
-| `test/render-assets.test.mjs` | 渲染资源完整性（`resources/**` 的 CSS 与字体）：所有 `url()` 引用（含 `@font-face` 字体文件）必须指向真实文件（路径写错时浏览器静默回落，出图看不出）、模板用到的字体族（`YS`/`YS2`/`Number`/`NZBZ`/`SR`/`HWZS`）都有定义且至少一个 src 存在、说明块正文 `.cont-body` 的 `YS` 指向存在的字体（`HYWH-85W` 这类不存在的文件名回归即转红）、模板里 `pluResPath` 引用的样式文件存在、排行榜底图映射（`*_RANK_BG` 的每个玩法都要有对应的 `body.rank-bg-*` 规则，且模板先引公共样式再引本玩法样式） |
-| `test/challenge-template.test.mjs` | 终局挑战模板空值安全（`resources/challenge/GS/*.html` 直接 art-template 编译渲染）：剧诗在有敌人 / 无敌人 / `enemies` 字段缺失 / 多幕混合 / 空 rounds / 队伍为空 / 辉彩祝福无数据 / 带奇妙助益下都不能抛错，无敌人时不渲染敌人图标区、辉彩祝福与队伍缺数据时整块不渲染、战斗统计缺 `icon` 时头像回落 `avatars[…]`；危战在 `best_avatars` 为空或只有 1 条（索引越界）、怪物图标与描述为空、`challs` 为空时都不能抛错；深渊在楼层为空 / 房间为空 / 只有一场战斗 / 出战次数与统计为空 / `avatars` 缺条目 / `starList` 缺失下都不能抛错；静态约束剧诗敌人区必须被 `{{if round.enemies && round.enemies.length}}` 包裹且不得裸取 `round.enemies[0]`、角色卡必须用 `avatars[…] || {}` 兜底、剧诗角色卡立绘走官方 `background` 内联样式、深渊上/下半标注只在两场战斗时出现、深渊角色卡立绘沿用官方内联高度、赋光只在单人模式渲染 |
-| `test/sr-gacha-cookie.test.mjs` | 星铁抽卡取凭据口径：`getCookie(e)` 默认原神、`getCookie(e,'sr')` 取星铁且**不覆盖**调用方目标 uid；星铁无 CK / 无 UID 时不借用原神 CK 与原神注册 UID（`gsCfg.getBingCookie`、`_regUid` 两条旧回退只在 gs 生效）；`getCookieForUid` 按目标 UID 的 ltuid 取同账号 CK、查不到返回 null；入口级：星铁无 CK 拒绝且不触达下游取数、有 CK 时下游拿到目标 UID 与其 region、显式目标 UID 取到自己的 CK 且 region 跟着变（B 服）、目标 UID 未绑定则拒绝；stoken 分支只接受目标 UID 或同 ltuid 的条目（别的账号 stoken 不被交换、无 stoken 条目不会遮住同账号可用条目，同账号跨游戏 stoken 仍可用）；命令正则允许末尾附带 9~10 位 UID |
-| `test/member-name.test.mjs` | 群成员资料/昵称与排行行身份（`components/memberName.js`）：OneBot v11 形状（缓存命中不发请求、未命中走 `getInfo()`、`getInfo` 抛错按无昵称）与 icqq 形状（`info` 取值器、`renew()` 兜底）都要能取到；`@` 别人取被 @ 的人、被 @ 者不在群里返回空串而不退化成发送者、私聊无 group 返回空串；`fillRankIdentity` 缓存命中不单拉、缺人才 `getInfo()`、头像返回字符串/Promise/抛错三种都要接住且昵称不被跳过；静态约束挑战图三处昵称按 `e.at` 取、原神与星铁排行都用 `fillRankIdentity` 且不把 `getAvatarUrl()` 当 Promise 用 |
-| `test/gs-gacha-merge-order.test.mjs` | 原神抽卡合并 `mergeJson` 的排序：直接从源码取函数执行（不复制实现），19 位相邻 ID 新记录在前（`Number` 精度实测为相等）、远端覆盖本地与去重、不同长度按数值降序；静态约束排序不得再用 `Number(...)` 相减且必须是 `localeCompare` + `numeric` |
-| `test/proxy-speak-identity.test.mjs` | 代发言注入事件的身份字段（`_buildProxyEvent`）：`originalUserId` / `mainUserId` 必须被清掉（否则 genshin `NoteUser.create` 优先按原用户建档、`mainUserId` 影响主子账户绑定判定）；`user_id` / `sender` 换目标、`@机器人` 首段、`original_msg` 与 dealEvent 重算字段仍被清除、原事件不被改坏；静态约束源码在 `{ ...e }` 之后必须显式 delete 这两个字段；sender 昵称优先群名片、缓存未命中时走 OneBot 的 `getInfo()`（或 icqq 的 `renew()`）、两者都没有才回落 QQ 号 |
+```bash
+cd app/plugins/Axiu-Plugin
+pnpm test                          # 全量
+node test/run.mjs --list           # 只列套件
+node test/run.mjs --filter=signin  # 只跑文件名含 signin 的
+```
 
-约定：命名 `<主题>.test.mjs`（主题写被测行为）；路径一律经 `test/_helper.mjs` 的 `pluginRoot` / `mod()` / `importMod()` 推导，禁止裸相对字面量与盘符绝对路径；框架全局（logger/redis/segment/Bot）用 `installFrameworkStubs()` 的内存实现（不联网、不触真实 Redis）；临时产物只写 `test/.test-tmp/`（已 gitignore）；**断言必须能真的失败**——新增套件应临时还原被修的代码确认转红后再入库。细节见 `test/README.md`。
+约定：命名 `<主题>.test.mjs`（主题写被测行为）；路径一律经 `test/_helper.mjs` 推导，**禁止裸相对字面量与盘符**；框架全局用 `installFrameworkStubs()` 内存桩（不联网、不触真实 Redis）；临时产物只写 `test/.test-tmp/`；**断言必须能真的失败**——新增套件先临时还原被修代码确认转红再入库。
 
+套件清单与逐套覆盖见 [`test/README.md`](test/README.md)；运行细节、前置与跳过、编写规范见 [`docs/测试.md`](docs/测试.md)。
 
 ## 待办：审核跟踪（摘要）
 
