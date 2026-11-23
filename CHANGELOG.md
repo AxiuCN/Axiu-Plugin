@@ -7,6 +7,8 @@
 - 签到失败文案在 stoken 失效时补上「重新扫码 + 重新注册」的行动提示。
 - 子模块 MihoyoBBSTools 指针更新到 `c767381`（Python 侧支持 v2 换票）；初始化只检出本仓库钉住的 commit，`#初始化签到环境` 不再 `--remote` 跟随上游 master。
 - `package.json` 补上此前未声明的依赖（`lodash` / `md5` / `node-fetch` / `yaml`），并去掉未使用的 `qrcode`。
+- 星铁抽卡取凭据与星铁 CK 自动刷新也改走换票接口（原来还在调已废弃的 `getCookieAccountInfoBySToken`，必然 `-464`）；非 `v2_` 或缺少 `mid` 的老条目不再发无效请求，直接回落账号 CK 或提示重新扫码。
+- v2 cookie 的拼装收拢到 `components/mysCookie.js`（扫码 / `#刷新ck` / 签到刷新 / 星铁刷新共用一份）；`passportApi` 的 App 版本号与 `app_id` 提为常量，跟版本只改一处。
 
 ## 2.6.0
 
