@@ -1,7 +1,7 @@
 {
   "name": "Axiu-Plugin",
-  "version": "2.6.1",
-  "description": "阿修的TRSS崽附属插件",
+  "version": "2.6.2",
+  "description": "TRSS-Yunzai v3 Stoken 体系综合功能插件：米游社账号与 Cookie 管理、自动签到、抽卡记录与终局挑战查询",
   "author": "阿修Axiu",
   "type": "module",
   "scripts": {
@@ -10,11 +10,5 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/AxiuCN/Axiu-Plugin.git"
-  },
-  "dependencies": {
-    "lodash": "^4.18.1",
-    "md5": "^2.3.0",
-    "node-fetch": "^3.3.2",
-    "yaml": "^2.9.1"
   }
 }

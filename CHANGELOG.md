@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.6.2
+
+- 修复手动过码服务（GT-Manual）的入参守卫（CodeQL `js/reflected-xss` #1/#2 的实际成因）：`tmp` / `isRegister` / `result` 三份内存表改用 `Object.create(null)`，四个路由增加 `key` 白名单（6 位字母）。此前用普通对象时，`constructor` / `__proto__` 等原型链名字会被判为「key 存在」而绕过检查——`GET /GTest/register/constructor` 会让 `res.send` 收到 `Object` 构造函数并抛错，`POST /GTest/validate/__proto__` 带 `{"<目标key>": {...}}` 还能改掉 `result` 的原型，使任意 key 读到伪造的 validate 结果。
+- 文档：补充 GT-Manual 的入参守卫与「对外暴露前先加访问控制」说明；补充子模块 `MihoyoBBSTools` 配置目录含 cookie/stoken 明文、不可在子模块内提交的警告。
+- 移除 2.6.1 新增的 `dependencies`（`lodash` / `md5` / `node-fetch` / `yaml`）：这些包由宿主框架提供（`app/package.json` 以 `link:lib/modules/...` 链接，`node-fetch` 是指向 `global.fetch` 的 shim）。插件自行声明后，包管理器会在 `plugins/Axiu-Plugin/node_modules` 装一份真包，**就近命中并旁路框架 shim**——插件内所有请求改用真 `node-fetch` v3 而非 undici，且以 `globalThis.fetch` 打桩的套件会失效。升级后如仍残留 `plugins/Axiu-Plugin/node_modules`，请手动删除。
+
 ## 2.6.1
 
 - 扫码登录、`#刷新ck`、签到刷新改用米游社换票接口（`POST /account/ma-cn-session/app/exchange`）：官方的 `getLTokenBySToken` / `getCookieAccountInfoBySToken` 已废弃（返回 `-464「请使用最新版本产品/链接」`），现在用 v2 stoken 换 `ltoken_v2` + `cookie_token_v2`，cookie 保留 `ltuid` / `account_id` 等旧别名。非 `v2_` 开头的老 stoken 换不了票，会提示重新 `#扫码登录`。

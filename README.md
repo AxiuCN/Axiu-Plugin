@@ -1,6 +1,6 @@
 # Axiu-Plugin / 阿修插件
 
-阿修自用 Yunzai-Bot v3 插件，提供扫码登录、米游社签到、米游社过码、抽卡记录、终局挑战、自动入群审核、代发言等功能。
+TRSS-Yunzai v3 Stoken 体系综合功能插件，提供扫码登录、米游社签到、米游社过码、抽卡记录、终局挑战、自动入群审核、代发言等功能。
 
 > MCSM 面板管理已迁移至独立插件 [MCSM-Plugin](https://github.com/AxiuCN/MCSM-Plugin)。
 

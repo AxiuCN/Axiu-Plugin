@@ -2,10 +2,16 @@ import express from 'express'
 import gsCfg from '../gsCfg.js'
 import _ from 'lodash'
 
-let tmp = {}
-let isRegister = {}
-let result = {}
+// 无原型对象：普通 {} 做 map 时，`map['constructor']` / `map['__proto__']` 等原型链上的名字
+// 会被「key 是否存在」的判断当成真值，等于守卫失效
+let tmp = Object.create(null)
+let isRegister = Object.create(null)
+let result = Object.create(null)
 const Path = 'https://img-hut.top/gt/'
+/** key 由 register 生成，恒为 6 位字母（与那里的 `sampleSize('A-Za-z', 6)` 对齐）。
+ *  四个路由都先过这道白名单：既堵掉原型链名字，也让 key 可以安全地拼进 HTML。
+ *  改动 key 的生成规则时必须同步这里。 */
+const KEY_RE = /^[A-Za-z]{6}$/
 export default class GT_Manual {
   constructor() {
     this.cfg = gsCfg.api
@@ -39,7 +45,7 @@ export default class GT_Manual {
 
   index (req, res, next) {
     let { key } = req.params
-    if (!key || !isRegister[key]) return next('验证信息不存在或已失效。')
+    if (!KEY_RE.test(key) || !isRegister[key]) return next('验证信息不存在或已失效。')
     res.send(`<!DOCTYPE html>
 <html>
   <head>
@@ -88,7 +94,7 @@ export default class GT_Manual {
   /** 浏览器获取gt参数 */
   get_register (req, res, next) {
     let { key } = req.params
-    if (!key || !tmp[key]) return next('该验证信息已被使用，若非本人操作请重新获取')
+    if (!KEY_RE.test(key) || !tmp[key]) return next('该验证信息已被使用，若非本人操作请重新获取')
     res.send(tmp[key] || {})
     delete tmp[key]
   }
@@ -96,7 +102,7 @@ export default class GT_Manual {
   /** 浏览器返回validate */
   validate (req, res, next) {
     let { key } = req.params
-    if (!key || !req.body) return next('0')
+    if (!KEY_RE.test(key) || !req.body) return next('0')
     result[key] = req.body
     setTimeout(() => delete result[key], 30000)
     GT_Manual.send(res, {})
@@ -106,7 +112,7 @@ export default class GT_Manual {
   /** 获取验证结果validate */
   get_validate (req, res, next) {
     let { key } = req.params
-    if (!key) return next('0')
+    if (!KEY_RE.test(key)) return next('0')
     GT_Manual.send(res, result[key] || null)
   }
 
